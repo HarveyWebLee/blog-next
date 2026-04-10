@@ -137,7 +137,7 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          postId: post?.posts.id,
+          postId: post?.id,
           content: comment,
           authorName: "访客",
         }),

@@ -1,0 +1,18 @@
+# 仅用于执行 Drizzle 迁移的一次性镜像（不重含 Next 应用）
+# 使用：docker compose --env-file deploy/.env.docker --profile migrate run --rm db-migrate
+
+FROM node:22-bookworm-slim
+WORKDIR /app
+
+RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
+
+COPY package.json pnpm-lock.yaml .npmrc ./
+RUN pnpm install --frozen-lockfile
+
+COPY drizzle.config.ts ./
+COPY drizzle ./drizzle
+COPY lib/db ./lib/db
+
+ENV NODE_ENV=production
+
+CMD ["pnpm", "exec", "drizzle-kit", "migrate", "--config=drizzle.config.ts"]

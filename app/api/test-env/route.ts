@@ -71,17 +71,15 @@ JWT_REFRESH_EXPIRES_IN=30d
  * 显示环境变量配置指南
  */
 function showConfigurationGuide() {
-  console.log("\n📋 数据库配置指南");
+  console.log("\n📋 数据库与环境配置指南（建表仅用 Drizzle）");
   console.log("=".repeat(50));
-  console.log("1. 确保MySQL服务正在运行");
-  console.log("2. 创建数据库: CREATE DATABASE blog_system;");
-  console.log("3. 创建用户并授权:");
-  console.log("   CREATE USER 'blog_user'@'localhost' IDENTIFIED BY 'your_password';");
-  console.log("   GRANT ALL PRIVILEGES ON blog_system.* TO 'blog_user'@'localhost';");
-  console.log("   FLUSH PRIVILEGES;");
-  console.log("4. 编辑 .env.local 文件，填入正确的配置信息");
-  console.log("5. 运行数据库迁移: npm run db:push");
-  console.log("6. 测试连接: npm run test:db");
+  console.log("1. 统一部署与编排：docs/Docker编排与流水线部署.md");
+  console.log(
+    "2. Compose：deploy/.env.docker → mysql/redis → pnpm run docker:migrate（或 bash scripts/deploy-from-scratch.sh）"
+  );
+  console.log("3. .env.local 中 DB_* 指向宿主机映射端口（默认见 deploy/env.docker.example）");
+  console.log("4. 空库建表：pnpm db:migrate 或 pnpm db:push；勿用手写 SQL 批量建表脚本");
+  console.log("5. 验证：pnpm test:db:connect");
   console.log("");
 }
 

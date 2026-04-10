@@ -327,7 +327,11 @@ export default function ProfileNotifications({ lang }: ProfileNotificationsProps
                           >
                             {label}
                           </Chip>
-                          {!notification.isRead && <Badge content="新" color="danger" size="sm" />}
+                          {!notification.isRead && (
+                            <Badge color="danger" size="sm" variant="flat">
+                              新
+                            </Badge>
+                          )}
                         </div>
 
                         {notification.content && (

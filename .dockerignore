@@ -1,0 +1,32 @@
+# Git / 编辑器
+.git
+.github
+.cursor
+.husky
+
+# 依赖与构建产物（镜像内重新安装 / 构建）
+node_modules
+.next
+out
+dist
+build
+coverage
+
+# 本地环境（运行时通过 env_file 注入）
+.env
+.env.*
+!env.example
+
+# 部署密钥模板以外的本地文件（示例仍可复制进构建上下文）
+deploy/.env.docker
+
+# 文档不参与构建，减小 context
+docs
+
+# 日志与系统文件
+*.log
+.DS_Store
+
+# 测试与杂项
+mcps
+*.pem

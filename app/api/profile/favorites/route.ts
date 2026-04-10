@@ -11,9 +11,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { and, desc, eq } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
-import { categories, posts, postTags, tags, userFavorites, users } from "@/lib/db/schema";
+import { categories, posts, userFavorites, users } from "@/lib/db/schema";
 import { verifyToken } from "@/lib/utils/auth";
-import { ApiResponse, FavoritePostRequest, PaginatedResponseData, UserFavorite } from "@/types/blog";
+import { ApiResponse, FavoritePostRequest, PaginatedResponseData, PostData, UserFavorite } from "@/types/blog";
 
 export async function GET(request: NextRequest) {
   try {
@@ -47,35 +47,28 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "10");
     const offset = (page - 1) * limit;
 
-    // 获取用户收藏列表
-    const favorites = await db
+    // 获取用户收藏列表（Drizzle MySQL 的 .select 不支持多层嵌套对象，改为扁平列再在内存中组装）
+    const favoriteRows = await db
       .select({
-        id: userFavorites.id,
-        userId: userFavorites.userId,
-        postId: userFavorites.postId,
-        createdAt: userFavorites.createdAt,
-        updatedAt: userFavorites.updatedAt,
-        post: {
-          id: posts.id,
-          title: posts.title,
-          slug: posts.slug,
-          excerpt: posts.excerpt,
-          featuredImage: posts.featuredImage,
-          viewCount: posts.viewCount,
-          likeCount: posts.likeCount,
-          publishedAt: posts.publishedAt,
-          author: {
-            id: users.id,
-            username: users.username,
-            displayName: users.displayName,
-            avatar: users.avatar,
-          },
-          category: {
-            id: categories.id,
-            name: categories.name,
-            slug: categories.slug,
-          },
-        },
+        favId: userFavorites.id,
+        favUserId: userFavorites.userId,
+        refPostId: userFavorites.postId,
+        favCreatedAt: userFavorites.createdAt,
+        postId: posts.id,
+        postTitle: posts.title,
+        postSlug: posts.slug,
+        postExcerpt: posts.excerpt,
+        postFeaturedImage: posts.featuredImage,
+        postViewCount: posts.viewCount,
+        postLikeCount: posts.likeCount,
+        postPublishedAt: posts.publishedAt,
+        authorId: users.id,
+        authorUsername: users.username,
+        authorDisplayName: users.displayName,
+        authorAvatar: users.avatar,
+        catId: categories.id,
+        catName: categories.name,
+        catSlug: categories.slug,
       })
       .from(userFavorites)
       .leftJoin(posts, eq(userFavorites.postId, posts.id))
@@ -96,13 +89,66 @@ export async function GET(request: NextRequest) {
     const totalPages = Math.ceil(total / limit);
 
     const responseData: PaginatedResponseData<UserFavorite> = {
-      data: favorites.map((fav) => ({
-        id: fav.id,
-        userId: fav.userId,
-        postId: fav.postId,
-        createdAt: fav.createdAt,
-        updatedAt: fav.updatedAt,
-        post: fav.post,
+      data: favoriteRows.map((row) => ({
+        id: row.favId,
+        userId: row.favUserId,
+        postId: row.refPostId,
+        createdAt: row.favCreatedAt,
+        updatedAt: row.favCreatedAt,
+        post:
+          row.postId != null
+            ? ({
+                id: row.postId,
+                title: row.postTitle ?? "",
+                slug: row.postSlug ?? "",
+                excerpt: row.postExcerpt,
+                content: "",
+                contentHtml: null,
+                featuredImage: row.postFeaturedImage,
+                authorId: row.authorId ?? 0,
+                categoryId: row.catId,
+                status: "published",
+                visibility: "public",
+                password: null,
+                allowComments: true,
+                viewCount: row.postViewCount ?? 0,
+                likeCount: row.postLikeCount ?? 0,
+                publishedAt: row.postPublishedAt,
+                author: {
+                  id: row.authorId ?? 0,
+                  username: row.authorUsername ?? "",
+                  email: "",
+                  password: "",
+                  displayName: row.authorDisplayName ?? row.authorUsername ?? "",
+                  avatar: row.authorAvatar,
+                  bio: undefined,
+                  role: "user",
+                  status: "active",
+                  emailVerified: false,
+                  lastLoginAt: undefined,
+                  createdAt: row.favCreatedAt,
+                  updatedAt: row.favCreatedAt,
+                },
+                category: row.catId
+                  ? {
+                      id: row.catId,
+                      name: row.catName ?? "",
+                      slug: row.catSlug ?? "",
+                      description: undefined,
+                      parentId: null,
+                      sortOrder: 0,
+                      isActive: true,
+                      createdAt: row.favCreatedAt,
+                      updatedAt: row.favCreatedAt,
+                    }
+                  : null,
+                tags: [],
+                comments: [],
+                readTime: 0,
+                createdAt: row.favCreatedAt,
+                updatedAt: row.favCreatedAt,
+              } as unknown as PostData)
+            : undefined,
       })),
       pagination: {
         page,
@@ -207,8 +253,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 添加收藏
-    const newFavorite = await db.insert(userFavorites).values({
+    const [insertResult] = await db.insert(userFavorites).values({
       userId: decoded.userId,
       postId: postId,
     });
@@ -216,7 +261,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json<ApiResponse>(
       {
         success: true,
-        data: { id: newFavorite.insertId },
+        data: { id: insertResult.insertId },
         message: "收藏成功",
         timestamp: new Date().toISOString(),
       },

@@ -58,6 +58,13 @@ export function verifyAccessToken(token: string): any {
 }
 
 /**
+ * 访问令牌校验（与若干路由中 `verifyToken` 命名一致，等同于 verifyAccessToken）
+ */
+export function verifyToken(token: string): any {
+  return verifyAccessToken(token);
+}
+
+/**
  * 验证JWT刷新令牌
  * @param token JWT刷新令牌
  * @returns 解码后的载荷数据

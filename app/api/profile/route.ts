@@ -67,12 +67,12 @@ export async function GET(request: NextRequest) {
       data: {
         id: profileData?.id || 0,
         userId: userData.id,
-        firstName: profileData?.firstName,
-        lastName: profileData?.lastName,
-        phone: profileData?.phone,
-        website: profileData?.website,
-        location: profileData?.location,
-        timezone: profileData?.timezone,
+        firstName: profileData?.firstName ?? undefined,
+        lastName: profileData?.lastName ?? undefined,
+        phone: profileData?.phone ?? undefined,
+        website: profileData?.website ?? undefined,
+        location: profileData?.location ?? undefined,
+        timezone: profileData?.timezone ?? undefined,
         language: profileData?.language || "zh-CN",
         dateFormat: profileData?.dateFormat || "YYYY-MM-DD",
         timeFormat: profileData?.timeFormat || "24h",
@@ -147,8 +147,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 创建个人资料
-    const newProfile = await db.insert(userProfiles).values({
+    const [insertResult] = await db.insert(userProfiles).values({
       userId: decoded.userId,
       firstName: body.firstName,
       lastName: body.lastName,
@@ -168,7 +167,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json<ApiResponse>(
       {
         success: true,
-        data: { id: newProfile.insertId },
+        data: { id: insertResult.insertId },
         message: "个人资料创建成功",
         timestamp: new Date().toISOString(),
       },

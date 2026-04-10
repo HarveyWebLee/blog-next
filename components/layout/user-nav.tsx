@@ -34,7 +34,7 @@ export function UserNav() {
           aria-label="login"
           color="primary"
           size="sm"
-          variant="gradient"
+          variant="shadow"
           as={Link}
           href="/auth/login"
           className="font-semibold"

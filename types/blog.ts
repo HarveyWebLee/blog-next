@@ -252,6 +252,18 @@ export interface PostData extends BaseEntity {
 }
 
 /**
+ * GET /api/posts/:id 在服务层 join 作者/分类后返回的 data 形态（结果中仍带有 Drizzle 表别名 `posts`）
+ * 管理端编辑等页面依赖该结构；详情页 slug 接口返回的常为扁平 PostData，二者勿混用。
+ */
+export interface PostManageDetailData {
+  posts: PostData;
+  tags?: Tag[];
+  author?: User;
+  category?: Category | null;
+  comments?: Comment[];
+}
+
+/**
  * 文章创建请求接口
  */
 export interface CreatePostRequest {

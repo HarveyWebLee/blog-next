@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import ProfileFavorites from "@/components/profile/profile-favorites";
 import ProfileLayout from "@/components/profile/profile-layout";
 import ProfileLoading from "@/components/profile/profile-loading";
-import { getDictionary } from "@/lib/dictionaries";
+import { getDictionaryForLang } from "@/lib/dictionaries";
 
 interface ProfileFavoritesPageProps {
   params: Promise<{ lang: string }>;
@@ -11,7 +11,7 @@ interface ProfileFavoritesPageProps {
 
 export default async function ProfileFavoritesPage({ params }: ProfileFavoritesPageProps) {
   const { lang } = await params;
-  const dict = await getDictionary(lang);
+  const dict = await getDictionaryForLang(lang);
 
   return (
     <ProfileLayout lang={lang} dict={dict}>

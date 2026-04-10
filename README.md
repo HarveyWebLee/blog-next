@@ -114,6 +114,9 @@ pnpm db:reset:dev          # 开发环境重置，见 docs/数据库重置与验
 
 pnpm test:api
 pnpm test:db:connect
+
+# Compose 从零：mysql/redis + Drizzle 迁移（Linux/macOS/Git Bash）
+# bash scripts/deploy-from-scratch.sh
 ```
 
 ## API 入口（节选）
@@ -136,8 +139,7 @@ pnpm test:db:connect
 
 - [docs/文档索引.md](./docs/文档索引.md)
 - [docs/博客系统开发说明.md](./docs/博客系统开发说明.md)
-- [docs/部署操作指南.md](./docs/部署操作指南.md)
-- [scripts/数据库初始化脚本说明.md](./scripts/数据库初始化脚本说明.md)（`init-db.sql` 备选）
+- [docs/Docker编排与流水线部署.md](./docs/Docker编排与流水线部署.md)（统一部署）
 
 ## 许可证
 

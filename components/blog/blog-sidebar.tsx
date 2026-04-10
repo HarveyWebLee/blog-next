@@ -198,7 +198,7 @@ export function BlogSidebar() {
           />
           <Button
             color="primary"
-            variant="gradient"
+            variant="shadow"
             size="sm"
             className="w-full font-semibold tracking-wide"
             endContent={<Mail className="w-4 h-4" />}

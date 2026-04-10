@@ -33,7 +33,15 @@ import SimpleEditor from "@/components/blog/simple-editor";
 import { useCategories } from "@/lib/hooks/useCategories";
 import { useTags } from "@/lib/hooks/useTags";
 import { message } from "@/lib/utils";
-import { Category, PostData, PostStatus, PostVisibility, Tag, UpdatePostRequest } from "@/types/blog";
+import {
+  Category,
+  PostData,
+  PostManageDetailData,
+  PostStatus,
+  PostVisibility,
+  Tag,
+  UpdatePostRequest,
+} from "@/types/blog";
 
 export default function EditBlogPage() {
   const router = useRouter();
@@ -43,7 +51,7 @@ export default function EditBlogPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [post, setPost] = useState<PostData | null>(null);
+  const [post, setPost] = useState<PostManageDetailData | null>(null);
 
   // 获取分类和标签数据
   const { categories, loading: categoriesLoading } = useCategories({ autoFetch: true });
@@ -72,7 +80,7 @@ export default function EditBlogPage() {
         const result = await response.json();
 
         if (result.success) {
-          const postData = result.data;
+          const postData = result.data as PostManageDetailData;
           setPost(postData);
           setFormData({
             title: postData.posts.title || "",
@@ -80,7 +88,8 @@ export default function EditBlogPage() {
             excerpt: postData.posts.excerpt || "",
             content: postData.posts.content || "",
             featuredImage: postData.posts.featuredImage || "",
-            categoryId: postData.posts.categoryId,
+            // UpdatePostRequest 使用 undefined 表示未选分类；库表字段可能为 null
+            categoryId: postData.posts.categoryId ?? undefined,
             status: postData.posts.status || "draft",
             visibility: postData.posts.visibility || "public",
             password: postData.posts.password || "",

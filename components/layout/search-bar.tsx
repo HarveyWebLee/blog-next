@@ -16,7 +16,7 @@ export function SearchBar() {
         isIconOnly
         aria-label="搜索"
         color="primary"
-        variant="glass"
+        variant="flat"
         className="font-semibold"
       >
         <Search />
@@ -31,10 +31,10 @@ export function SearchBar() {
                 <Input type="text" placeholder="请输入搜索内容" />
               </ModalBody>
               <ModalFooter>
-                <Button color="danger" variant="outline" onPress={onClose} className="font-semibold tracking-wide">
+                <Button color="danger" variant="bordered" onPress={onClose} className="font-semibold tracking-wide">
                   取消
                 </Button>
-                <Button color="primary" variant="gradient" onPress={onClose} className="font-semibold tracking-wide">
+                <Button color="primary" variant="shadow" onPress={onClose} className="font-semibold tracking-wide">
                   确认
                 </Button>
               </ModalFooter>

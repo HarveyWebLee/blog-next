@@ -96,7 +96,11 @@ async function testDatabaseConnection() {
     } else if (error.code === "ER_ACCESS_DENIED_ERROR") {
       suggestions = ["检查用户名和密码是否正确", "确保用户有访问该数据库的权限"];
     } else if (error.code === "ER_BAD_DB_ERROR") {
-      suggestions = ["数据库不存在，请先创建数据库", "运行: CREATE DATABASE blog_system;"];
+      suggestions = [
+        "使用 Compose 时检查 MYSQL_DATABASE 与 DB_NAME 是否一致",
+        "空库创建后执行 pnpm db:migrate 或 pnpm run docker:migrate（唯一建表方式）",
+        "说明见 docs/Docker编排与流水线部署.md",
+      ];
     } else {
       suggestions = ["检查数据库配置信息", "确保数据库服务正常运行", "查看详细错误信息进行排查"];
     }

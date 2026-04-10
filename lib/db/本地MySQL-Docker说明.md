@@ -41,4 +41,4 @@ pnpm db:migrate   # 或 db:push，见根目录 README / docs
 ## 注意
 
 - 不同 Docker 版本在 Windows 上对路径写法可能不同；若挂载失败可改用 **Docker Desktop 提供的命名卷** 或 WSL2 内的 Linux 路径。
-- 更完整的从零部署步骤见 `docs/部署操作指南.md`。
+- 生产与统一部署请见 **`docs/Docker编排与流水线部署.md`**（`docker-compose` 中 MySQL 等）。
