@@ -1,0 +1,463 @@
+{
+  "apiDocs": {
+    "title": "API 接口文档",
+    "description": "完整的API接口文档，包含所有可用的接口、参数说明和使用示例",
+    "searchPlaceholder": "搜索API接口...",
+    "noResults": "没有找到匹配的API接口",
+    "noData": "暂无API接口数据",
+    "parameters": "参数",
+    "requestBody": "请求体",
+    "responses": "响应",
+    "examples": "示例",
+    "noParameters": "此接口无需参数",
+    "noRequestBody": "此接口无需请求体",
+    "noResponses": "暂无响应信息",
+    "noExamples": "暂无示例",
+    "required": "必需",
+    "optional": "可选",
+    "type": "类型",
+    "location": "位置",
+    "copyToClipboard": "复制到剪贴板",
+    "curlCommand": "cURL命令",
+    "requestExample": "请求示例",
+    "responseExample": "响应示例",
+    "headers": "请求头",
+    "body": "请求体",
+    "statusCode": "状态码",
+    "dataStructure": "数据结构"
+  },
+  "auth": {
+    "login": "登录",
+    "register": "注册",
+    "forgotPassword": "忘记密码",
+    "resetPassword": "重置密码",
+    "email": "邮箱",
+    "password": "密码",
+    "confirmPassword": "确认密码",
+    "username": "用户名",
+    "loginSuccess": "登录成功",
+    "registerSuccess": "注册成功",
+    "logoutSuccess": "退出成功",
+    "invalidCredentials": "用户名或密码错误",
+    "userExists": "用户已存在",
+    "passwordMismatch": "密码不匹配",
+    "emailRequired": "邮箱是必填项",
+    "passwordRequired": "密码是必填项",
+    "usernameRequired": "用户名是必填项"
+  },
+  "blog": {
+    "title": "荒野",
+    "subtitle": "在数字荒野中探索技术，在思考森林中寻找真理",
+    "noPosts": "暂无文章",
+    "loadMore": "加载更多",
+    "searchPlaceholder": "搜索文章...",
+    "filterByCategory": "按分类筛选",
+    "filterByTag": "按标签筛选",
+    "allCategories": "全部分类",
+    "allTags": "全部标签"
+  },
+  "category": {
+    "name": "分类名称",
+    "slug": "分类标识",
+    "description": "分类描述",
+    "parentCategory": "父分类",
+    "sortOrder": "排序",
+    "status": "状态",
+    "active": "启用",
+    "inactive": "禁用",
+    "postCount": "文章数量",
+    "createCategory": "创建分类",
+    "editCategory": "编辑分类",
+    "deleteCategory": "删除分类",
+    "categoryManagement": "分类管理",
+    "categoryList": "分类列表",
+    "searchCategories": "搜索分类名称...",
+    "confirmDelete": "确定要删除这个分类吗？",
+    "deleteWarning": "注意：如果该分类下还有文章，则无法删除。",
+    "categoryCreated": "分类创建成功",
+    "categoryUpdated": "分类更新成功",
+    "categoryDeleted": "分类删除成功",
+    "nameRequired": "分类名称是必填项",
+    "slugRequired": "分类标识是必填项",
+    "nameExists": "分类名称已存在",
+    "slugExists": "分类标识已存在",
+    "autoSlugGenerate": "留空将自动生成",
+    "cannotDelete": "无法删除分类，该分类下还有文章",
+    "manageCategories": "管理博客分类，包括创建、编辑、删除和状态控制",
+    "totalCategories": "共 {count} 个分类"
+  },
+  "common": {
+    "home": "首页",
+    "about": "关于",
+    "blog": "博客",
+    "categories": "分类",
+    "tags": "标签",
+    "search": "搜索",
+    "login": "登录",
+    "register": "注册",
+    "logout": "退出",
+    "loading": "加载中...",
+    "error": "错误",
+    "success": "成功",
+    "cancel": "取消",
+    "confirm": "确认",
+    "save": "保存",
+    "edit": "编辑",
+    "delete": "删除",
+    "create": "创建",
+    "back": "返回",
+    "next": "下一步",
+    "previous": "上一步",
+    "readMore": "阅读更多",
+    "publishedAt": "发布时间",
+    "author": "作者",
+    "category": "分类",
+    "tag": "标签",
+    "views": "浏览",
+    "likes": "点赞",
+    "comments": "评论"
+  },
+  "footer": {
+    "copyright": "版权",
+    "allRightsReserved": "保留所有权利",
+    "builtWith": "使用 Next.js 构建",
+    "poweredBy": "由 Vercel 提供支持"
+  },
+  "metadata": {
+    "title": "荒野博客 | 在数字荒野中探索技术 - 在思考森林中寻找真理",
+    "description": "在数字荒野中探索技术，在思考森林中寻找真理",
+    "applicationName": "荒野博客",
+    "generator": "Next.js",
+    "authors": [{ "name": "荒野", "url": "https://blog.huangye.cn" }],
+    "keywords": [
+      "荒野博客",
+      "技术博客",
+      "思考博客",
+      "博客",
+      "技术",
+      "思考",
+      "前端开发",
+      "后端开发",
+      "全栈开发",
+      "前端框架",
+      "后端框架",
+      "全栈框架",
+      "前端技术",
+      "后端技术",
+      "全栈技术"
+    ],
+    "robots": "none",
+    "openGraph": {
+      "title": "荒野博客",
+      "description": "在数字荒野中探索技术，在思考森林中寻找真理"
+    },
+    "category": "technology"
+  },
+  "navigation": {
+    "home": "首页",
+    "about": "关于",
+    "blog": "博客",
+    "categories": "分类",
+    "tags": "标签",
+    "manage": "管理",
+    "create": "创建文章",
+    "edit": "编辑文章"
+  },
+  "post": {
+    "title": "标题",
+    "content": "内容",
+    "excerpt": "摘要",
+    "featuredImage": "特色图片",
+    "publish": "发布",
+    "draft": "草稿",
+    "published": "已发布",
+    "unpublished": "未发布",
+    "createPost": "创建文章",
+    "editPost": "编辑文章",
+    "deletePost": "删除文章",
+    "confirmDelete": "确定要删除这篇文章吗？",
+    "postCreated": "文章创建成功",
+    "postUpdated": "文章更新成功",
+    "postDeleted": "文章删除成功",
+    "titleRequired": "标题是必填项",
+    "contentRequired": "内容是必填项"
+  },
+  "privacy": {
+    "title": "隐私政策",
+    "subtitle": "我们重视您的隐私权，本政策详细说明了我们如何收集、使用和保护您的个人信息",
+    "lastUpdated": "最后更新",
+    "sections": {
+      "introduction": {
+        "title": "1. 政策介绍",
+        "content": "荒野博客（以下简称\"我们\"或\"本网站\"）深知个人信息对您的重要性，我们将按照法律法规要求，采取相应安全保护措施，尽力保护您的个人信息安全可控。"
+      },
+      "informationCollection": {
+        "title": "2. 信息收集",
+        "content": "我们可能收集以下类型的信息：\n• 账户信息：用户名、邮箱地址、密码\n• 个人资料：头像、个人简介、联系方式\n• 使用信息：访问记录、操作日志、设备信息\n• 内容信息：您发布的文章、评论、互动内容\n• 技术信息：IP地址、浏览器类型、操作系统信息"
+      },
+      "informationUsage": {
+        "title": "3. 信息使用",
+        "content": "我们收集的信息将用于：\n• 提供和维护服务功能\n• 改善用户体验和网站性能\n• 发送重要通知和更新\n• 防止欺诈和确保安全\n• 遵守法律法规要求\n• 进行数据分析和统计"
+      },
+      "informationSharing": {
+        "title": "4. 信息共享",
+        "content": "我们不会出售、出租或以其他方式披露您的个人信息，除非：\n• 获得您的明确同意\n• 法律法规要求或政府机关要求\n• 为保护我们的合法权益\n• 与可信的第三方服务提供商合作（在严格保密协议下）\n• 在合并、收购或资产转让时"
+      },
+      "dataSecurity": {
+        "title": "5. 数据安全",
+        "content": "我们采取多种安全措施保护您的信息：\n• 数据加密传输和存储\n• 访问控制和权限管理\n• 定期安全审计和漏洞扫描\n• 员工安全培训和保密协议\n• 数据备份和灾难恢复计划\n• 持续监控和威胁检测"
+      },
+      "cookies": {
+        "title": "6. Cookie 使用",
+        "content": "我们使用 Cookie 和类似技术来：\n• 记住您的登录状态和偏好设置\n• 分析网站使用情况和性能\n• 提供个性化内容和推荐\n• 改善用户体验\n\n您可以通过浏览器设置管理 Cookie，但禁用某些 Cookie 可能影响网站功能。"
+      },
+      "dataRetention": {
+        "title": "7. 数据保留",
+        "content": "我们仅在必要期间保留您的个人信息：\n• 账户信息：账户存续期间\n• 使用记录：通常保留 12 个月\n• 法律要求：按相关法规要求保留\n• 业务需要：为提供服务所必需\n\n超过保留期限的数据将被安全删除或匿名化处理。"
+      },
+      "userRights": {
+        "title": "8. 用户权利",
+        "content": "您对自己的个人信息享有以下权利：\n• 访问权：查看我们持有的您的个人信息\n• 更正权：要求更正不准确的个人信息\n• 删除权：要求删除您的个人信息\n• 限制处理权：限制我们处理您的信息\n• 数据可携权：获取您的数据副本\n• 反对权：反对某些数据处理活动"
+      },
+      "childrenPrivacy": {
+        "title": "9. 儿童隐私",
+        "content": "我们不会故意收集 13 岁以下儿童的个人信息。如果我们发现收集了儿童的个人信息，将立即删除相关数据。如果您是儿童的父母或监护人，发现您的孩子向我们提供了个人信息，请联系我们。"
+      },
+      "internationalTransfer": {
+        "title": "10. 国际传输",
+        "content": "如果您的信息需要传输到其他国家或地区，我们将：\n• 确保接收方有适当的数据保护措施\n• 遵守相关国际数据传输法规\n• 获得必要的法律授权和同意\n• 采用标准合同条款等保护措施\n• 定期评估传输风险和安全措施"
+      },
+      "policyChanges": {
+        "title": "11. 政策变更",
+        "content": "我们可能会不时更新本隐私政策。重大变更将通过以下方式通知您：\n• 在网站上发布显著通知\n• 发送邮件通知\n• 在您下次访问时提示\n• 通过其他适当方式\n\n继续使用我们的服务即表示您接受更新后的政策。"
+      },
+      "contact": {
+        "title": "12. 联系我们",
+        "content": "如果您对本隐私政策有任何疑问、意见或建议，请通过以下方式联系我们：\n• 邮箱：privacy@huangye.cn\n• 网站：https://blog.huangye.cn\n• 地址：中国北京市\n\n我们将在 30 天内回复您的咨询。"
+      }
+    },
+    "agreement": "我已阅读并理解隐私政策",
+    "backToHome": "返回首页"
+  },
+  "profile": {
+    "title": "个人中心",
+    "subtitle": "管理您的账户和内容",
+    "overview": "概览",
+    "posts": "我的文章",
+    "comments": "我的评论",
+    "favorites": "我的收藏",
+    "followers": "关注者",
+    "activities": "活动日志",
+    "notifications": "通知中心",
+    "settings": "账户设置",
+    "stats": {
+      "title": "数据统计",
+      "totalPosts": "我的文章",
+      "totalComments": "我的评论",
+      "totalViews": "总浏览量",
+      "totalLikes": "总点赞数",
+      "totalFavorites": "我的收藏",
+      "totalFollowers": "粉丝数",
+      "totalFollowing": "关注数",
+      "unreadNotifications": "未读通知",
+      "lastActivity": "最后活动"
+    },
+    "posts": {
+      "title": "我的文章",
+      "subtitle": "管理您的文章内容",
+      "writePost": "写文章",
+      "searchPlaceholder": "搜索文章...",
+      "allStatus": "全部状态",
+      "published": "已发布",
+      "draft": "草稿",
+      "archived": "已归档",
+      "noPosts": "还没有文章",
+      "noPostsSearch": "没有找到匹配的文章",
+      "noPostsDesc": "开始创建您的第一篇文章吧",
+      "noPostsSearchDesc": "尝试调整搜索条件或筛选器",
+      "views": "浏览",
+      "likes": "点赞",
+      "comments": "评论",
+      "edit": "编辑",
+      "delete": "删除",
+      "more": "更多"
+    },
+    "favorites": {
+      "title": "我的收藏",
+      "subtitle": "您收藏的文章列表",
+      "totalCount": "共 {count} 篇文章",
+      "searchPlaceholder": "搜索收藏的文章...",
+      "allCategories": "全部分类",
+      "frontend": "前端开发",
+      "backend": "后端开发",
+      "design": "设计",
+      "noFavorites": "还没有收藏任何文章",
+      "noFavoritesSearch": "没有找到匹配的收藏",
+      "noFavoritesDesc": "开始收藏您喜欢的文章吧",
+      "noFavoritesSearchDesc": "尝试调整搜索条件或筛选器",
+      "readPost": "阅读文章",
+      "removeFavorite": "取消收藏",
+      "favoritedAt": "收藏于"
+    },
+    "notifications": {
+      "title": "通知中心",
+      "subtitle": "管理您的通知消息",
+      "markAllRead": "全部标记为已读",
+      "allTypes": "全部类型",
+      "allStatus": "全部状态",
+      "unread": "未读",
+      "read": "已读",
+      "comment": "评论",
+      "like": "点赞",
+      "follow": "关注",
+      "mention": "提及",
+      "system": "系统",
+      "noNotifications": "暂无通知",
+      "noNotificationsSearch": "没有找到匹配的通知",
+      "noNotificationsDesc": "当有新的活动时，您会在这里收到通知",
+      "noNotificationsSearchDesc": "尝试调整筛选条件",
+      "markAsRead": "标记为已读",
+      "delete": "删除",
+      "more": "更多",
+      "refresh": "刷新通知"
+    },
+    "settings": {
+      "title": "账户设置",
+      "subtitle": "管理您的个人信息和偏好设置",
+      "saveSettings": "保存设置",
+      "saving": "保存中...",
+      "basicInfo": "基本信息",
+      "preferences": "偏好设置",
+      "notifications": "通知设置",
+      "privacy": "隐私设置",
+      "social": "社交媒体",
+      "firstName": "名字",
+      "lastName": "姓氏",
+      "phone": "电话号码",
+      "website": "个人网站",
+      "location": "所在地",
+      "timezone": "时区",
+      "language": "语言",
+      "dateFormat": "日期格式",
+      "timeFormat": "时间格式",
+      "theme": "主题",
+      "notificationMethods": "通知方式",
+      "emailNotifications": "邮件通知",
+      "emailNotificationsDesc": "通过邮件接收重要通知",
+      "pushNotifications": "推送通知",
+      "pushNotificationsDesc": "在浏览器中显示推送通知",
+      "smsNotifications": "短信通知",
+      "smsNotificationsDesc": "通过短信接收紧急通知",
+      "notificationTypes": "通知类型",
+      "commentNotifications": "评论通知",
+      "commentNotificationsDesc": "当有人评论您的文章时通知",
+      "likeNotifications": "点赞通知",
+      "likeNotificationsDesc": "当有人点赞您的文章时通知",
+      "followNotifications": "关注通知",
+      "followNotificationsDesc": "当有人关注您时通知",
+      "profileVisibility": "个人资料可见性",
+      "emailVisibility": "邮箱可见性",
+      "activityVisibility": "活动可见性",
+      "public": "公开",
+      "private": "仅自己",
+      "friends": "仅关注者",
+      "socialLinks": "社交媒体链接",
+      "github": "GitHub",
+      "twitter": "Twitter",
+      "linkedin": "LinkedIn",
+      "weibo": "微博"
+    }
+  },
+  "tag": {
+    "name": "标签名称",
+    "slug": "标签标识",
+    "description": "标签描述",
+    "color": "标签颜色",
+    "colorValue": "颜色值",
+    "status": "状态",
+    "active": "启用",
+    "inactive": "禁用",
+    "postCount": "文章数量",
+    "createTag": "创建标签",
+    "editTag": "编辑标签",
+    "deleteTag": "删除标签",
+    "tagManagement": "标签管理",
+    "tagList": "标签列表",
+    "searchTags": "搜索标签名称...",
+    "confirmDelete": "确定要删除这个标签吗？",
+    "deleteWarning": "注意：如果该标签下还有文章，则无法删除。",
+    "tagCreated": "标签创建成功",
+    "tagUpdated": "标签更新成功",
+    "tagDeleted": "标签删除成功",
+    "nameRequired": "标签名称是必填项",
+    "slugRequired": "标签标识是必填项",
+    "nameExists": "标签名称已存在",
+    "slugExists": "标签标识已存在",
+    "autoSlugGenerate": "留空将自动生成",
+    "cannotDelete": "无法删除标签，该标签下还有文章",
+    "manageTags": "管理博客标签，包括创建、编辑、删除和状态控制",
+    "totalTags": "共 {count} 个标签"
+  },
+  "terms": {
+    "title": "服务条款",
+    "subtitle": "请仔细阅读以下条款，使用我们的服务即表示您同意遵守这些条款",
+    "lastUpdated": "最后更新",
+    "sections": {
+      "acceptance": {
+        "title": "1. 条款接受",
+        "content": "通过访问或使用荒野博客（以下简称\"本网站\"），您同意受本服务条款的约束。如果您不同意这些条款，请不要使用本网站。"
+      },
+      "description": {
+        "title": "2. 服务描述",
+        "content": "荒野博客是一个技术博客平台，为用户提供技术文章、思考分享和知识交流服务。我们致力于在数字荒野中探索技术，在思考森林中寻找真理。"
+      },
+      "userAccounts": {
+        "title": "3. 用户账户",
+        "content": "使用本网站的某些功能需要注册账户。您有责任：\n• 提供准确、完整的信息\n• 维护账户信息的最新性\n• 保护账户密码的安全\n• 对账户下的所有活动负责"
+      },
+      "contentPolicy": {
+        "title": "4. 内容政策",
+        "content": "用户发布的内容必须：\n• 遵守相关法律法规\n• 不侵犯他人权益\n• 不包含恶意、有害或不当内容\n• 尊重知识产权\n\n我们保留删除违规内容的权利。"
+      },
+      "intellectualProperty": {
+        "title": "5. 知识产权",
+        "content": "本网站的内容、设计、商标等受知识产权法保护。用户保留其原创内容的版权，但授予我们必要的使用许可。未经授权，不得复制、传播或商业使用本网站内容。"
+      },
+      "privacy": {
+        "title": "6. 隐私保护",
+        "content": "我们重视您的隐私。请查看我们的隐私政策了解我们如何收集、使用和保护您的个人信息。我们承诺按照相关法律法规保护用户隐私。"
+      },
+      "prohibitedUses": {
+        "title": "7. 禁止使用",
+        "content": "禁止将本网站用于：\n• 非法活动\n• 传播恶意软件\n• 侵犯他人权益\n• 干扰网站正常运行\n• 任何违反法律法规的行为"
+      },
+      "disclaimers": {
+        "title": "8. 免责声明",
+        "content": "本网站按\"现状\"提供，不提供任何明示或暗示的保证。我们不保证：\n• 服务的连续性和无错误性\n• 内容的准确性或完整性\n• 第三方链接的安全性\n\n使用本网站的风险由用户自行承担。"
+      },
+      "limitation": {
+        "title": "9. 责任限制",
+        "content": "在法律允许的最大范围内，我们不对以下情况承担责任：\n• 直接或间接损失\n• 利润损失\n• 数据丢失\n• 业务中断\n• 第三方行为造成的损失"
+      },
+      "termination": {
+        "title": "10. 服务终止",
+        "content": "我们保留随时终止或暂停服务的权利，包括但不限于：\n• 违反服务条款\n• 技术或安全原因\n• 法律要求\n• 业务调整\n\n终止前将尽可能提前通知用户。"
+      },
+      "changes": {
+        "title": "11. 条款变更",
+        "content": "我们保留随时修改这些条款的权利。重大变更将通过网站公告或其他方式通知用户。继续使用服务即表示接受修改后的条款。"
+      },
+      "governingLaw": {
+        "title": "12. 适用法律",
+        "content": "本条款受中华人民共和国法律管辖。因使用本网站产生的争议，应通过友好协商解决；协商不成的，可向有管辖权的人民法院提起诉讼。"
+      },
+      "contact": {
+        "title": "13. 联系我们",
+        "content": "如果您对本服务条款有任何疑问，请通过以下方式联系我们：\n• 邮箱：contact@huangye.cn\n• 网站：https://blog.huangye.cn\n\n我们将在合理时间内回复您的咨询。"
+      }
+    },
+    "agreement": "我已阅读并同意服务条款",
+    "backToHome": "返回首页"
+  },
+  "title": "荒野"
+}

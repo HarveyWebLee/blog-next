@@ -1,0 +1,48 @@
+---
+description: 荒野博客真实技术栈与目录约定
+globs:
+alwaysApply: true
+---
+
+# 项目概览与约定（荒野 blog-next）
+
+## 技术栈（与仓库一致）
+
+- **框架**：Next.js **15**（App Router），开发命令多用 `pnpm dev`（Turbopack）；React **19**；TypeScript **`strict`**。
+- **包管理**：**pnpm 9**（见 `package.json` 的 `packageManager`）。
+- **UI**：**HeroUI**（`@heroui/*`）、**Tailwind CSS 4**、**lucide-react**、**next-themes**；样式另有 SCSS 按需使用。
+- **数据**：**MySQL** + **Drizzle ORM**；`lib/db/schema.ts`、`lib/db/config.ts`、`drizzle.config.ts`。
+- **认证**：**JWT**（`jsonwebtoken`）、**bcryptjs**；**非 NextAuth**。环境变量以根目录 **`env.example`** 为准（`DB_*`、`JWT_*`、`SMTP_*` 等）。
+- **邮件**：**nodemailer**（注册/验证码/重置密码等）。
+- **质量与提交**：ESLint + Prettier；**Husky + lint-staged**（`pnpm format:check` + 对暂存文件执行检查）；详见 `package.json` 与 `.husky/pre-commit`。
+
+## 路由与 i18n
+
+- 语言：**zh-CN**（默认）、**en-US**、**ja-JP**。
+- **`middleware.ts`**：为页面补 `/{lang}/...` 前缀；**不处理** `/api`、静态带后缀资源等（以 `matcher` 为准）。
+- 前台页面：**`app/[lang]/...`**；文案 **`getDictionary`** + **`dictionaries/*.json`**。
+- **内部导航**：多使用 **`next/link`**，路径需带当前语言前缀（见 `Footer` 等实现）。
+- 改 `locales` / 默认语言时：同步 **`generateStaticParams`**、字典、`middleware`。
+
+## 目录职责（简）
+
+| 路径 | 用途 |
+|------|------|
+| `app/api/**/route.ts` | Route Handlers，无语言前缀 |
+| `components/{blog,layout,profile,ui,api-docs}` | 可复用 UI |
+| `lib/{db,services,hooks,utils,contexts}` | 服务层、工具、状态 |
+| `types/` | 共享类型；`types/common.d.ts` 含 `Locale` 等 |
+| `scripts/` | 备份、种子、重置、测试脚本（常 `npx tsx`） |
+| `docs/` | **中文**专题文档，入口 **`docs/文档索引.md`** |
+
+## 能力与文档边界（避免过承诺）
+
+- **评论**：表 `comments` 存在；完整 REST/产品与前台流程以代码与 `docs/功能清单与路线图.md` 为准。
+- **内置 API 说明页**：`/{lang}/api-docs`（扫描 `app/api`）。
+- **更多专题**：见 `docs/文档索引.md`。
+
+## 工程习惯
+
+- 路径别名 **`@/*`** 指向项目根。
+- 默认优先 **Server Component**；需交互再 **`"use client"`**。
+- 数据库结构变更：`pnpm db:generate` / `pnpm db:migrate` 或开发中 `pnpm db:push`，与团队流程一致。

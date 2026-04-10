@@ -1,0 +1,118 @@
+# blog-next 项目 Cursor 规则
+
+> **细则位置**：更完整、与仓库同步的约定见 **`.cursor/rules/`** 下中文文件名的 **`.mdc`** 规则（尤其 **`AI协作与文档沉淀.mdc`**）。
+>
+> **文档沉淀**：使用 AI 处理本仓库需求时，须将需求、方案、关键代码与配置写入 **`docs/`**（中文文件名），并保持与代码一致；模板与条目说明见 **`docs/开发过程文档撰写规范.md`** 及 **`docs/文档索引.md`**。
+
+## 项目概览
+- **栈**：Next。**15**（App Router、Turbopack 开发）、React **19**、TypeScript（`strict: true`）。
+- **包管理**：**pnpm**（`packageManager`: pnpm@9）。新增依赖时使用 pnpm，勿混用 npm/yarn。
+- **样式**：Tailwind CSS **4**（`tailwind.config.mjs`、`@tailwindcss/postcss`）、Sass 可按需使用；UI 以 **HeroUI**（`@heroui/*`）与 `components/ui/*` 为主，图标用 **lucide-react**。
+- **数据**：**Drizzle ORM** + **MySQL**（`mysql2`）；schema 与连接见 `lib/db/`；迁移与脚本见 `drizzle.config.ts` 与 `package.json` 的 `db:*`。
+- **认证**：JWT（`jsonwebtoken`）、密码 **bcryptjs**；邮件 **nodemailer**（注册/验证码等）。
+
+## 路径与别名
+- 使用 **`@/*`** 指向仓库根目录（见 `tsconfig.json` 的 `paths`），导入优先 `@/...`，避免深层相对路径 `../../../`。
+
+## 国际化（i18n）
+- 支持语言：**zh-CN**（默认）、**en-US**、**ja-JP**。
+- **中间件** `middleware.ts`：为页面路径补语言前缀；**不匹配** `/_next`、`/api`、带扩展名的静态资源。
+- 面向用户的页面位于 **`app/[lang]/...`**；文案通过 **`getDictionary`**（`lib/dictionaries.ts`）加载 **`dictionaries/*.json`**。
+- 新增面向用户的可见文案时：在三种语言的 JSON 中同步键值（或明确说明仅某语言占位）；类型与 `Locale` 见 `types/`。
+- 修改 `middleware.ts` 中的 `locales` / `defaultLocale` 时，需同步 **`generateStaticParams`**、词典与路由假设。
+
+## 应用结构约定
+- **`app/`**：路由、`layout.tsx`、`page.tsx`、`loading.tsx`、`error.tsx`、`not-found.tsx` 等；**Route Handlers** 放在 `app/api/**/route.ts`。
+- **`components/`**：按领域分子目录（如 `blog/`、`layout/`、`profile/`、`ui/`）；可复用小组件放 `ui/`。
+- **`lib/`**：工具函数、DB、服务层（如 `lib/services/`）、hooks、上下文；**纯逻辑与数据访问**优先放此处，而非页面文件。
+- **`types/`**：共享类型定义。
+- **`scripts/`**：运维/种子/测试脚本，通常用 **`npx tsx`** 运行（与现有脚本一致）。
+
+## Next.js / React 实践
+- 默认优先 **Server Component**；仅在需要浏览器 API、事件、`useState`/`useEffect` 等时加 **`"use client"`**。
+- 数据获取：在 Server Component 或服务层直接调用 DB/封装函数；客户端列表可用现有 hooks（`lib/hooks/*`）。
+- 图片用 **`next/image`**；外链图片需在 `next.config.ts` 中配置允许域名（若新增域名）。
+- 环境变量：参考根目录 **`env.example`**；**`NEXT_PUBLIC_*`** 仅暴露可公开配置；密钥与数据库密码永不提交、不写入客户端 bundle。
+
+## API 与安全
+- **`app/api/*`** 中的接口需校验权限（JWT/会话逻辑以现有 `lib/utils/auth.ts` 为准）、校验输入，并对错误返回一致 JSON 结构。
+- 避免在日志或响应中泄露敏感信息；密码与令牌不可明文存储或回显。
+
+## 数据库变更流程
+- 修改 schema 后使用 **`pnpm db:generate`** 生成迁移，并按团队流程执行 **`pnpm db:migrate`** 或 **`pnpm db:push`**（开发环境）；勿手写不一致的 SQL 而不更新 `lib/db/schema.ts`。
+
+## 代码风格与质量
+- 遵循仓库现有 ESLint（`eslint.config.mjs`）与 Prettier 配置；提交前可运行 **`pnpm lint`** / **`pnpm format:check`**。
+- 实现功能时**在必要处添加清晰中文注释**（说明意图、非显而易见的约束）；避免无意义的注释堆叠。
+- 改动保持**最小范围**：不顺带大重构、不改动无关文件；与用户请求无关的「顺手整理」默认不做。
+
+## 文档与交付物
+- **`docs/` 专题文档**：与 AI 协作完成的需求/方案/配置说明应写入 `docs/`（中文文件名），需求变更时同步更新；详见 **`docs/开发过程文档撰写规范.md`**。
+- **根 `README.md`**：**除非用户明确要求**，不主动大段改写；与小功能无关的「全文润色」默认不做。
+
+## Git 提交规范
+
+严格遵循 **Angular Commit Message Guidelines**。生成 commit message 时**必须**遵守以下规则。
+
+### 语言要求
+
+- **subject / body / footer**：主要使用**中文**描述，非必要情况下不要使用英文。
+- **scope**：**始终使用英文**（如 `web`、`admin`、`map-core` 等包名简称）。
+
+### 格式
+
+```
+<type>(<scope>): <subject>
+
+<body>
+
+<footer>
+```
+
+### type 类型
+
+| type       | 说明                           |
+| ---------- | ------------------------------ |
+| feat       | 新功能                         |
+| fix        | 修复 Bug                       |
+| docs       | 文档变更                       |
+| style      | 代码格式（不影响运行的变动）   |
+| refactor   | 重构（既不是新功能，也不是修复） |
+| perf       | 性能优化                       |
+| test       | 添加或修改测试                 |
+| build      | 构建系统或外部依赖变更         |
+| ci         | CI 配置变更                    |
+| chore      | 其他杂项                       |
+
+### scope 范围
+
+**必须使用英文**，采用包名简称：`web`、`admin`、`utils`、`map-core`、`three-core`、`config`、`root`
+
+### 版本与 CHANGELOG（semantic-release）
+
+项目使用 semantic-release 根据提交信息自动生成版本号与 CHANGELOG，推送到 **main** 后由 GitLab CI 执行。
+
+| type                         | 版本变更                      |
+| ---------------------------- | ----------------------------- |
+| feat                         | minor（如 0.1.0 → 0.2.0）     |
+| fix、perf                    | patch（如 0.1.0 → 0.1.1）     |
+| BREAKING CHANGE、feat!、fix! | major（如 0.1.0 → 1.0.0）     |
+
+破坏性变更示例：在 body 或 footer 中添加 `BREAKING CHANGE: 描述`，或在 type 后加 `!`。
+
+### 示例
+
+```
+feat(admin): 添加用户注册和JWT认证模块
+
+build(root): 初始化monorepo项目结构和构建配置
+
+fix(map-core): 修复flyTo方法未传zoom时的空指针异常
+
+feat(web)!: 重构路由结构
+
+BREAKING CHANGE: 路由路径已全部调整
+```
+
+## 助手与用户的沟通语言
+- 与用户交流时**默认使用简体中文**。

@@ -1,0 +1,5 @@
+# 提交前校验：
+# 1) prettier . --check —— 全仓库格式一致（未保存的 prettier 问题会拦截提交）
+# 2) lint-staged —— 仅对「已暂存」文件执行 eslint --fix 与 prettier --write，减少无关文件干扰
+pnpm format:check
+pnpm exec lint-staged

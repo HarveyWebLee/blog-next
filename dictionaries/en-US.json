@@ -1,0 +1,304 @@
+{
+  "apiDocs": {
+    "title": "API Documentation",
+    "description": "Complete API documentation with all available endpoints, parameter descriptions and usage examples",
+    "searchPlaceholder": "Search API endpoints...",
+    "noResults": "No matching API endpoints found",
+    "noData": "No API endpoint data available",
+    "parameters": "Parameters",
+    "requestBody": "Request Body",
+    "responses": "Responses",
+    "examples": "Examples",
+    "noParameters": "This endpoint requires no parameters",
+    "noRequestBody": "This endpoint requires no request body",
+    "noResponses": "No response information available",
+    "noExamples": "No examples available",
+    "required": "Required",
+    "optional": "Optional",
+    "type": "Type",
+    "location": "Location",
+    "copyToClipboard": "Copy to clipboard",
+    "curlCommand": "cURL command",
+    "requestExample": "Request Example",
+    "responseExample": "Response Example",
+    "headers": "Headers",
+    "body": "Body",
+    "statusCode": "Status Code",
+    "dataStructure": "Data Structure"
+  },
+  "auth": {
+    "login": "Login",
+    "register": "Register",
+    "forgotPassword": "Forgot Password",
+    "resetPassword": "Reset Password",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "username": "Username",
+    "loginSuccess": "Login successful",
+    "registerSuccess": "Registration successful",
+    "logoutSuccess": "Logout successful",
+    "invalidCredentials": "Invalid username or password",
+    "userExists": "User already exists",
+    "passwordMismatch": "Passwords do not match",
+    "emailRequired": "Email is required",
+    "passwordRequired": "Password is required",
+    "usernameRequired": "Username is required"
+  },
+  "blog": {
+    "title": "Wilderness",
+    "subtitle": "Exploring technology in the digital wilderness, seeking truth in the forest of thought",
+    "noPosts": "No posts available",
+    "loadMore": "Load More",
+    "searchPlaceholder": "Search posts...",
+    "filterByCategory": "Filter by category",
+    "filterByTag": "Filter by tag",
+    "allCategories": "All Categories",
+    "allTags": "All Tags"
+  },
+  "common": {
+    "home": "Home",
+    "about": "About",
+    "blog": "Blog",
+    "categories": "Categories",
+    "tags": "Tags",
+    "search": "Search",
+    "login": "Login",
+    "register": "Register",
+    "logout": "Logout",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "save": "Save",
+    "edit": "Edit",
+    "delete": "Delete",
+    "create": "Create",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "readMore": "Read More",
+    "publishedAt": "Published at",
+    "author": "Author",
+    "category": "Category",
+    "tag": "Tag",
+    "views": "Views",
+    "likes": "Likes",
+    "comments": "Comments"
+  },
+  "footer": {
+    "copyright": "Copyright",
+    "allRightsReserved": "All rights reserved",
+    "builtWith": "Built with Next.js",
+    "poweredBy": "Powered by Vercel"
+  },
+  "metadata": {
+    "title": "Wilderness Blog | Exploring Technology in Digital Wilderness - Seeking Truth in Forest of Thought",
+    "description": "Exploring technology in the digital wilderness, seeking truth in the forest of thought",
+    "applicationName": "Wilderness Blog",
+    "generator": "Next.js",
+    "authors": [{ "name": "Wilderness", "url": "https://blog.huangye.cn" }],
+    "keywords": [
+      "wilderness blog",
+      "tech blog",
+      "thought blog",
+      "blog",
+      "technology",
+      "thinking",
+      "frontend development",
+      "backend development",
+      "fullstack development",
+      "frontend framework",
+      "backend framework",
+      "fullstack framework",
+      "frontend technology",
+      "backend technology",
+      "fullstack technology"
+    ],
+    "robots": "none",
+    "openGraph": {
+      "title": "Wilderness Blog",
+      "description": "Exploring technology in the digital wilderness, seeking truth in the forest of thought"
+    },
+    "category": "technology"
+  },
+  "navigation": {
+    "home": "Home",
+    "about": "About",
+    "blog": "Blog",
+    "categories": "Categories",
+    "tags": "Tags",
+    "manage": "Manage",
+    "create": "Create Post",
+    "edit": "Edit Post"
+  },
+  "post": {
+    "title": "Title",
+    "content": "Content",
+    "excerpt": "Excerpt",
+    "featuredImage": "Featured Image",
+    "publish": "Publish",
+    "draft": "Draft",
+    "published": "Published",
+    "unpublished": "Unpublished",
+    "createPost": "Create Post",
+    "editPost": "Edit Post",
+    "deletePost": "Delete Post",
+    "confirmDelete": "Are you sure you want to delete this post?",
+    "postCreated": "Post created successfully",
+    "postUpdated": "Post updated successfully",
+    "postDeleted": "Post deleted successfully",
+    "titleRequired": "Title is required",
+    "contentRequired": "Content is required"
+  },
+  "privacy": {
+    "title": "Privacy Policy",
+    "subtitle": "We value your privacy rights. This policy details how we collect, use, and protect your personal information",
+    "lastUpdated": "Last Updated",
+    "sections": {
+      "introduction": {
+        "title": "1. Policy Introduction",
+        "content": "Wilderness Blog (hereinafter referred to as \"we\" or \"this website\") understands the importance of personal information to you. We will take corresponding security protection measures in accordance with legal and regulatory requirements to protect your personal information security and controllability."
+      },
+      "informationCollection": {
+        "title": "2. Information Collection",
+        "content": "We may collect the following types of information:\n• Account information: username, email address, password\n• Profile information: avatar, personal bio, contact information\n• Usage information: access records, operation logs, device information\n• Content information: articles, comments, and interactive content you publish\n• Technical information: IP address, browser type, operating system information"
+      },
+      "informationUsage": {
+        "title": "3. Information Usage",
+        "content": "The information we collect will be used for:\n• Providing and maintaining service functions\n• Improving user experience and website performance\n• Sending important notifications and updates\n• Preventing fraud and ensuring security\n• Complying with legal and regulatory requirements\n• Conducting data analysis and statistics"
+      },
+      "informationSharing": {
+        "title": "4. Information Sharing",
+        "content": "We will not sell, rent, or otherwise disclose your personal information unless:\n• We have your explicit consent\n• Required by laws and regulations or government agencies\n• To protect our legitimate interests\n• Cooperating with trusted third-party service providers (under strict confidentiality agreements)\n• During mergers, acquisitions, or asset transfers"
+      },
+      "dataSecurity": {
+        "title": "5. Data Security",
+        "content": "We take various security measures to protect your information:\n• Data encryption in transmission and storage\n• Access control and permission management\n• Regular security audits and vulnerability scans\n• Employee security training and confidentiality agreements\n• Data backup and disaster recovery plans\n• Continuous monitoring and threat detection"
+      },
+      "cookies": {
+        "title": "6. Cookie Usage",
+        "content": "We use cookies and similar technologies to:\n• Remember your login status and preference settings\n• Analyze website usage and performance\n• Provide personalized content and recommendations\n• Improve user experience\n\nYou can manage cookies through browser settings, but disabling certain cookies may affect website functionality."
+      },
+      "dataRetention": {
+        "title": "7. Data Retention",
+        "content": "We only retain your personal information for the necessary period:\n• Account information: during account existence\n• Usage records: typically retained for 12 months\n• Legal requirements: retained as required by relevant regulations\n• Business needs: necessary for providing services\n\nData exceeding the retention period will be securely deleted or anonymized."
+      },
+      "userRights": {
+        "title": "8. User Rights",
+        "content": "You have the following rights regarding your personal information:\n• Access right: view your personal information we hold\n• Correction right: request correction of inaccurate personal information\n• Deletion right: request deletion of your personal information\n• Restriction right: restrict our processing of your information\n• Data portability: obtain a copy of your data\n• Objection right: object to certain data processing activities"
+      },
+      "childrenPrivacy": {
+        "title": "9. Children's Privacy",
+        "content": "We do not knowingly collect personal information from children under 13. If we discover that we have collected personal information from children, we will immediately delete the relevant data. If you are a parent or guardian and discover that your child has provided us with personal information, please contact us."
+      },
+      "internationalTransfer": {
+        "title": "10. International Transfer",
+        "content": "If your information needs to be transferred to other countries or regions, we will:\n• Ensure recipients have appropriate data protection measures\n• Comply with relevant international data transfer regulations\n• Obtain necessary legal authorization and consent\n• Adopt standard contractual clauses and other protective measures\n• Regularly assess transfer risks and security measures"
+      },
+      "policyChanges": {
+        "title": "11. Policy Changes",
+        "content": "We may update this privacy policy from time to time. Significant changes will be notified to you through:\n• Publishing prominent notices on the website\n• Sending email notifications\n• Prompting on your next visit\n• Through other appropriate means\n\nContinued use of our services indicates acceptance of the updated policy."
+      },
+      "contact": {
+        "title": "12. Contact Us",
+        "content": "If you have any questions, comments, or suggestions about this privacy policy, please contact us through:\n• Email: privacy@huangye.cn\n• Website: https://blog.huangye.cn\n• Address: Beijing, China\n\nWe will respond to your inquiries within 30 days."
+      }
+    },
+    "agreement": "I have read and understood the privacy policy",
+    "backToHome": "Back to Home"
+  },
+  "tag": {
+    "name": "Tag Name",
+    "slug": "Tag Slug",
+    "description": "Tag Description",
+    "color": "Tag Color",
+    "colorValue": "Color Value",
+    "status": "Status",
+    "active": "Active",
+    "inactive": "Inactive",
+    "postCount": "Post Count",
+    "createTag": "Create Tag",
+    "editTag": "Edit Tag",
+    "deleteTag": "Delete Tag",
+    "tagManagement": "Tag Management",
+    "tagList": "Tag List",
+    "searchTags": "Search tag names...",
+    "confirmDelete": "Are you sure you want to delete this tag?",
+    "deleteWarning": "Note: If there are posts under this tag, it cannot be deleted.",
+    "tagCreated": "Tag created successfully",
+    "tagUpdated": "Tag updated successfully",
+    "tagDeleted": "Tag deleted successfully",
+    "nameRequired": "Tag name is required",
+    "slugRequired": "Tag slug is required",
+    "nameExists": "Tag name already exists",
+    "slugExists": "Tag slug already exists",
+    "autoSlugGenerate": "Leave empty to auto-generate",
+    "cannotDelete": "Cannot delete tag, there are posts under this tag",
+    "manageTags": "Manage blog tags, including create, edit, delete and status control",
+    "totalTags": "Total {count} tags"
+  },
+  "terms": {
+    "title": "Terms of Service",
+    "subtitle": "Please read the following terms carefully. By using our services, you agree to comply with these terms",
+    "lastUpdated": "Last Updated",
+    "sections": {
+      "acceptance": {
+        "title": "1. Acceptance of Terms",
+        "content": "By accessing or using Wilderness Blog (hereinafter referred to as \"this website\"), you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use this website."
+      },
+      "description": {
+        "title": "2. Service Description",
+        "content": "Wilderness Blog is a technology blog platform that provides users with technical articles, thought sharing, and knowledge exchange services. We are committed to exploring technology in the digital wilderness and seeking truth in the forest of thought."
+      },
+      "userAccounts": {
+        "title": "3. User Accounts",
+        "content": "Using certain features of this website requires account registration. You are responsible for:\n• Providing accurate and complete information\n• Keeping account information up to date\n• Protecting account password security\n• Being responsible for all activities under your account"
+      },
+      "contentPolicy": {
+        "title": "4. Content Policy",
+        "content": "User-published content must:\n• Comply with relevant laws and regulations\n• Not infringe on others' rights\n• Not contain malicious, harmful, or inappropriate content\n• Respect intellectual property rights\n\nWe reserve the right to remove content that violates these policies."
+      },
+      "intellectualProperty": {
+        "title": "5. Intellectual Property",
+        "content": "The content, design, trademarks, etc. of this website are protected by intellectual property laws. Users retain copyright to their original content but grant us necessary usage licenses. Unauthorized copying, distribution, or commercial use of website content is prohibited."
+      },
+      "privacy": {
+        "title": "6. Privacy Protection",
+        "content": "We value your privacy. Please review our privacy policy to understand how we collect, use, and protect your personal information. We are committed to protecting user privacy in accordance with relevant laws and regulations."
+      },
+      "prohibitedUses": {
+        "title": "7. Prohibited Uses",
+        "content": "It is prohibited to use this website for:\n• Illegal activities\n• Spreading malware\n• Infringing on others' rights\n• Interfering with normal website operation\n• Any behavior that violates laws and regulations"
+      },
+      "disclaimers": {
+        "title": "8. Disclaimers",
+        "content": "This website is provided \"as is\" without any express or implied warranties. We do not guarantee:\n• Service continuity and error-free operation\n• Accuracy or completeness of content\n• Security of third-party links\n\nUsers assume the risk of using this website."
+      },
+      "limitation": {
+        "title": "9. Limitation of Liability",
+        "content": "To the maximum extent permitted by law, we are not liable for:\n• Direct or indirect losses\n• Profit losses\n• Data loss\n• Business interruption\n• Losses caused by third-party actions"
+      },
+      "termination": {
+        "title": "10. Service Termination",
+        "content": "We reserve the right to terminate or suspend services at any time, including but not limited to:\n• Violation of terms of service\n• Technical or security reasons\n• Legal requirements\n• Business adjustments\n\nWe will provide advance notice to users when possible before termination."
+      },
+      "changes": {
+        "title": "11. Changes to Terms",
+        "content": "We reserve the right to modify these terms at any time. Significant changes will be notified to users through website announcements or other means. Continued use of the service indicates acceptance of the modified terms."
+      },
+      "governingLaw": {
+        "title": "12. Governing Law",
+        "content": "These terms are governed by the laws of the People's Republic of China. Disputes arising from the use of this website should be resolved through friendly consultation; if consultation fails, they may be brought to a court with jurisdiction."
+      },
+      "contact": {
+        "title": "13. Contact Us",
+        "content": "If you have any questions about these Terms of Service, please contact us through:\n• Email: contact@huangye.cn\n• Website: https://blog.huangye.cn\n\nWe will respond to your inquiries within a reasonable time."
+      }
+    },
+    "agreement": "I have read and agree to the Terms of Service",
+    "backToHome": "Back to Home"
+  },
+  "title": "Wilderness"
+}

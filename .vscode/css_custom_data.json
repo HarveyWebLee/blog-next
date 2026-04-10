@@ -1,0 +1,25 @@
+{
+  "atDirectives": [
+    {
+      "name": "@config",
+      "description": "Tailwind CSS v4 configuration directive",
+      "references": [
+        {
+          "name": "Tailwind CSS v4 Documentation",
+          "url": "https://tailwindcss.com/docs/installation#css"
+        }
+      ]
+    },
+    {
+      "name": "@import",
+      "description": "CSS import directive",
+      "references": [
+        {
+          "name": "MDN Web Docs",
+          "url": "https://developer.mozilla.org/en-US/docs/Web/CSS/@import"
+        }
+      ]
+    }
+  ],
+  "version": 1.1
+}
