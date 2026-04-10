@@ -219,6 +219,29 @@ export const emailVerifications = mysqlTable(
 );
 
 /**
+ * 邮件订阅表
+ * 存储订阅更新的邮箱信息（支持匿名订阅与已登录用户订阅）
+ */
+export const emailSubscriptions = mysqlTable(
+  "email_subscriptions",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    email: varchar("email", { length: 100 }).notNull().unique(), // 订阅邮箱（全局唯一，防止重复订阅）
+    userId: int("user_id"), // 可选，已登录用户可关联用户ID
+    isActive: boolean("is_active").default(true), // 是否处于订阅状态
+    subscribedAt: timestamp("subscribed_at").defaultNow().notNull(), // 首次订阅时间
+    unsubscribedAt: timestamp("unsubscribed_at"), // 取消订阅时间
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => [
+    index("email_idx").on(table.email),
+    index("user_idx").on(table.userId),
+    index("active_idx").on(table.isActive),
+  ]
+);
+
+/**
  * 系统设置表
  * 存储博客系统的配置信息
  */
@@ -386,6 +409,7 @@ export const schema = {
   comments,
   media,
   emailVerifications,
+  emailSubscriptions,
   settings,
   userProfiles,
   userPreferences,

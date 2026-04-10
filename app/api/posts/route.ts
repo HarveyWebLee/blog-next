@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { postService } from "@/lib/services/post.service";
+import { subscriptionService } from "@/lib/services/subscription.service";
 import { createErrorResponse, createSuccessResponse } from "@/lib/utils";
 import { CreatePostRequest, PostQueryParams } from "@/types/blog";
 
@@ -98,6 +99,17 @@ export async function POST(request: NextRequest) {
 
     // 调用服务层创建文章
     const newPost = await postService.createPost(body, authorId);
+
+    const postCore = (newPost as any)?.posts || newPost;
+
+    // 新建即发布：触发订阅通知
+    if (postCore && postCore.status === "published") {
+      await subscriptionService.notifyOnPostPublished({
+        title: postCore.title,
+        slug: postCore.slug,
+        excerpt: postCore.excerpt,
+      });
+    }
 
     // 返回成功响应
     return NextResponse.json(createSuccessResponse(newPost, "文章创建成功"), {

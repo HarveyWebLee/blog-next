@@ -4,11 +4,12 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button, Card, CardBody, CardHeader, Chip, Divider, Input, Switch, Textarea } from "@heroui/react";
 import { ArrowLeft, Eye, FileText, Hash, Palette, Plus, Tag as TagIcon } from "lucide-react";
 
+import { useAuth } from "@/lib/contexts/auth-context";
 import { message } from "@/lib/utils";
 import { Locale } from "@/types";
 import { ApiResponse, CreateTagRequest } from "@/types/blog";
@@ -21,6 +22,7 @@ const resolveLocale = (lang: string): Locale => {
 export default function CreateTagPage() {
   const router = useRouter();
   const params = useParams<{ lang: string }>();
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const locale = resolveLocale(params.lang);
   const txt =
     locale === "en-US"
@@ -66,6 +68,13 @@ export default function CreateTagPage() {
     color: "#667eea",
     isActive: true,
   });
+
+  useEffect(() => {
+    if (isAuthLoading) return;
+    if (!isAuthenticated) {
+      router.replace(`/${params.lang}/auth/login`);
+    }
+  }, [isAuthLoading, isAuthenticated, params.lang, router]);
 
   // 自动生成slug
   const generateSlug = (name: string) => {

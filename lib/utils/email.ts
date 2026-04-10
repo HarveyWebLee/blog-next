@@ -136,3 +136,60 @@ export async function verifyEmailConfig(): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * 发送文章发布订阅邮件
+ */
+export async function sendPostPublishedEmail({
+  to,
+  title,
+  excerpt,
+  postUrl,
+}: {
+  to: string;
+  title: string;
+  excerpt: string;
+  postUrl: string;
+}): Promise<boolean> {
+  try {
+    const transporter = createTransporter();
+
+    const safeExcerpt = excerpt || "暂无摘要，点击下方链接阅读完整内容。";
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #111827; margin-bottom: 12px;">你订阅的博客有新文章发布</h2>
+        <h3 style="color: #2563eb; margin: 12px 0;">${title}</h3>
+        <p style="color: #4b5563; line-height: 1.7;">${safeExcerpt}</p>
+        <a
+          href="${postUrl}"
+          style="
+            display: inline-block;
+            margin-top: 16px;
+            background: #2563eb;
+            color: #fff;
+            text-decoration: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+          "
+        >
+          阅读全文
+        </a>
+        <p style="margin-top: 24px; color: #9ca3af; font-size: 12px;">此邮件由系统自动发送，请勿直接回复。</p>
+      </div>
+    `;
+
+    const result = await transporter.sendMail({
+      from: `"荒野博客" <${process.env.SMTP_USER}>`,
+      to,
+      subject: `【荒野博客】新文章：${title}`,
+      html,
+    });
+
+    console.log("订阅邮件发送成功:", { to, messageId: result.messageId });
+
+    return true;
+  } catch (error) {
+    console.error("发送文章订阅邮件失败:", { to, error });
+    return false;
+  }
+}

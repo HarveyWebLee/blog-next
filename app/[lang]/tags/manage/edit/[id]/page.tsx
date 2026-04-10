@@ -5,7 +5,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   Badge,
   Button,
@@ -21,21 +21,20 @@ import {
 } from "@heroui/react";
 import { ArrowLeft, Calendar, Edit, Eye, FileText, Hash, Palette, Save, Tag as TagIcon } from "lucide-react";
 
+import { useAuth } from "@/lib/contexts/auth-context";
 import { message } from "@/lib/utils";
 import { Locale } from "@/types";
 import { ApiResponse, Tag, UpdateTagRequest } from "@/types/blog";
-
-interface EditTagPageProps {
-  params: Promise<{ id: string; lang: string }>;
-}
 
 const resolveLocale = (lang: string): Locale => {
   if (lang === "en-US" || lang === "ja-JP") return lang;
   return "zh-CN";
 };
 
-export default function EditTagPage({ params }: EditTagPageProps) {
+export default function EditTagPage() {
   const router = useRouter();
+  const params = useParams<{ id: string; lang: string }>();
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [tag, setTag] = useState<Tag | null>(null);
@@ -159,14 +158,14 @@ export default function EditTagPage({ params }: EditTagPageProps) {
   };
 
   useEffect(() => {
-    const initPage = async () => {
-      const resolvedParams = await params;
-      setLang(resolveLocale(resolvedParams.lang));
-      fetchTag(resolvedParams.id);
-    };
-
-    initPage();
-  }, [params, fetchTag]);
+    if (isAuthLoading) return;
+    if (!isAuthenticated) {
+      router.replace(`/${params.lang}/auth/login`);
+      return;
+    }
+    setLang(resolveLocale(params.lang));
+    fetchTag(params.id);
+  }, [isAuthLoading, isAuthenticated, params.lang, params.id, fetchTag, router]);
 
   // 预设颜色
   const presetColors = [

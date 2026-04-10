@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 
 import { TagCloud } from "@/components/ui/tag-cloud";
+import { useAuth } from "@/lib/contexts/auth-context";
 import { useTags } from "@/lib/hooks/useTags";
 import { Locale } from "@/types";
 import { Tag } from "@/types/blog";
@@ -66,7 +67,9 @@ const TAG_PAGE_TEXT: Record<
     prevPage: string;
     nextPage: string;
     pageInfo: (page: number, totalPages: number) => string;
-    confirmDelete: string;
+    manageTitle: string;
+    manageDesc: string;
+    enterManage: string;
   }
 > = {
   "zh-CN": {
@@ -96,7 +99,9 @@ const TAG_PAGE_TEXT: Record<
     prevPage: "上一页",
     nextPage: "下一页",
     pageInfo: (page, totalPages) => `第 ${page} 页，共 ${totalPages} 页`,
-    confirmDelete: "确定要删除这个标签吗？",
+    manageTitle: "标签管理",
+    manageDesc: "登录后可管理标签的创建、编辑、删除和状态",
+    enterManage: "进入管理",
   },
   "en-US": {
     createdAt: "Created at",
@@ -125,7 +130,9 @@ const TAG_PAGE_TEXT: Record<
     prevPage: "Previous",
     nextPage: "Next",
     pageInfo: (page, totalPages) => `Page ${page} of ${totalPages}`,
-    confirmDelete: "Are you sure you want to delete this tag?",
+    manageTitle: "Tag Management",
+    manageDesc: "Sign in to create, edit, delete, and control tag status",
+    enterManage: "Manage Tags",
   },
   "ja-JP": {
     createdAt: "作成日",
@@ -154,7 +161,9 @@ const TAG_PAGE_TEXT: Record<
     prevPage: "前へ",
     nextPage: "次へ",
     pageInfo: (page, totalPages) => `${page} / ${totalPages} ページ`,
-    confirmDelete: "このタグを削除してもよろしいですか？",
+    manageTitle: "タグ管理",
+    manageDesc: "ログイン後にタグの作成・編集・削除・状態管理ができます",
+    enterManage: "管理へ",
   },
 };
 
@@ -586,6 +595,7 @@ function ErrorAlert({ error, onRetry, t }: { error: string; onRetry: () => void;
  */
 export default function TagsPage() {
   const params = useParams<{ lang: string }>();
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const locale = resolveLocale(params.lang);
   const t = TAG_PAGE_TEXT[locale];
   // 使用自定义 Hook 管理标签数据
@@ -595,7 +605,6 @@ export default function TagsPage() {
     error,
     pagination,
     fetchTags,
-    deleteTag,
     refreshTags,
     setPage,
     setLimit,
@@ -611,6 +620,10 @@ export default function TagsPage() {
 
   // 本地状态
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [searchValue, setSearchValue] = useState("");
+  const [showOnlyActive, setShowOnlyActiveValue] = useState(false);
+  const [sortByValue, setSortByValue] = useState("createdAt");
+  const [sortOrderValue, setSortOrderValue] = useState<"asc" | "desc">("desc");
   const [mounted, setMounted] = useState(false);
 
   // 组件挂载状态
@@ -628,6 +641,7 @@ export default function TagsPage() {
 
   // 处理搜索
   const handleSearch = (query: string) => {
+    setSearchValue(query);
     setSearchQuery(query);
     // 搜索时重置到第一页
     setPage(1);
@@ -637,6 +651,7 @@ export default function TagsPage() {
 
   // 处理筛选切换
   const handleToggleActive = (show: boolean) => {
+    setShowOnlyActiveValue(show);
     setShowOnlyActive(show);
     // 筛选时重置到第一页
     setPage(1);
@@ -646,6 +661,7 @@ export default function TagsPage() {
 
   // 处理排序变化
   const handleSortChange = (sort: string) => {
+    setSortByValue(sort);
     setSortBy(sort);
     // 排序时重置到第一页
     setPage(1);
@@ -655,6 +671,7 @@ export default function TagsPage() {
 
   // 处理排序顺序变化
   const handleSortOrderChange = (order: "asc" | "desc") => {
+    setSortOrderValue(order);
     setSortOrder(order);
     // 排序时重置到第一页
     setPage(1);
@@ -665,16 +682,6 @@ export default function TagsPage() {
   // 处理视图模式变化
   const handleViewModeChange = (mode: "grid" | "list") => {
     setViewMode(mode);
-  };
-
-  // 处理删除标签
-  const handleDeleteTag = async (id: number) => {
-    if (confirm(t.confirmDelete)) {
-      const success = await deleteTag(id);
-      if (success) {
-        console.log("Tag deleted successfully");
-      }
-    }
   };
 
   // 处理刷新
@@ -694,6 +701,21 @@ export default function TagsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+      {/* 登录后显示标签管理入口 */}
+      {!isAuthLoading && isAuthenticated && (
+        <Card className="mb-8 border-0 backdrop-blur-xl bg-primary/10 dark:bg-primary/5 animate-fade-in-up">
+          <CardBody className="flex flex-row items-center justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-semibold text-foreground">{t.manageTitle}</h3>
+              <p className="text-sm text-default-600">{t.manageDesc}</p>
+            </div>
+            <Button color="primary" onPress={() => (window.location.href = `/${locale}/tags/manage`)}>
+              {t.enterManage}
+            </Button>
+          </CardBody>
+        </Card>
+      )}
+
       {/* 错误提示 */}
       {error && <ErrorAlert error={error} onRetry={handleRefresh} t={t} />}
 
@@ -735,13 +757,13 @@ export default function TagsPage() {
 
       {/* 搜索和筛选 */}
       <SearchAndFilter
-        searchQuery=""
+        searchQuery={searchValue}
         onSearchChange={handleSearch}
-        showOnlyActive={false}
+        showOnlyActive={showOnlyActive}
         onToggleActive={handleToggleActive}
-        sortBy="createdAt"
+        sortBy={sortByValue}
         onSortChange={handleSortChange}
-        sortOrder="desc"
+        sortOrder={sortOrderValue}
         onSortOrderChange={handleSortOrderChange}
         viewMode={viewMode}
         onViewModeChange={handleViewModeChange}
@@ -765,7 +787,7 @@ export default function TagsPage() {
           </div>
         ) : filteredAndSortedTags.length > 0 ? (
           filteredAndSortedTags.map((tag, index) => (
-            <TagCard key={tag.id} tag={tag} index={index} onDelete={handleDeleteTag} locale={locale} t={t} />
+            <TagCard key={tag.id} tag={tag} index={index} locale={locale} t={t} />
           ))
         ) : (
           <div className="col-span-full">

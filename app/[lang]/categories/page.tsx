@@ -23,6 +23,7 @@ import {
   Users,
 } from "lucide-react";
 
+import { useAuth } from "@/lib/contexts/auth-context";
 import { useCategories } from "@/lib/hooks/useCategories";
 import { Locale } from "@/types";
 import { Category } from "@/types/blog";
@@ -396,6 +397,7 @@ export default function CategoriesPage() {
   const params = useParams<{ lang: string }>();
   const locale = resolveLocale(params.lang);
   const t = CATEGORY_PAGE_TEXT[locale];
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   // 使用分类数据管理 Hook
   const {
     categories,
@@ -412,18 +414,20 @@ export default function CategoriesPage() {
     limit: 100,
   });
 
-  // 检查用户权限（这里简化处理，实际应该从认证上下文获取）
-  const isAdmin = true; // 假设当前用户是管理员
+  // 仅在认证状态完成初始化后，基于登录态决定是否展示分类管理入口。
+  // 这里不做角色判断，满足“登录后可见”的产品要求。
+  const canShowManageEntry = !isAuthLoading && isAuthenticated;
 
   // 管理功能处理
   const handleManageCategories = () => {
-    window.location.href = "/categories/manage";
+    // 分类页面本身位于国际化路由下，管理页也需要保留当前语言前缀。
+    window.location.href = `/${locale}/categories/manage`;
   };
 
   return (
     <div className="categories-page">
       {/* 管理功能入口 */}
-      {isAdmin && (
+      {canShowManageEntry && (
         <div className="mb-6">
           <Card className="bg-gradient-to-r from-primary-50 to-secondary-50 border-primary-200">
             <CardBody className="flex flex-row items-center justify-between">

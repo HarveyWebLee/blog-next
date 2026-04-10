@@ -7,10 +7,10 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { and, asc, count, desc, eq, like } from "drizzle-orm";
+import { and, asc, count, desc, eq, like, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
-import { tags } from "@/lib/db/schema";
+import { postTags, tags } from "@/lib/db/schema";
 import { ApiResponse, CreateTagRequest, PaginatedResponseData, Tag, TagQueryParams } from "@/types/blog";
 
 /**
@@ -42,12 +42,14 @@ export async function GET(request: NextRequest) {
     }
 
     // 构建排序 - 使用安全的字段映射
+    const postCountExpr = sql<number>`count(${postTags.postId})`;
     const sortFieldMap: Record<string, any> = {
       name: tags.name,
       slug: tags.slug,
       createdAt: tags.createdAt,
       updatedAt: tags.updatedAt,
       isActive: tags.isActive,
+      postCount: postCountExpr,
     };
 
     const sortField = sortFieldMap[sortBy] || tags.createdAt;
@@ -59,9 +61,21 @@ export async function GET(request: NextRequest) {
     // 执行查询
     const [tagsList, totalCount] = await Promise.all([
       db
-        .select()
+        .select({
+          id: tags.id,
+          name: tags.name,
+          slug: tags.slug,
+          description: tags.description,
+          color: tags.color,
+          isActive: tags.isActive,
+          createdAt: tags.createdAt,
+          updatedAt: tags.updatedAt,
+          postCount: postCountExpr,
+        })
         .from(tags)
+        .leftJoin(postTags, eq(tags.id, postTags.tagId))
         .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .groupBy(tags.id)
         .orderBy(orderBy)
         .limit(limit)
         .offset(offset),
@@ -83,6 +97,7 @@ export async function GET(request: NextRequest) {
         description: tag.description || undefined,
         color: tag.color || undefined,
         isActive: tag.isActive ?? true,
+        postCount: Number(tag.postCount || 0),
       })),
       pagination: {
         page,

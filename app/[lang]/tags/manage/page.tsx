@@ -51,6 +51,7 @@ import {
   Trash2,
 } from "lucide-react";
 
+import { useAuth } from "@/lib/contexts/auth-context";
 import { message } from "@/lib/utils";
 import { Locale } from "@/types";
 import { ApiResponse, PaginatedResponseData, Tag, TagQueryParams } from "@/types/blog";
@@ -165,6 +166,7 @@ const T: Record<Locale, Record<string, string>> = {
 export default function TagsManagePage() {
   const router = useRouter();
   const params = useParams<{ lang: string }>();
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const locale = resolveLocale(params.lang);
   const t = T[locale];
 
@@ -294,8 +296,13 @@ export default function TagsManagePage() {
   };
 
   useEffect(() => {
+    if (isAuthLoading) return;
+    if (!isAuthenticated) {
+      router.replace(`/${params.lang}/auth/login`);
+      return;
+    }
     fetchTags();
-  }, [fetchTags]);
+  }, [fetchTags, isAuthLoading, isAuthenticated, params.lang, router]);
 
   // 统计信息
   const activeTags = tags.filter((tag) => tag.isActive).length;
