@@ -100,6 +100,13 @@ export default function BlogWithAPIPage() {
 
   const { categories } = useCategories({ autoFetch: true, limit: 100 });
   const selectableCategories = categories.filter((category) => category.isActive);
+  const categoryOptions = [
+    { key: "all", label: "全部分类" },
+    ...selectableCategories.map((category) => ({
+      key: category.id.toString(),
+      label: category.name,
+    })),
+  ];
 
   // 处理搜索
   const handleSearch = (value: string) => {
@@ -235,9 +242,8 @@ export default function BlogWithAPIPage() {
                     value: "text-foreground",
                   }}
                 >
-                  <SelectItem key="all">全部分类</SelectItem>
-                  {selectableCategories.map((category) => (
-                    <SelectItem key={category.id.toString()}>{category.name}</SelectItem>
+                  {categoryOptions.map((option) => (
+                    <SelectItem key={option.key}>{option.label}</SelectItem>
                   ))}
                 </Select>
 
