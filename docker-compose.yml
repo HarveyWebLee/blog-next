@@ -37,14 +37,16 @@ services:
     image: redis:7-alpine
     container_name: blog-redis
     restart: unless-stopped
-    # 默认无密码，仅暴露在 compose 网络内；若需 requirepass，见 deploy/env.docker.example 注释
-    command: redis-server --appendonly yes
+    # 生产环境启用 requirepass，避免未授权访问 Redis。
+    # 密码通过 deploy/.env.docker 的 REDIS_PASSWORD 注入。
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?请在 deploy/.env.docker 中设置 REDIS_PASSWORD}
     ports:
       - "${REDIS_PUBLISH_PORT:-16380}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      # 开启 requirepass 后，健康检查也需携带密码。
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:?请在 deploy/.env.docker 中设置 REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 3s
       retries: 5
@@ -83,7 +85,9 @@ services:
       NODE_ENV: production
       DB_HOST: mysql
       DB_PORT: "3306"
-      REDIS_URL: redis://redis:6379
+      # 支持从 deploy/.env.docker 自定义 REDIS_URL；
+      # 若未显式提供，则按约定拼装为带密码的容器内地址。
+      REDIS_URL: ${REDIS_URL:-redis://:${REDIS_PASSWORD:?请在 deploy/.env.docker 中设置 REDIS_PASSWORD}@redis:6379}
     ports:
       - "${APP_PORT:-13001}:3000"
     depends_on:

@@ -1,0 +1,57 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+# 避免同一分支多次推送导致并发部署互相覆盖：
+# 新部署到来时会取消正在进行中的旧部署任务。
+concurrency:
+  group: deploy-main
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # 目标服务器中的项目目录。
+      # 如需修改部署目录，只需改这里即可。
+      APP_DIR: /opt/blog-next
+    steps:
+      - name: Setup SSH
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          # 将仓库 Secret 中的私钥写入 runner，供后续 SSH 使用。
+          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+          # 预先写入主机指纹，避免首次连接交互确认。
+          ssh-keyscan -p "${{ secrets.SERVER_PORT }}" "${{ secrets.SERVER_HOST }}" >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Deploy on server
+        run: |
+          ssh -p "${{ secrets.SERVER_PORT }}" "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" "APP_DIR='${APP_DIR}' bash -s" << 'EOF'
+            set -euo pipefail
+
+            cd "${APP_DIR}"
+
+            # 始终对齐远端 main，确保部署内容可追踪、可复现。
+            git fetch origin main
+            git checkout main
+            git pull --ff-only origin main
+
+            # 1) 先确保依赖服务在线（若已在线会保持不变）
+            docker compose --env-file deploy/.env.docker up -d mysql redis
+
+            # 2) 运行数据库迁移（幂等）
+            docker compose --env-file deploy/.env.docker --profile migrate run --rm db-migrate
+
+            # 3) 构建并更新应用容器
+            docker compose --env-file deploy/.env.docker up -d --build blog-web
+          EOF
