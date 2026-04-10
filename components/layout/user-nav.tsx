@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Button } from "@heroui/button";
 import { Avatar, Dropdown, DropdownItem, DropdownMenu, DropdownSection, DropdownTrigger } from "@heroui/react";
-import { FileIcon, LogInIcon, LogOutIcon, MailIcon, SettingsIcon, User, UserCircleIcon } from "lucide-react";
+import { FileIcon, FilesIcon, LogInIcon, LogOutIcon, MailIcon, SettingsIcon, User, UserCircleIcon } from "lucide-react";
 
 import { useAuth } from "@/lib/contexts/auth-context";
 import { Locale } from "@/types";
@@ -30,6 +30,8 @@ export function UserNav() {
           email: "Email",
           profile: "Profile",
           profileDesc: "Open profile center",
+          manage: "Post Management",
+          manageDesc: "Manage your posts",
           write: "Write Post",
           writeDesc: "Open editor",
           settings: "Settings",
@@ -46,6 +48,8 @@ export function UserNav() {
             email: "メール",
             profile: "プロフィール",
             profileDesc: "プロフィールセンターへ",
+            manage: "記事管理",
+            manageDesc: "記事を管理",
             write: "記事を書く",
             writeDesc: "エディターを開く",
             settings: "設定",
@@ -61,6 +65,8 @@ export function UserNav() {
             email: "邮箱",
             profile: "个人中心",
             profileDesc: "个人信息操作入口",
+            manage: "文章管理",
+            manageDesc: "管理已创建文章",
             write: "写文章",
             writeDesc: "文章编辑入口",
             settings: "设置",
@@ -140,6 +146,14 @@ export function UserNav() {
           </DropdownItem>
           <DropdownItem
             key="write-article"
+            description={t.manageDesc}
+            startContent={<FilesIcon className={iconClasses} width="1em" height="1em" />}
+            href={`/${lang}/blog/manage`}
+          >
+            {t.manage}
+          </DropdownItem>
+          <DropdownItem
+            key="create-article"
             description={t.writeDesc}
             startContent={<FileIcon className={iconClasses} width="1em" height="1em" />}
             href={`/${lang}/blog/manage/create`}
