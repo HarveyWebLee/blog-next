@@ -67,4 +67,14 @@ jobs:
 
             # 3) 构建并更新应用容器
             docker compose --env-file deploy/.env.docker up -d --build blog-web
+
+            # 4) 打印当前服务状态，便于在 GitHub Actions 日志中直接确认部署结果
+            docker compose --env-file deploy/.env.docker ps
+
+            # 5) 健康校验：确保 blog-web 容器已进入运行态，否则让流水线失败
+            if ! docker compose --env-file deploy/.env.docker ps blog-web | grep -q "Up"; then
+              echo "部署失败：blog-web 容器未处于运行状态" >&2
+              docker compose --env-file deploy/.env.docker logs --tail=100 blog-web || true
+              exit 1
+            fi
           EOF
