@@ -3,7 +3,7 @@
  * 提供分类数据的获取、搜索、筛选等功能
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ApiResponse, Category, CategoryQueryParams, PaginatedResponseData } from "@/types/blog";
 
@@ -32,6 +32,7 @@ export function useCategories(options: UseCategoriesOptions = {}): UseCategories
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showOnlyActive, setShowOnlyActive] = useState(false);
+  const hasFetchedInitially = useRef(false);
 
   const fetchCategories = useCallback(
     async (params: Partial<CategoryQueryParams> = {}) => {
@@ -108,21 +109,25 @@ export function useCategories(options: UseCategoriesOptions = {}): UseCategories
   useEffect(() => {
     if (autoFetch) {
       fetchCategories();
+      hasFetchedInitially.current = true;
     }
   }, [autoFetch, fetchCategories]);
 
   useEffect(() => {
-    if (autoFetch && !loading) {
-      const timeoutId = setTimeout(() => {
-        fetchCategories({
-          search: searchQuery || undefined,
-          isActive: showOnlyActive || undefined,
-        });
-      }, 300);
-
-      return () => clearTimeout(timeoutId);
+    // 首次加载由上面的 useEffect 负责，避免初始化阶段重复请求
+    if (!autoFetch || !hasFetchedInitially.current) {
+      return;
     }
-  }, [autoFetch, loading, fetchCategories, searchQuery, showOnlyActive]);
+
+    const timeoutId = setTimeout(() => {
+      fetchCategories({
+        search: searchQuery || undefined,
+        isActive: showOnlyActive || undefined,
+      });
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [autoFetch, fetchCategories, searchQuery, showOnlyActive]);
 
   return {
     categories,
