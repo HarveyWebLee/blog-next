@@ -39,6 +39,10 @@ jobs:
           ssh -p "${{ secrets.SERVER_PORT }}" "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" "APP_DIR='${APP_DIR}' bash -s" << 'EOF'
             set -euo pipefail
 
+            # Git 2.35+ 安全机制：当仓库目录 owner 与当前用户不一致时会拒绝操作。
+            # 在 CI 远程部署场景下，将部署目录加入 safe.directory，避免 pull/fetch 失败。
+            git config --global --add safe.directory "${APP_DIR}"
+
             cd "${APP_DIR}"
 
             # 始终对齐远端 main，确保部署内容可追踪、可复现。
