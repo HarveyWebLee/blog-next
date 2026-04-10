@@ -1,3 +1,9 @@
+## [1.1.1](https://github.com/HarveyWebLee/blog-next/compare/v1.1.0...v1.1.1) (2026-04-10)
+
+### Bug Fixes
+
+- **blog:** 优化博客页面分类选择功能 ([04f963b](https://github.com/HarveyWebLee/blog-next/commit/04f963baef62fa0d8fd7bd50d6e3bf90fcad57d3))
+
 # [1.1.0](https://github.com/HarveyWebLee/blog-next/compare/v1.0.0...v1.1.0) (2026-04-10)
 
 ### Bug Fixes
