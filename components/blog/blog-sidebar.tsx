@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Button } from "@heroui/button";
 import { Card, CardBody, CardHeader } from "@heroui/card";
@@ -8,61 +9,11 @@ import { Divider } from "@heroui/divider";
 import { Input } from "@heroui/input";
 import { ArrowRight, Bookmark, Eye, FolderOpen, Hash, Mail, Tag, TrendingUp } from "lucide-react";
 
-const getMockCategories = (lang: string) =>
-  lang === "en-US"
-    ? [
-        { name: "Tech Sharing", slug: "tech", count: 15 },
-        { name: "Frontend", slug: "frontend", count: 12 },
-        { name: "Backend", slug: "backend", count: 8 },
-        { name: "Database", slug: "database", count: 6 },
-        { name: "DevOps", slug: "devops", count: 4 },
-      ]
-    : lang === "ja-JP"
-      ? [
-          { name: "技術共有", slug: "tech", count: 15 },
-          { name: "フロントエンド", slug: "frontend", count: 12 },
-          { name: "バックエンド", slug: "backend", count: 8 },
-          { name: "データベース", slug: "database", count: 6 },
-          { name: "DevOps", slug: "devops", count: 4 },
-        ]
-      : [
-          { name: "技术分享", slug: "tech", count: 15 },
-          { name: "前端开发", slug: "frontend", count: 12 },
-          { name: "后端开发", slug: "backend", count: 8 },
-          { name: "数据库", slug: "database", count: 6 },
-          { name: "DevOps", slug: "devops", count: 4 },
-        ];
-
-const mockTags = [
-  { name: "Next.js", slug: "nextjs", color: "#8B5CF6", count: 8 },
-  { name: "React", slug: "react", color: "#10B981", count: 12 },
-  { name: "TypeScript", slug: "typescript", color: "#3B82F6", count: 10 },
-  { name: "Drizzle", slug: "drizzle", color: "#F59E0B", count: 5 },
-  { name: "Tailwind CSS", slug: "tailwind", color: "#06B6D4", count: 7 },
-  { name: "MySQL", slug: "mysql", color: "#EF4444", count: 4 },
-];
-
-const getMockPopularPosts = (lang: string) =>
-  lang === "en-US"
-    ? [
-        { title: "What's New in Next.js 15", slug: "nextjs-15-features", viewCount: 2500 },
-        { title: "Drizzle ORM Best Practices", slug: "drizzle-orm-best-practices", viewCount: 1800 },
-        { title: "Advanced TypeScript Tips", slug: "typescript-advanced-tips", viewCount: 1600 },
-        { title: "Modern Frontend Engineering", slug: "modern-frontend-engineering", viewCount: 1400 },
-      ]
-    : lang === "ja-JP"
-      ? [
-          { title: "Next.js 15 新機能解説", slug: "nextjs-15-features", viewCount: 2500 },
-          { title: "Drizzle ORM ベストプラクティス", slug: "drizzle-orm-best-practices", viewCount: 1800 },
-          { title: "TypeScript 上級テクニック", slug: "typescript-advanced-tips", viewCount: 1600 },
-          { title: "モダンフロントエンド実践", slug: "modern-frontend-engineering", viewCount: 1400 },
-        ]
-      : [
-          { title: "Next.js 15 新特性详解", slug: "nextjs-15-features", viewCount: 2500 },
-          { title: "Drizzle ORM 最佳实践", slug: "drizzle-orm-best-practices", viewCount: 1800 },
-          { title: "TypeScript 高级技巧", slug: "typescript-advanced-tips", viewCount: 1600 },
-          { title: "现代前端工程化实践", slug: "modern-frontend-engineering", viewCount: 1400 },
-        ];
+import { useAuth } from "@/lib/contexts/auth-context";
+import { useCategories } from "@/lib/hooks/useCategories";
+import { usePosts } from "@/lib/hooks/usePosts";
+import { useTags } from "@/lib/hooks/useTags";
+import { message } from "@/lib/utils";
 
 export function BlogSidebar({ lang = "zh-CN" }: { lang?: string }) {
   const t =
@@ -79,6 +30,10 @@ export function BlogSidebar({ lang = "zh-CN" }: { lang?: string }) {
           subscribeDesc: "Get updates on latest posts",
           emailPlaceholder: "Enter email address",
           subscribe: "Subscribe",
+          unsubscribe: "Unsubscribe",
+          subscribeSuccess: "Subscription successful",
+          unsubscribeSuccess: "Unsubscribed",
+          invalidEmail: "Please enter a valid email",
         }
       : lang === "ja-JP"
         ? {
@@ -93,6 +48,10 @@ export function BlogSidebar({ lang = "zh-CN" }: { lang?: string }) {
             subscribeDesc: "最新記事の通知を受け取る",
             emailPlaceholder: "メールアドレスを入力",
             subscribe: "購読する",
+            unsubscribe: "購読解除",
+            subscribeSuccess: "購読しました",
+            unsubscribeSuccess: "購読を解除しました",
+            invalidEmail: "有効なメールアドレスを入力してください",
           }
         : {
             categoryTitle: "文章分类",
@@ -106,9 +65,120 @@ export function BlogSidebar({ lang = "zh-CN" }: { lang?: string }) {
             subscribeDesc: "获取最新文章通知",
             emailPlaceholder: "输入邮箱地址",
             subscribe: "订阅",
+            unsubscribe: "取消订阅",
+            subscribeSuccess: "订阅成功",
+            unsubscribeSuccess: "已取消订阅",
+            invalidEmail: "请输入有效的邮箱地址",
           };
-  const mockCategories = getMockCategories(lang);
-  const mockPopularPosts = getMockPopularPosts(lang);
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const [subscribeEmail, setSubscribeEmail] = useState("");
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const { categories } = useCategories({ autoFetch: true, limit: 20 });
+  const { tags } = useTags({ autoFetch: true, initialLimit: 20 });
+  const { posts: hotPosts } = usePosts({
+    initialParams: {
+      status: "published",
+      visibility: "public",
+      limit: 5,
+      sortBy: "viewCount",
+      sortOrder: "desc",
+    },
+    autoFetch: true,
+  });
+  const activeCategories = categories.filter((category) => category.isActive).slice(0, 8);
+  const activeTags = tags
+    .filter((tag) => tag.isActive)
+    .sort((a, b) => (b.postCount || 0) - (a.postCount || 0))
+    .slice(0, 12);
+  const loginEmail = useMemo(() => {
+    if (!isAuthenticated) return "";
+    return (user?.email || "").trim().toLowerCase();
+  }, [isAuthenticated, user?.email]);
+
+  useEffect(() => {
+    const queryStatus = async () => {
+      if (!loginEmail) {
+        setIsSubscribed(false);
+        return;
+      }
+      try {
+        const res = await fetch(`/api/subscriptions?email=${encodeURIComponent(loginEmail)}`);
+        const result = await res.json();
+        if (result.success) {
+          setIsSubscribed(Boolean(result.data?.isSubscribed));
+        }
+      } catch (error) {
+        console.error("获取订阅状态失败:", error);
+      }
+    };
+
+    queryStatus();
+  }, [loginEmail]);
+
+  const handleSubscribe = async () => {
+    const targetEmail = (isAuthenticated ? loginEmail : subscribeEmail).trim().toLowerCase();
+    const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(targetEmail);
+    if (!isEmailValid) {
+      message.warning(t.invalidEmail);
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const response = await fetch("/api/subscriptions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: targetEmail,
+          userId: isAuthenticated ? user?.id : undefined,
+        }),
+      });
+      const result = await response.json();
+
+      if (!result.success) {
+        message.error(result.message || "订阅失败");
+        return;
+      }
+
+      if (isAuthenticated) {
+        setIsSubscribed(true);
+      } else {
+        setSubscribeEmail("");
+      }
+      message.success(t.subscribeSuccess);
+    } catch (error) {
+      console.error("订阅失败:", error);
+      message.error("订阅失败");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleUnsubscribe = async () => {
+    if (!loginEmail) return;
+    try {
+      setSubmitting(true);
+      const response = await fetch("/api/subscriptions", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: loginEmail }),
+      });
+      const result = await response.json();
+      if (!result.success) {
+        message.error(result.message || "取消订阅失败");
+        return;
+      }
+      setIsSubscribed(false);
+      message.success(t.unsubscribeSuccess);
+    } catch (error) {
+      console.error("取消订阅失败:", error);
+      message.error("取消订阅失败");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* 分类 */}
@@ -124,9 +194,9 @@ export function BlogSidebar({ lang = "zh-CN" }: { lang?: string }) {
         </CardHeader>
         <CardBody className="pt-0">
           <div className="space-y-1">
-            {mockCategories.map((category, index) => (
+            {activeCategories.map((category, index) => (
               <Link
-                key={category.slug}
+                key={category.id}
                 href={`/${lang}/categories/${category.slug}`}
                 className="flex items-center justify-between p-3 rounded-lg backdrop-blur-xl bg-white/5 dark:bg-black/5 hover:bg-white/10 dark:hover:bg-black/10 transition-all duration-300 group hover:scale-105"
                 style={{ animationDelay: `${index * 100}ms` }}
@@ -143,7 +213,7 @@ export function BlogSidebar({ lang = "zh-CN" }: { lang?: string }) {
                   color="default"
                   className="backdrop-blur-xl bg-white/10 dark:bg-black/10"
                 >
-                  {category.count}
+                  {category.postCount || 0}
                 </Chip>
               </Link>
             ))}
@@ -164,9 +234,9 @@ export function BlogSidebar({ lang = "zh-CN" }: { lang?: string }) {
         </CardHeader>
         <CardBody className="pt-0">
           <div className="flex flex-wrap gap-2">
-            {mockTags.map((tag, index) => (
+            {activeTags.map((tag, index) => (
               <Link
-                key={tag.slug}
+                key={tag.id}
                 href={`/${lang}/tags/${tag.slug}`}
                 className="animate-fade-in-up"
                 style={{ animationDelay: `${index * 100}ms` }}
@@ -180,7 +250,7 @@ export function BlogSidebar({ lang = "zh-CN" }: { lang?: string }) {
                     color: tag.color,
                   }}
                 >
-                  {tag.name} ({tag.count})
+                  {tag.name} ({tag.postCount || 0})
                 </Chip>
               </Link>
             ))}
@@ -201,7 +271,7 @@ export function BlogSidebar({ lang = "zh-CN" }: { lang?: string }) {
         </CardHeader>
         <CardBody className="pt-0">
           <div className="space-y-4">
-            {mockPopularPosts.map((post, index) => (
+            {hotPosts.slice(0, 5).map((post, index) => (
               <div key={post.slug} className="animate-fade-in-up" style={{ animationDelay: `${index * 100}ms` }}>
                 <Link href={`/${lang}/blog/${post.slug}`} className="block group">
                   <div className="flex items-start gap-3 p-3 rounded-lg backdrop-blur-xl bg-white/5 dark:bg-black/5 hover:bg-white/10 dark:hover:bg-black/10 transition-all duration-300 hover:scale-105">
@@ -229,7 +299,7 @@ export function BlogSidebar({ lang = "zh-CN" }: { lang?: string }) {
                     <ArrowRight className="w-4 h-4 text-default-300 group-hover:text-primary transition-colors opacity-0 group-hover:opacity-100" />
                   </div>
                 </Link>
-                {index < mockPopularPosts.length - 1 && <Divider className="mt-4" />}
+                {index < hotPosts.slice(0, 5).length - 1 && <Divider className="mt-4" />}
               </div>
             ))}
           </div>
@@ -248,25 +318,31 @@ export function BlogSidebar({ lang = "zh-CN" }: { lang?: string }) {
           </div>
         </CardHeader>
         <CardBody className="pt-0 space-y-3">
-          <Input
-            type="email"
-            placeholder={t.emailPlaceholder}
-            variant="bordered"
-            size="sm"
-            classNames={{
-              input: "bg-white/10 dark:bg-black/10 backdrop-blur-xl",
-              inputWrapper:
-                "bg-white/10 dark:bg-black/10 backdrop-blur-xl border-white/20 dark:border-white/10 hover:border-primary/50 focus-within:border-primary",
-            }}
-          />
+          {!isAuthLoading && !isAuthenticated && (
+            <Input
+              type="email"
+              placeholder={t.emailPlaceholder}
+              value={subscribeEmail}
+              onValueChange={setSubscribeEmail}
+              variant="bordered"
+              size="sm"
+              classNames={{
+                input: "bg-white/10 dark:bg-black/10 backdrop-blur-xl",
+                inputWrapper:
+                  "bg-white/10 dark:bg-black/10 backdrop-blur-xl border-white/20 dark:border-white/10 hover:border-primary/50 focus-within:border-primary",
+              }}
+            />
+          )}
           <Button
             color="primary"
             variant="shadow"
             size="sm"
             className="w-full font-semibold tracking-wide"
             endContent={<Mail className="w-4 h-4" />}
+            isLoading={submitting}
+            onPress={isAuthenticated && isSubscribed ? handleUnsubscribe : handleSubscribe}
           >
-            {t.subscribe}
+            {isAuthenticated && isSubscribed ? t.unsubscribe : t.subscribe}
           </Button>
         </CardBody>
       </Card>

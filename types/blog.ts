@@ -212,6 +212,27 @@ export interface TagQueryParams extends PaginationParams {
   isActive?: boolean; // 是否激活
 }
 
+// ==================== 订阅相关类型 ====================
+
+/**
+ * 邮件订阅实体接口
+ */
+export interface EmailSubscription extends BaseEntity {
+  email: string;
+  userId?: number;
+  isActive: boolean;
+  subscribedAt: Date;
+  unsubscribedAt?: Date;
+}
+
+/**
+ * 创建订阅请求
+ */
+export interface CreateSubscriptionRequest {
+  email: string;
+  userId?: number;
+}
+
 // ==================== 文章相关类型 ====================
 
 /**

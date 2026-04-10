@@ -12,6 +12,7 @@ import { Spinner } from "@heroui/spinner";
 import {
   BookOpenIcon,
   CalendarIcon,
+  FilePlus2Icon,
   FilterIcon,
   Layers,
   RefreshCwIcon,
@@ -22,6 +23,8 @@ import {
 
 import { BlogSidebar } from "@/components/blog/blog-sidebar";
 import { PostCard } from "@/components/blog/post-card";
+import { useAuth } from "@/lib/contexts/auth-context";
+import { useCategories } from "@/lib/hooks/useCategories";
 import { usePosts } from "@/lib/hooks/usePosts";
 import { PostData } from "@/types/blog";
 
@@ -34,6 +37,7 @@ export default function BlogWithAPIPage() {
       ? {
           loadFailed: "Load failed",
           filterTitle: "Filter Posts",
+          createDoc: "Create Post",
           selectCategory: "Select category",
           searchPlaceholder: "Search title or content...",
           selectSort: "Select sort",
@@ -47,6 +51,7 @@ export default function BlogWithAPIPage() {
         ? {
             loadFailed: "読み込み失敗",
             filterTitle: "記事を絞り込む",
+            createDoc: "記事を作成",
             selectCategory: "カテゴリを選択",
             searchPlaceholder: "タイトルまたは内容を検索...",
             selectSort: "並び順を選択",
@@ -59,6 +64,7 @@ export default function BlogWithAPIPage() {
         : {
             loadFailed: "加载失败",
             filterTitle: "筛选文章",
+            createDoc: "新建文章",
             selectCategory: "选择分类",
             searchPlaceholder: "搜索文章标题或内容...",
             selectSort: "选择排序",
@@ -71,6 +77,7 @@ export default function BlogWithAPIPage() {
   const [searchValue, setSearchValue] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [sortBy, setSortBy] = useState("publishedAt");
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
 
   const {
     posts,
@@ -91,7 +98,8 @@ export default function BlogWithAPIPage() {
     },
   });
 
-  console.log("posts", posts);
+  const { categories } = useCategories({ autoFetch: true, limit: 100 });
+  const selectableCategories = categories.filter((category) => category.isActive);
 
   // 处理搜索
   const handleSearch = (value: string) => {
@@ -164,10 +172,26 @@ export default function BlogWithAPIPage() {
           {/* 筛选器 */}
           <Card className="mb-8 border-0 backdrop-blur-xl bg-white/10 dark:bg-black/10 animate-fade-in-up">
             <CardHeader className="flex gap-3">
-              <FilterIcon className="w-5 h-5 text-primary" />
-              <div className="flex flex-col">
-                <p className="text-lg font-semibold">{t.filterTitle}</p>
-                <p className="text-small text-default-500">通过搜索、分类和排序找到您需要的文章</p>
+              <div className="w-full flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <FilterIcon className="w-5 h-5 text-primary mt-1" />
+                  <div className="flex flex-col">
+                    <p className="text-lg font-semibold">{t.filterTitle}</p>
+                    <p className="text-small text-default-500">通过搜索、分类和排序找到您需要的文章</p>
+                  </div>
+                </div>
+                {!isAuthLoading && isAuthenticated && (
+                  <Button
+                    size="sm"
+                    color="primary"
+                    variant="flat"
+                    startContent={<FilePlus2Icon className="w-4 h-4" />}
+                    onPress={() => router.push(`/${lang}/blog/manage/create`)}
+                    className="backdrop-blur-xl bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 min-w-0 px-3"
+                  >
+                    {t.createDoc}
+                  </Button>
+                )}
               </div>
             </CardHeader>
             <CardBody>
@@ -212,11 +236,9 @@ export default function BlogWithAPIPage() {
                   }}
                 >
                   <SelectItem key="all">全部分类</SelectItem>
-                  <SelectItem key="1">技术分享</SelectItem>
-                  <SelectItem key="2">前端开发</SelectItem>
-                  <SelectItem key="3">后端开发</SelectItem>
-                  <SelectItem key="4">数据库</SelectItem>
-                  <SelectItem key="5">DevOps</SelectItem>
+                  {selectableCategories.map((category) => (
+                    <SelectItem key={category.id.toString()}>{category.name}</SelectItem>
+                  ))}
                 </Select>
 
                 {/* 排序 */}

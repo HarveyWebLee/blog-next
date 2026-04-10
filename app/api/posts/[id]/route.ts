@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { postService } from "@/lib/services/post.service";
+import { subscriptionService } from "@/lib/services/subscription.service";
 import { createErrorResponse, createSuccessResponse } from "@/lib/utils";
 import { UpdatePostRequest } from "@/types/blog";
 
@@ -83,6 +84,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     // 获取请求体数据
     const body: UpdatePostRequest = await request.json();
+    const beforePost = await postService.getPostById(postId, false);
 
     // 验证更新数据
     if (body.title && body.title.length > 200) {
@@ -101,6 +103,16 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     // 调用服务层更新文章
     const updatedPost = await postService.updatePost(postId, body);
+    const updatedPostCore = (updatedPost as any)?.posts || updatedPost;
+
+    // 从未发布 -> 已发布：触发订阅通知
+    if (beforePost && beforePost.status !== "published" && updatedPostCore.status === "published") {
+      await subscriptionService.notifyOnPostPublished({
+        title: updatedPostCore.title,
+        slug: updatedPostCore.slug,
+        excerpt: updatedPostCore.excerpt,
+      });
+    }
 
     // 返回成功响应
     return NextResponse.json(createSuccessResponse(updatedPost, "文章更新成功"), { status: 200 });
@@ -201,6 +213,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     // 获取请求体数据
     const body = await request.json();
+    const beforePost = await postService.getPostById(postId, false);
 
     // 验证更新数据
     if (body.status && !["draft", "published", "archived"].includes(body.status)) {
@@ -219,6 +232,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     // 调用服务层更新文章
     const updatedPost = await postService.updatePost(postId, body);
+    const updatedPostCore = (updatedPost as any)?.posts || updatedPost;
+
+    // 从未发布 -> 已发布：触发订阅通知
+    if (beforePost && beforePost.status !== "published" && updatedPostCore.status === "published") {
+      await subscriptionService.notifyOnPostPublished({
+        title: updatedPostCore.title,
+        slug: updatedPostCore.slug,
+        excerpt: updatedPostCore.excerpt,
+      });
+    }
 
     // 返回成功响应
     return NextResponse.json(createSuccessResponse(updatedPost, "文章更新成功"), { status: 200 });
