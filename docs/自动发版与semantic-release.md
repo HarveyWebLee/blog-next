@@ -40,13 +40,14 @@ pnpm run release:dry-run
 
 ## 配置位置
 
-| 文件                            | 作用                                                                     |
-| ------------------------------- | ------------------------------------------------------------------------ |
-| `release.config.cjs`            | semantic-release 插件链（changelog、npm 仅改 version、github、git 回推） |
-| `.github/workflows/release.yml` | CI：pnpm 安装依赖后执行 `semantic-release`                               |
+| 文件                            | 作用                                                                                                    |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `release.config.cjs`            | semantic-release 插件链（含 changelog、`exec` 对 CHANGELOG/package.json 跑 Prettier、npm、github、git） |
+| `.github/workflows/release.yml` | CI：安装依赖后执行 `semantic-release`；该步骤带 **`HUSKY=0`** 与 **`GITHUB_TOKEN`**                     |
 
 ## 权限与排错
 
+- **Husky / Prettier**：发布流程在 **`git commit`** 阶段若启用 husky，会对 **`CHANGELOG.md`** 做 **`format:check`**；changelog 插件默认生成样式与 Prettier 不一致。本仓库在 **`release.config.cjs`** 里用 **`@semantic-release/exec`** 在提交前 **`prettier --write CHANGELOG.md package.json`**，并在 CI 中对 **`semantic-release` 步骤设置 `HUSKY=0`**。
 - **`pnpm/action-setup`**：请勿在工作流里再写 **`version`**，与 `package.json` 的 **`packageManager`** 重复会报错（_Multiple versions of pnpm specified_）；留空 `with` 即可从 `packageManager` 安装对应 pnpm。
 - 默认使用 **`GITHUB_TOKEN`**，工作流已声明 `contents: write`（发版、打 tag、写 Release 需要）。
 - 若 **`main` 受分支保护** 且禁止 GitHub Actions 推送到主分支，需在仓库 **Settings → Actions → General → Workflow permissions** 中允许写入，或为组织策略单独放行；否则 `semantic-release` 在 **git push** 阶段会失败。
