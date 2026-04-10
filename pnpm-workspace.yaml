@@ -1,0 +1,12 @@
+packages:
+  - "."
+
+ignoredBuiltDependencies:
+  - "@parcel/watcher"
+
+onlyBuiltDependencies:
+  - "@heroui/shared-utils"
+  - "@tailwindcss/oxide"
+  - esbuild
+  - sharp
+  - unrs-resolver

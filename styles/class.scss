@@ -1,0 +1,201 @@
+.blog-box-shadow {
+  box-shadow:
+    2px 2px 6px var(--blog-color-bg-start),
+    -2px -2px 6px var(--blog-color-bg-end);
+}
+
+.blog-border-y-box-shadow {
+  box-shadow: 0 4px 6px -1px var(--blog-nav-link-active-color-bg);
+}
+
+.blog-border-x-box-shadow {
+  box-shadow: 0 -2px 13px -2px var(--blog-nav-link-active-color-bg);
+}
+
+/* 渐变文字效果 */
+.gradient-text {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-primary {
+  background: linear-gradient(135deg, var(--heroui-primary) 0%, var(--heroui-secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* 标签卡片特殊效果 */
+.tag-card {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  overflow: hidden;
+  position: relative;
+  transition: all 0.5s;
+}
+
+.tag-card::before {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  content: "";
+  height: 100%;
+  left: -100%;
+  position: absolute;
+  top: 0;
+  transition: left 0.5s;
+  width: 100%;
+}
+
+.tag-card:hover::before {
+  left: 100%;
+}
+
+/* 标签颜色指示器动画 */
+.tag-color-indicator {
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.tag-color-indicator::after {
+  background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  border-radius: 50%;
+  content: "";
+  inset: -2px;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  opacity: 0;
+  padding: 2px;
+  position: absolute;
+  transition: opacity 0.3s ease;
+}
+
+.tag-card:hover .tag-color-indicator::after {
+  opacity: 1;
+}
+
+/* 统计卡片特殊效果 */
+.stat-card {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  overflow: hidden;
+  position: relative;
+  transition: all 0.5s;
+}
+
+.stat-card::before {
+  background: linear-gradient(90deg, var(--heroui-primary), var(--heroui-secondary));
+  content: "";
+  height: 2px;
+  left: 0;
+  opacity: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+  transition: opacity 0.3s ease;
+}
+
+.stat-card:hover::before {
+  opacity: 1;
+}
+
+/* 标签云容器 */
+.tag-cloud-container {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
+  overflow: hidden;
+  padding: 2rem;
+  position: relative;
+}
+
+.tag-cloud-container::before {
+  animation: rotate 20s linear infinite;
+  background: radial-gradient(circle, rgba(var(--heroui-primary), 0.1) 0%, transparent 70%);
+  content: "";
+  height: 200%;
+  left: -50%;
+  pointer-events: none;
+  position: absolute;
+  top: -50%;
+  width: 200%;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 热门标签项效果 */
+.popular-tag-item {
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.popular-tag-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 8px 25px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px) scale(1.02);
+}
+
+.popular-tag-item::before {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  content: "";
+  height: 100%;
+  left: -100%;
+  position: absolute;
+  top: 0;
+  transition: left 0.6s ease;
+  width: 100%;
+}
+
+.popular-tag-item:hover::before {
+  left: 100%;
+}
+
+/* 响应式优化 */
+@media (max-width: 768px) {
+  .tag-card:hover,
+  .popular-tag-item:hover {
+    transform: none;
+  }
+}
+
+/* 减少动画（用户偏好） */
+@media (prefers-reduced-motion: reduce) {
+  .tag-card::before,
+  .popular-tag-item::before,
+  .tag-cloud-container::before {
+    animation: none;
+  }
+
+  .tag-card:hover,
+  .popular-tag-item:hover {
+    transform: none;
+  }
+}
