@@ -47,6 +47,7 @@ pnpm run release:dry-run
 
 ## 权限与排错
 
+- **`pnpm/action-setup`**：请勿在工作流里再写 **`version`**，与 `package.json` 的 **`packageManager`** 重复会报错（_Multiple versions of pnpm specified_）；留空 `with` 即可从 `packageManager` 安装对应 pnpm。
 - 默认使用 **`GITHUB_TOKEN`**，工作流已声明 `contents: write`（发版、打 tag、写 Release 需要）。
 - 若 **`main` 受分支保护** 且禁止 GitHub Actions 推送到主分支，需在仓库 **Settings → Actions → General → Workflow permissions** 中允许写入，或为组织策略单独放行；否则 `semantic-release` 在 **git push** 阶段会失败。
 - 首次发版前若仓库**没有任何 tag**，`semantic-release` 会基于**全部历史提交**计算首个版本；请保证历史中已有合规的 `feat`/`fix` 等，否则可能提示 **no new release**。
