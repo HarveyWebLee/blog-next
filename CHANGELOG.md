@@ -1,3 +1,9 @@
+## [1.1.2](https://github.com/HarveyWebLee/blog-next/compare/v1.1.1...v1.1.2) (2026-04-10)
+
+### Bug Fixes
+
+- **layout:** 在用户导航中添加文章管理功能 ([ff5a649](https://github.com/HarveyWebLee/blog-next/commit/ff5a649a7143f6c0fa880d76c9532d4ab573038e))
+
 ## [1.1.1](https://github.com/HarveyWebLee/blog-next/compare/v1.1.0...v1.1.1) (2026-04-10)
 
 ### Bug Fixes
