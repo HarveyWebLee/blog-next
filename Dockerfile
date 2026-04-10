@@ -3,8 +3,12 @@
 # 通常与 docker-compose 一起使用，见 docs/Docker编排与流水线部署.md
 
 FROM node:22-bookworm-slim AS base
-RUN npm config set registry https://registry.npmmirror.com \
-  && npm install -g pnpm@9
+RUN npm config set fetch-retries 5 \
+  && npm config set fetch-retry-factor 2 \
+  && npm config set fetch-retry-mintimeout 20000 \
+  && npm config set fetch-retry-maxtimeout 120000 \
+  && (npm install -g pnpm@9 --registry=https://registry.npmmirror.com \
+    || npm install -g pnpm@9 --registry=https://registry.npmjs.org)
 WORKDIR /app
 
 FROM base AS deps
