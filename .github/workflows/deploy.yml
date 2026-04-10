@@ -53,6 +53,8 @@ jobs:
             git config --global --add safe.directory "${APP_DIR}"
 
             cd "${APP_DIR}"
+            COMPOSE_FILE="${APP_DIR}/docker-compose.yml"
+            COMPOSE_ENV="${APP_DIR}/deploy/.env.docker"
 
             # 始终对齐远端 main，确保部署内容可追踪、可复现。
             git fetch origin main
@@ -60,21 +62,28 @@ jobs:
             git pull --ff-only origin main
 
             # 1) 先确保依赖服务在线（若已在线会保持不变）
-            docker compose --env-file deploy/.env.docker up -d mysql redis
+            docker compose -f "${COMPOSE_FILE}" --env-file "${COMPOSE_ENV}" up -d mysql redis
 
             # 2) 运行数据库迁移（幂等）
-            docker compose --env-file deploy/.env.docker --profile migrate run --rm db-migrate
+            docker compose -f "${COMPOSE_FILE}" --env-file "${COMPOSE_ENV}" --profile migrate run --rm db-migrate
 
             # 3) 构建并更新应用容器
-            docker compose --env-file deploy/.env.docker up -d --build blog-web
+            docker compose -f "${COMPOSE_FILE}" --env-file "${COMPOSE_ENV}" up -d --build blog-web
 
             # 4) 打印当前服务状态，便于在 GitHub Actions 日志中直接确认部署结果
-            docker compose --env-file deploy/.env.docker ps
+            docker compose -f "${COMPOSE_FILE}" --env-file "${COMPOSE_ENV}" ps
 
-            # 5) 健康校验：确保 blog-web 容器已进入运行态，否则让流水线失败
-            if ! docker compose --env-file deploy/.env.docker ps blog-web | grep -q "Up"; then
+            # 5) 健康校验：确保 blog-web 容器存在且处于运行态，否则让流水线失败
+            cid="$(docker compose -f "${COMPOSE_FILE}" --env-file "${COMPOSE_ENV}" ps -q blog-web)"
+            if [ -z "${cid}" ]; then
+              echo "部署失败：blog-web 容器不存在" >&2
+              docker compose -f "${COMPOSE_FILE}" --env-file "${COMPOSE_ENV}" logs --tail=100 blog-web || true
+              exit 1
+            fi
+
+            if [ "$(docker inspect -f '{{.State.Running}}' "${cid}" 2>/dev/null || echo false)" != "true" ]; then
               echo "部署失败：blog-web 容器未处于运行状态" >&2
-              docker compose --env-file deploy/.env.docker logs --tail=100 blog-web || true
+              docker logs --tail=100 "${cid}" || true
               exit 1
             fi
           EOF
