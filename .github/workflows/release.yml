@@ -38,7 +38,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # HUSKY=0：发布机器人 git commit 不跑 husky（与 release.config 内 exec+Prettier 双保险）
       - name: Run semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HUSKY: "0"
         run: pnpm exec semantic-release

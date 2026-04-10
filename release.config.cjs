@@ -42,6 +42,14 @@ module.exports = {
         npmPublish: false,
       },
     ],
+    // changelog / npm 写入后由 Prettier 统一格式，避免 @semantic-release/git 提交时触发
+    // husky pre-commit → format:check 因 CHANGELOG.md 不符合 Prettier 而失败（CI 无 TTY 亦如此）。
+    [
+      "@semantic-release/exec",
+      {
+        prepareCmd: "pnpm exec prettier --write CHANGELOG.md package.json --ignore-path .prettierignore",
+      },
+    ],
     // 创建 GitHub Release（需 CI 中的 GITHUB_TOKEN）
     [
       "@semantic-release/github",
