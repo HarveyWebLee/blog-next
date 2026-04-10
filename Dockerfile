@@ -3,7 +3,8 @@
 # 通常与 docker-compose 一起使用，见 docs/Docker编排与流水线部署.md
 
 FROM node:22-bookworm-slim AS base
-RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
+RUN npm config set registry https://registry.npmmirror.com \
+  && npm install -g pnpm@9
 WORKDIR /app
 
 FROM base AS deps
