@@ -1,206 +1,219 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# 荒野博客系统快速部署脚本
-# 从零开始部署整个系统
+# =============================================================================
+# 荒野博客：从零拉起依赖并完成 Drizzle 迁移（唯一建表路径）
+# -----------------------------------------------------------------------------
+# - 与 docs/Docker编排与流水线部署.md 一致：使用仓库根目录 docker-compose.yml。
+# - 不使用、也不依赖已移除的 init-db.sql 等「纯 SQL 一次性建库」脚本。
+# - 流程：Compose 启动 mysql + redis → db-migrate 容器执行 pnpm db:migrate →
+#   可选：根据 deploy/.env.docker 同步本机 .env.local（供宿主机 pnpm 连库）→ db:seed。
+#
+# 依赖：Docker（含 compose 插件）、pnpm；在仓库根目录执行：
+#   bash scripts/deploy-from-scratch.sh
+# =============================================================================
 
-set -e  # 遇到错误立即退出
+set -euo pipefail
 
-echo "🚀 荒野博客系统快速部署脚本"
-echo "=================================================="
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+cd "$PROJECT_ROOT"
 
-# 颜色定义
+# 统一带 env 文件的 compose 调用（避免路径写错）
+compose() {
+  docker compose --env-file deploy/.env.docker "$@"
+}
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# 日志函数
 log_info() {
-    echo -e "${BLUE}ℹ️  $1${NC}"
+  echo -e "${BLUE}ℹ️  $1${NC}"
 }
 
 log_success() {
-    echo -e "${GREEN}✅ $1${NC}"
+  echo -e "${GREEN}✅ $1${NC}"
 }
 
 log_warning() {
-    echo -e "${YELLOW}⚠️  $1${NC}"
+  echo -e "${YELLOW}⚠️  $1${NC}"
 }
 
 log_error() {
-    echo -e "${RED}❌ $1${NC}"
+  echo -e "${RED}❌ $1${NC}"
 }
 
-# 检查依赖
+# 跨平台 in-place sed（GNU sed 与 BSD sed）
+sedi() {
+  if sed --version >/dev/null 2>&1; then
+    sed -i "$@"
+  else
+    sed -i '' "$@"
+  fi
+}
+
+# 从 deploy/.env.docker 读取一行 KEY=value（value 中勿含未转义换行）
+get_kv() {
+  local key="$1"
+  local file="deploy/.env.docker"
+  grep -E "^${key}=" "$file" 2>/dev/null | tail -1 | cut -d= -f2- || true
+}
+
 check_dependencies() {
-    log_info "检查系统依赖..."
-    
-    if ! command -v docker &> /dev/null; then
-        log_error "Docker 未安装，请先安装 Docker"
-        exit 1
+  log_info "检查依赖（Docker、Compose、pnpm）…"
+  if ! command -v docker >/dev/null 2>&1; then
+    log_error "未检测到 Docker，请先安装"
+    exit 1
+  fi
+  if ! docker compose version >/dev/null 2>&1; then
+    log_error "需要 Docker Compose v2（命令：docker compose）"
+    exit 1
+  fi
+  if ! command -v pnpm >/dev/null 2>&1; then
+    log_error "未检测到 pnpm，请先安装"
+    exit 1
+  fi
+  log_success "依赖检查通过"
+}
+
+ensure_deploy_env() {
+  if [[ ! -f deploy/.env.docker ]]; then
+    if [[ -f deploy/env.docker.example ]]; then
+      cp deploy/env.docker.example deploy/.env.docker
+      log_error "已生成 deploy/.env.docker，请先编辑其中的密码、JWT 等占位符后再运行本脚本"
+      exit 1
     fi
-    
-    if ! command -v pnpm &> /dev/null; then
-        log_error "pnpm 未安装，请先安装 pnpm"
-        exit 1
+    log_error "缺少 deploy/.env.docker 与 deploy/env.docker.example"
+    exit 1
+  fi
+  # 常见占位符未替换时直接退出，避免用默认弱口令上线
+  if grep -qE '请改为|your_password_here|your_jwt_secret' deploy/.env.docker 2>/dev/null; then
+    log_error "deploy/.env.docker 仍含占位符（请改为… / your_password… 等），请改为真实密钥后再执行"
+    exit 1
+  fi
+}
+
+remove_legacy_standalone_mysql() {
+  # 历史脚本曾用 docker run --name blog-mysql；与 compose 服务容器名冲突时先清理
+  if docker ps -a --format '{{.Names}}' | grep -Fxq blog-mysql; then
+    if ! docker inspect blog-mysql --format '{{index .Config.Labels "com.docker.compose.service"}}' 2>/dev/null | grep -q mysql; then
+      log_warning "发现非 Compose 创建的 blog-mysql 容器，将删除以免与 compose 冲突"
+      docker rm -f blog-mysql 2>/dev/null || true
     fi
-    
-    log_success "依赖检查通过"
+  fi
 }
 
-# 停止现有容器
-stop_existing_containers() {
-    log_info "停止现有MySQL容器..."
-    
-    if docker ps -a | grep -q blog-mysql; then
-        docker stop blog-mysql 2>/dev/null || true
-        docker rm blog-mysql 2>/dev/null || true
-        log_success "现有容器已停止"
-    else
-        log_info "无现有容器需要停止"
-    fi
+compose_up_infra() {
+  log_info "启动 MySQL、Redis（docker compose up）…"
+  # --wait：Compose v2.20+ 等待 healthcheck 通过后再返回
+  if compose up -d --wait mysql redis 2>/dev/null; then
+    log_success "MySQL / Redis 已就绪（--wait）"
+  else
+    log_warning "当前环境不支持或未开启 --wait，改用固定等待时间"
+    compose up -d mysql redis
+    log_info "等待 MySQL 健康检查（最多约 90s）…"
+    local i
+    for i in $(seq 1 45); do
+      if compose ps mysql 2>/dev/null | grep -q healthy; then
+        log_success "MySQL 状态 healthy"
+        break
+      fi
+      sleep 2
+    done
+  fi
 }
 
-# 创建MySQL容器
-create_mysql_container() {
-    log_info "创建MySQL容器..."
-    
-    docker run --name blog-mysql \
-        -e MYSQL_ROOT_PASSWORD=blog123456 \
-        -e MYSQL_DATABASE=blog_system \
-        -e MYSQL_CHARSET=utf8mb4 \
-        -e MYSQL_COLLATION=utf8mb4_unicode_ci \
-        -p 3306:3306 \
-        -v /Users/harveylee/Documents/mysql-data:/var/lib/mysql \
-        -d mysql:8.0
-    
-    log_success "MySQL容器创建成功"
-    
-    # 等待MySQL启动
-    log_info "等待MySQL服务启动..."
-    sleep 10
-    
-    # 检查容器状态
-    if docker ps | grep -q blog-mysql; then
-        log_success "MySQL容器运行正常"
-    else
-        log_error "MySQL容器启动失败"
-        exit 1
-    fi
+run_drizzle_migrate_job() {
+  log_info "执行 Drizzle 迁移（服务 db-migrate，一次性容器）…"
+  compose --profile migrate run --rm db-migrate
+  log_success "Drizzle 迁移完成"
 }
 
-# 配置环境变量
-setup_environment() {
-    log_info "配置环境变量..."
-    
-    if [ ! -f .env.local ]; then
-        cp env.example .env.local
-        log_success "环境变量文件已创建"
-    else
-        log_info "环境变量文件已存在"
-    fi
-    
-    # 更新配置
-    sed -i '' 's/your_password_here/blog123456/g' .env.local
-    sed -i '' 's/your_jwt_secret_key_here/blog_jwt_secret_key_2024/g' .env.local
-    
-    log_success "环境变量配置完成"
+# 将宿主机访问 Compose 暴露端口所需的变量写入 .env.local（便于 pnpm db:seed / test:db:connect）
+sync_host_env_local() {
+  local pub rport dbn duser dpass
+  pub=$(get_kv MYSQL_PUBLISH_PORT)
+  pub=${pub:-13307}
+  rport=$(get_kv REDIS_PUBLISH_PORT)
+  rport=${rport:-16380}
+  dbn=$(get_kv MYSQL_DATABASE)
+  dbn=${dbn:-blog_system}
+  duser=$(get_kv DB_USER)
+  duser=${duser:-root}
+  dpass=$(get_kv DB_PASSWORD)
+  [[ -z "$dpass" ]] && dpass=$(get_kv MYSQL_ROOT_PASSWORD)
+
+  if [[ ! -f .env.local ]]; then
+    cp env.example .env.local
+    log_success "已从 env.example 创建 .env.local"
+  fi
+
+  sedi "s/^DB_HOST=.*/DB_HOST=127.0.0.1/" .env.local
+  sedi "s/^DB_PORT=.*/DB_PORT=${pub}/" .env.local
+  sedi "s/^DB_NAME=.*/DB_NAME=${dbn}/" .env.local
+  sedi "s/^DB_USER=.*/DB_USER=${duser}/" .env.local
+  sedi "s|^REDIS_URL=.*|REDIS_URL=redis://127.0.0.1:${rport}|" .env.local
+
+  # 密码可能含特殊字符，优先用 perl；若无 perl 则提示手工同步
+  if [[ -n "$dpass" ]] && command -v perl >/dev/null 2>&1; then
+    export PERL_DBPASS="$dpass"
+    perl -i -pe 's/^DB_PASSWORD=.*/DB_PASSWORD=$ENV{PERL_DBPASS}/' .env.local
+    unset PERL_DBPASS
+  else
+    log_warning "请确认 .env.local 中 DB_PASSWORD 与 deploy/.env.docker 中数据库密码一致"
+  fi
+
+  log_success "已根据 deploy/.env.docker 同步 .env.local 中的 DB_* 与 REDIS_URL（本机连宿主机端口）"
+  log_info "本地 pnpm dev 仍常用 3000：可按需保留 NEXT_PUBLIC_APP_URL=http://localhost:3000；Compose 站点见 deploy 模板中的 13001"
 }
 
-# 测试数据库连接
-test_database_connection() {
-    log_info "测试数据库连接..."
-    
-    if pnpm test:db:connect; then
-        log_success "数据库连接测试通过"
-    else
-        log_error "数据库连接测试失败"
-        exit 1
-    fi
+run_seed_optional() {
+  log_info "填充种子数据（pnpm db:seed，失败不中断）…"
+  if pnpm db:seed; then
+    log_success "种子数据已写入"
+  else
+    log_warning "db:seed 未完成，可检查 .env.local 后手动执行 pnpm db:seed"
+  fi
 }
 
-# 运行数据库迁移
-run_database_migration() {
-    log_info "运行数据库迁移..."
-    
-    if pnpm db:migrate; then
-        log_success "数据库迁移完成"
-    else
-        log_error "数据库迁移失败"
-        exit 1
-    fi
+print_summary() {
+  local pub rport app_port
+  pub=$(get_kv MYSQL_PUBLISH_PORT)
+  pub=${pub:-13307}
+  rport=$(get_kv REDIS_PUBLISH_PORT)
+  rport=${rport:-16380}
+  app_port=$(get_kv APP_PORT)
+  app_port=${app_port:-13001}
+
+  echo ""
+  log_success "编排与迁移阶段完成"
+  echo "=================================================="
+  echo "📌 建表方式：仅 Drizzle（compose 服务 db-migrate 已执行 pnpm db:migrate）"
+  echo "📌 宿主机端口（默认，以 deploy/.env.docker 为准）："
+  echo "   - MySQL: ${pub}"
+  echo "   - Redis: ${rport}"
+  echo "   - 应用（Compose blog-web）: ${app_port}"
+  echo ""
+  echo "🔧 常用命令："
+  echo "   - 本机开发：pnpm dev → 默认 http://localhost:3000/zh-CN"
+  echo "   - 连库测试：pnpm test:db:connect"
+  echo "   - 仅重跑迁移：pnpm run docker:migrate"
+  echo "   - 完整部署说明：docs/Docker编排与流水线部署.md"
+  echo ""
 }
 
-# 填充测试数据
-seed_database() {
-    log_info "填充测试数据..."
-    
-    if pnpm db:seed; then
-        log_success "测试数据填充完成"
-    else
-        log_warning "测试数据填充可能不完整，但继续执行"
-    fi
-}
-
-# 测试API功能
-test_api() {
-    log_info "测试API功能..."
-    
-    if pnpm test:api; then
-        log_success "API功能测试通过"
-    else
-        log_warning "API功能测试可能不完整，但继续执行"
-    fi
-}
-
-# 启动开发服务器
-start_dev_server() {
-    log_info "启动开发服务器..."
-    
-    log_success "开发服务器启动命令: pnpm dev"
-    log_info "请在另一个终端中运行: pnpm dev"
-    log_info "然后访问: http://localhost:3000/zh-CN"
-}
-
-# 显示部署结果
-show_deployment_result() {
-    echo ""
-    echo "🎉 部署完成！"
-    echo "=================================================="
-    echo "📊 系统状态:"
-    echo "   - MySQL容器: 运行中"
-    echo "   - 数据库: blog_system"
-    echo "   - 表数量: 9个"
-    echo "   - 端口: 3306"
-    echo ""
-    echo "🌐 可访问的URL:"
-    echo "   - 中文首页: http://localhost:3000/zh-CN"
-    echo "   - 英文首页: http://localhost:3000/en-US"
-    echo "   - 日文首页: http://localhost:3000/ja-JP"
-    echo "   - 博客列表: http://localhost:3000/zh-CN/blog"
-    echo ""
-    echo "🔧 常用命令:"
-    echo "   - 启动服务器: pnpm dev"
-    echo "   - 测试数据库: pnpm test:db:connect"
-    echo "   - 测试API: pnpm test:api"
-    echo "   - 查看容器: docker ps | grep blog-mysql"
-    echo ""
-}
-
-# 主函数
 main() {
-    check_dependencies
-    stop_existing_containers
-    create_mysql_container
-    setup_environment
-    test_database_connection
-    run_database_migration
-    seed_database
-    test_api
-    show_deployment_result
-    start_dev_server
+  check_dependencies
+  ensure_deploy_env
+  remove_legacy_standalone_mysql
+  compose_up_infra
+  run_drizzle_migrate_job
+  sync_host_env_local
+  run_seed_optional
+  print_summary
+  log_info "如需跑 API 自测：pnpm test:api（需应用已启动或按测试脚本要求）"
 }
 
-# 执行主函数
 main "$@"

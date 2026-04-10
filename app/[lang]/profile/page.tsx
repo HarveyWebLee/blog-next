@@ -6,7 +6,7 @@ import ProfileLayout from "@/components/profile/profile-layout";
 import ProfileLoading from "@/components/profile/profile-loading";
 import ProfileOverview from "@/components/profile/profile-overview";
 import ProfileStats from "@/components/profile/profile-stats";
-import { getDictionary } from "@/lib/dictionaries";
+import { getDictionaryForLang } from "@/lib/dictionaries";
 import { verifyToken } from "@/lib/utils/auth";
 
 interface ProfilePageProps {
@@ -15,7 +15,7 @@ interface ProfilePageProps {
 
 export default async function ProfilePage({ params }: ProfilePageProps) {
   const { lang } = await params;
-  const dict = await getDictionary(lang);
+  const dict = await getDictionaryForLang(lang);
 
   // 这里应该验证用户身份，暂时跳过
   // const token = await getToken();

@@ -74,12 +74,13 @@ export async function GET(request: NextRequest) {
         id: activity.id,
         userId: activity.userId,
         action: activity.action,
-        description: activity.description,
+        description: activity.description ?? undefined,
         metadata: activity.metadata ? JSON.parse(activity.metadata) : undefined,
-        ipAddress: activity.ipAddress,
-        userAgent: activity.userAgent,
+        ipAddress: activity.ipAddress ?? undefined,
+        userAgent: activity.userAgent ?? undefined,
         createdAt: activity.createdAt,
-        updatedAt: activity.updatedAt,
+        // user_activities 查询行未选 updatedAt 时与 BaseEntity 对齐
+        updatedAt: activity.createdAt,
       })),
       pagination: {
         page,
@@ -156,8 +157,8 @@ export async function POST(request: NextRequest) {
     const ipAddress = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
     const userAgent = request.headers.get("user-agent") || "unknown";
 
-    // 记录活动
-    const newActivity = await db.insert(userActivities).values({
+    // 记录活动（MySQL Drizzle 插入结果为元组，首元素含 insertId，与 register 路由写法一致）
+    const [insertResult] = await db.insert(userActivities).values({
       userId: decoded.userId,
       action,
       description,
@@ -169,7 +170,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json<ApiResponse>(
       {
         success: true,
-        data: { id: newActivity.insertId },
+        data: { id: insertResult.insertId },
         message: "活动记录成功",
         timestamp: new Date().toISOString(),
       },

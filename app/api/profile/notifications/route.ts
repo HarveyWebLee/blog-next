@@ -8,7 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, SQL } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { userNotifications } from "@/lib/db/schema";
@@ -49,15 +49,15 @@ export async function GET(request: NextRequest) {
     const isRead = searchParams.get("isRead");
     const offset = (page - 1) * limit;
 
-    // 构建查询条件
-    let whereConditions = eq(userNotifications.userId, decoded.userId);
+    // 构建查询条件（and() 在部分类型定义下可能为 SQL | undefined，此处用非空断言收窄）
+    let whereConditions: SQL = eq(userNotifications.userId, decoded.userId);
 
     if (type) {
-      whereConditions = and(whereConditions, eq(userNotifications.type, type as any));
+      whereConditions = and(whereConditions, eq(userNotifications.type, type as any))!;
     }
 
-    if (isRead !== null) {
-      whereConditions = and(whereConditions, eq(userNotifications.isRead, isRead === "true"));
+    if (isRead === "true" || isRead === "false") {
+      whereConditions = and(whereConditions, eq(userNotifications.isRead, isRead === "true"))!;
     }
 
     // 获取通知列表
@@ -81,12 +81,12 @@ export async function GET(request: NextRequest) {
         userId: notification.userId,
         type: notification.type,
         title: notification.title,
-        content: notification.content,
+        content: notification.content ?? undefined,
         data: notification.data ? JSON.parse(notification.data) : undefined,
-        isRead: notification.isRead,
-        readAt: notification.readAt,
+        isRead: notification.isRead ?? false,
+        readAt: notification.readAt ?? undefined,
         createdAt: notification.createdAt,
-        updatedAt: notification.updatedAt,
+        updatedAt: notification.createdAt,
       })),
       pagination: {
         page,

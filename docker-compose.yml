@@ -1,0 +1,103 @@
+# 荒野博客：MySQL + Redis + Next.js（生产向编排）
+#
+# 准备：cp deploy/env.docker.example deploy/.env.docker 并修改密钥
+# 启动基础设施：docker compose --env-file deploy/.env.docker up -d mysql redis
+# 执行迁移：docker compose --env-file deploy/.env.docker --profile migrate run --rm db-migrate
+# 启动应用：docker compose --env-file deploy/.env.docker up -d blog-web
+#
+# 流水线建议顺序：build 镜像 → up mysql/redis → migrate → up blog-web
+
+name: blog-next
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: blog-mysql
+    restart: unless-stopped
+    env_file:
+      - deploy/.env.docker
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?请在 deploy/.env.docker 中设置 MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-blog_system}
+    ports:
+      - "${MYSQL_PUBLISH_PORT:-13307}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 45s
+    networks:
+      - blog-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: blog-redis
+    restart: unless-stopped
+    # 默认无密码，仅暴露在 compose 网络内；若需 requirepass，见 deploy/env.docker.example 注释
+    command: redis-server --appendonly yes
+    ports:
+      - "${REDIS_PUBLISH_PORT:-16380}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - blog-net
+
+  # 一次性迁移任务（不随 up -d 默认启动，需 --profile migrate）
+  db-migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.migrate
+    env_file:
+      - deploy/.env.docker
+    environment:
+      # 覆盖 env 模板里可能出现的 localhost，指向 compose 服务名
+      DB_HOST: mysql
+      DB_PORT: "3306"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - blog-net
+    profiles:
+      - migrate
+
+  blog-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: blog-next-web:local
+    container_name: blog-next-app
+    restart: unless-stopped
+    env_file:
+      - deploy/.env.docker
+    environment:
+      NODE_ENV: production
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "${APP_PORT:-13001}:3000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - blog-net
+
+volumes:
+  mysql_data:
+  redis_data:
+
+networks:
+  blog-net:
+    driver: bridge

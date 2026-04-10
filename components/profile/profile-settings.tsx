@@ -303,18 +303,10 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
                     onChange={(e) => handleInputChange("timezone", e.target.value)}
                     startContent={<Clock className="w-4 h-4 text-gray-400" />}
                   >
-                    <SelectItem key="Asia/Shanghai" value="Asia/Shanghai">
-                      北京时间
-                    </SelectItem>
-                    <SelectItem key="America/New_York" value="America/New_York">
-                      纽约时间
-                    </SelectItem>
-                    <SelectItem key="Europe/London" value="Europe/London">
-                      伦敦时间
-                    </SelectItem>
-                    <SelectItem key="Asia/Tokyo" value="Asia/Tokyo">
-                      东京时间
-                    </SelectItem>
+                    <SelectItem key="Asia/Shanghai">北京时间</SelectItem>
+                    <SelectItem key="America/New_York">纽约时间</SelectItem>
+                    <SelectItem key="Europe/London">伦敦时间</SelectItem>
+                    <SelectItem key="Asia/Tokyo">东京时间</SelectItem>
                   </Select>
                   <Select
                     label="语言"
@@ -322,15 +314,9 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
                     selectedKeys={[formData.language]}
                     onChange={(e) => handleInputChange("language", e.target.value)}
                   >
-                    <SelectItem key="zh-CN" value="zh-CN">
-                      简体中文
-                    </SelectItem>
-                    <SelectItem key="en-US" value="en-US">
-                      English
-                    </SelectItem>
-                    <SelectItem key="ja-JP" value="ja-JP">
-                      日本語
-                    </SelectItem>
+                    <SelectItem key="zh-CN">简体中文</SelectItem>
+                    <SelectItem key="en-US">English</SelectItem>
+                    <SelectItem key="ja-JP">日本語</SelectItem>
                   </Select>
                   <Select
                     label="日期格式"
@@ -338,15 +324,9 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
                     selectedKeys={[formData.dateFormat]}
                     onChange={(e) => handleInputChange("dateFormat", e.target.value)}
                   >
-                    <SelectItem key="YYYY-MM-DD" value="YYYY-MM-DD">
-                      2024-01-01
-                    </SelectItem>
-                    <SelectItem key="MM/DD/YYYY" value="MM/DD/YYYY">
-                      01/01/2024
-                    </SelectItem>
-                    <SelectItem key="DD/MM/YYYY" value="DD/MM/YYYY">
-                      01/01/2024
-                    </SelectItem>
+                    <SelectItem key="YYYY-MM-DD">2024-01-01</SelectItem>
+                    <SelectItem key="MM/DD/YYYY">01/01/2024</SelectItem>
+                    <SelectItem key="DD/MM/YYYY">01/01/2024</SelectItem>
                   </Select>
                   <Select
                     label="时间格式"
@@ -354,12 +334,8 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
                     selectedKeys={[formData.timeFormat]}
                     onChange={(e) => handleInputChange("timeFormat", e.target.value)}
                   >
-                    <SelectItem key="24h" value="24h">
-                      24小时制
-                    </SelectItem>
-                    <SelectItem key="12h" value="12h">
-                      12小时制
-                    </SelectItem>
+                    <SelectItem key="24h">24小时制</SelectItem>
+                    <SelectItem key="12h">12小时制</SelectItem>
                   </Select>
                   <Select
                     label="主题"
@@ -369,15 +345,9 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
                     startContent={<Palette className="w-4 h-4 text-gray-400" />}
                     className="md:col-span-2"
                   >
-                    <SelectItem key="light" value="light">
-                      浅色主题
-                    </SelectItem>
-                    <SelectItem key="dark" value="dark">
-                      深色主题
-                    </SelectItem>
-                    <SelectItem key="system" value="system">
-                      跟随系统
-                    </SelectItem>
+                    <SelectItem key="light">浅色主题</SelectItem>
+                    <SelectItem key="dark">深色主题</SelectItem>
+                    <SelectItem key="system">跟随系统</SelectItem>
                   </Select>
                 </div>
               </CardBody>
@@ -481,15 +451,9 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
                       selectedKeys={[formData.profileVisibility]}
                       onChange={(e) => handleInputChange("profileVisibility", e.target.value)}
                     >
-                      <SelectItem key="public" value="public">
-                        公开
-                      </SelectItem>
-                      <SelectItem key="private" value="private">
-                        仅自己
-                      </SelectItem>
-                      <SelectItem key="friends" value="friends">
-                        仅关注者
-                      </SelectItem>
+                      <SelectItem key="public">公开</SelectItem>
+                      <SelectItem key="private">仅自己</SelectItem>
+                      <SelectItem key="friends">仅关注者</SelectItem>
                     </Select>
                   </div>
                   <div>
@@ -499,15 +463,9 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
                       selectedKeys={[formData.emailVisibility]}
                       onChange={(e) => handleInputChange("emailVisibility", e.target.value)}
                     >
-                      <SelectItem key="public" value="public">
-                        公开
-                      </SelectItem>
-                      <SelectItem key="private" value="private">
-                        仅自己
-                      </SelectItem>
-                      <SelectItem key="friends" value="friends">
-                        仅关注者
-                      </SelectItem>
+                      <SelectItem key="public">公开</SelectItem>
+                      <SelectItem key="private">仅自己</SelectItem>
+                      <SelectItem key="friends">仅关注者</SelectItem>
                     </Select>
                   </div>
                   <div>
@@ -517,15 +475,9 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
                       selectedKeys={[formData.activityVisibility]}
                       onChange={(e) => handleInputChange("activityVisibility", e.target.value)}
                     >
-                      <SelectItem key="public" value="public">
-                        公开
-                      </SelectItem>
-                      <SelectItem key="private" value="private">
-                        仅自己
-                      </SelectItem>
-                      <SelectItem key="friends" value="friends">
-                        仅关注者
-                      </SelectItem>
+                      <SelectItem key="public">公开</SelectItem>
+                      <SelectItem key="private">仅自己</SelectItem>
+                      <SelectItem key="friends">仅关注者</SelectItem>
                     </Select>
                   </div>
                 </div>

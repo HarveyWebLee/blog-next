@@ -34,9 +34,13 @@ next-env.d.ts
 
 bun.lockb
 
-# Drizzle ORM
-/drizzle
+# Drizzle ORM：迁移目录需纳入版本，供 `pnpm db:migrate` / Docker `db-migrate` 使用
+# 其他路径下 *.sql 仍忽略（如临时导出）；若你有需提交的根目录 SQL，请改为更精确规则
 *.sql
+!drizzle/**/*.sql
 
 .backups
 .env.local
+
+# Docker Compose 本地密钥（从 deploy/env.docker.example 复制）
+deploy/.env.docker

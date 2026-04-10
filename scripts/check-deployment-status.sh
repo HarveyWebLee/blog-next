@@ -1,200 +1,182 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# 荒野博客系统部署状态检查脚本
+# =============================================================================
+# 检查本机/开发环境：Compose 中的 MySQL、.env、数据库连通、Drizzle 表是否齐全
+# -----------------------------------------------------------------------------
+# 与 scripts/deploy-from-scratch.sh 一致：依赖 docker compose + Drizzle 迁移，
+# 不假设「导入 init-db.sql」类流程。
+# =============================================================================
 
-set -e
+set -euo pipefail
 
-echo "🔍 荒野博客系统部署状态检查"
-echo "=================================================="
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+cd "$PROJECT_ROOT"
 
-# 颜色定义
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# 日志函数
 log_info() {
-    echo -e "${BLUE}ℹ️  $1${NC}"
+  echo -e "${BLUE}ℹ️  $1${NC}"
 }
 
 log_success() {
-    echo -e "${GREEN}✅ $1${NC}"
+  echo -e "${GREEN}✅ $1${NC}"
 }
 
 log_warning() {
-    echo -e "${YELLOW}⚠️  $1${NC}"
+  echo -e "${YELLOW}⚠️  $1${NC}"
 }
 
 log_error() {
-    echo -e "${RED}❌ $1${NC}"
+  echo -e "${RED}❌ $1${NC}"
 }
 
-# 检查Docker容器状态
-check_docker_container() {
-    log_info "检查Docker容器状态..."
-    
-    if docker ps | grep -q blog-mysql; then
-        log_success "MySQL容器正在运行"
-        
-        # 显示容器信息
-        echo "   容器信息:"
-        docker ps | grep blog-mysql | awk '{print "   - 容器ID: " $1 "\n   - 状态: " $7 "\n   - 端口: " $6}'
-    else
-        log_error "MySQL容器未运行"
-        return 1
+# Drizzle 迁移完成后业务表数量级（SHOW TABLES 还会含 __drizzle_migrations 等，略高于纯业务表数）
+MIN_EXPECTED_TABLES=10
+
+compose_ps_mysql_line() {
+  if [[ -f deploy/.env.docker ]]; then
+    docker compose --env-file deploy/.env.docker ps mysql 2>/dev/null || true
+  fi
+}
+
+check_docker_mysql() {
+  log_info "检查 MySQL 容器（优先 docker compose）…"
+
+  if [[ -f deploy/.env.docker ]] && compose_ps_mysql_line | grep -q 'blog-mysql\|mysql'; then
+    if compose_ps_mysql_line | grep -q 'Up'; then
+      log_success "Compose 服务 mysql 容器在运行"
+      compose_ps_mysql_line | head -5
+      return 0
     fi
+  fi
+
+  if docker ps --format '{{.Names}}' | grep -Fxq blog-mysql; then
+    log_success "发现运行中的 blog-mysql 容器"
+    docker ps | grep blog-mysql || true
+    return 0
+  fi
+
+  log_error "未检测到运行中的 MySQL 容器（可先：docker compose --env-file deploy/.env.docker up -d mysql redis）"
+  return 1
 }
 
-# 检查数据库连接
 check_database_connection() {
-    log_info "检查数据库连接..."
-    
-    if pnpm test:db:connect > /dev/null 2>&1; then
-        log_success "数据库连接正常"
-    else
-        log_error "数据库连接失败"
-        return 1
-    fi
+  log_info "检查数据库连接（pnpm test:db:connect）…"
+
+  if pnpm test:db:connect > /dev/null 2>&1; then
+    log_success "数据库连接正常"
+  else
+    log_error "数据库连接失败（确认 .env.local 中 DB_HOST/DB_PORT 与 Compose 暴露端口一致）"
+    return 1
+  fi
 }
 
-# 检查环境变量
 check_environment() {
-    log_info "检查环境变量配置..."
-    
-    if [ -f .env.local ]; then
-        log_success "环境变量文件存在"
-        
-        # 检查关键配置
-        if grep -q "DB_PASSWORD=blog123456" .env.local; then
-            log_success "数据库密码配置正确"
-        else
-            log_warning "数据库密码配置可能不正确"
-        fi
-        
-        if grep -q "JWT_SECRET=blog_jwt_secret_key_2024" .env.local; then
-            log_success "JWT密钥配置正确"
-        else
-            log_warning "JWT密钥配置可能不正确"
-        fi
-    else
-        log_error "环境变量文件不存在"
-        return 1
-    fi
+  log_info "检查 .env.local…"
+
+  if [[ -f .env.local ]]; then
+    log_success "存在 .env.local"
+  else
+    log_error "缺少 .env.local（可 env.example 复制后按 deploy/.env.docker 填库端口与密码）"
+    return 1
+  fi
 }
 
-# 检查数据库表
+# 从 test:db:connect 输出解析「表数量: N」
+parse_table_count() {
+  pnpm test:db:connect 2>/dev/null | grep "表数量" | sed -E 's/.*表数量: *([0-9]+).*/\1/' | head -1
+}
+
 check_database_tables() {
-    log_info "检查数据库表结构..."
-    
-    # 运行数据库测试并提取表信息
-    local result=$(pnpm test:db:connect 2>/dev/null | grep "表数量" || echo "0")
-    
-    if [[ $result == *"9"* ]]; then
-        log_success "数据库表结构完整 (9个表)"
-    else
-        log_warning "数据库表结构可能不完整"
-    fi
+  log_info "检查表数量（应已执行 Drizzle 迁移）…"
+
+  local count
+  count=$(parse_table_count || echo "0")
+  # 排除非数字
+  if ! [[ "$count" =~ ^[0-9]+$ ]]; then
+    count=0
+  fi
+
+  if [[ "$count" -ge $MIN_EXPECTED_TABLES ]]; then
+    log_success "当前约有 ${count} 张表（>= ${MIN_EXPECTED_TABLES}，可认为已跑过迁移）"
+  elif [[ "$count" -gt 0 ]]; then
+    log_warning "表数量偏少（${count}），若为新库请执行：pnpm run docker:migrate 或 pnpm db:migrate"
+  else
+    log_warning "未能解析表数量或库为空，请执行 Drizzle 迁移后再试"
+  fi
 }
 
-# 检查API端点
 check_api_endpoints() {
-    log_info "检查API端点..."
-    
-    # 检查开发服务器是否运行
-    if curl -s http://localhost:3000/api/test-db > /dev/null 2>&1; then
-        log_success "API端点可访问"
-    else
-        log_warning "API端点不可访问 (开发服务器可能未启动)"
-    fi
+  log_info "检查 /api/test-db（需有进程监听）…"
+
+  if curl -sf http://localhost:3000/api/test-db > /dev/null 2>&1; then
+    log_success "http://localhost:3000/api/test-db 可访问（pnpm dev 默认端口）"
+  else
+    log_warning "3000 端口无响应或未启动 dev（Compose 应用默认见 13001）"
+  fi
 }
 
-# 检查前端页面
 check_frontend_pages() {
-    log_info "检查前端页面..."
-    
-    # 检查首页
-    if curl -s http://localhost:3000/zh-CN > /dev/null 2>&1; then
-        log_success "前端页面可访问"
-    else
-        log_warning "前端页面不可访问 (开发服务器可能未启动)"
-    fi
+  log_info "检查前台首页…"
+
+  if curl -sf http://localhost:3000/zh-CN > /dev/null 2>&1; then
+    log_success "http://localhost:3000/zh-CN 可访问"
+  else
+    log_warning "首页不可访问（可能未执行 pnpm dev）"
+  fi
 }
 
-# 显示系统信息
 show_system_info() {
-    echo ""
-    echo "📊 系统信息:"
-    echo "=================================================="
-    
-    # Docker信息
-    echo "🐳 Docker容器:"
-    if docker ps | grep -q blog-mysql; then
-        docker ps | grep blog-mysql | awk '{print "   - 容器ID: " $1 "\n   - 镜像: " $2 "\n   - 状态: " $7 "\n   - 端口: " $6}'
-    else
-        echo "   - 状态: 未运行"
-    fi
-    
-    echo ""
-    echo "🗄️ 数据库信息:"
-    if pnpm test:db:connect > /dev/null 2>&1; then
-        local version=$(pnpm test:db:connect 2>/dev/null | grep "数据库版本" | awk '{print $3}' || echo "未知")
-        local tables=$(pnpm test:db:connect 2>/dev/null | grep "表数量" | awk '{print $3}' || echo "0")
-        echo "   - 版本: MySQL $version"
-        echo "   - 数据库: blog_system"
-        echo "   - 表数量: $tables"
-    else
-        echo "   - 状态: 连接失败"
-    fi
-    
-    echo ""
-    echo "🌐 可访问的URL:"
-    echo "   - 中文首页: http://localhost:3000/zh-CN"
-    echo "   - 英文首页: http://localhost:3000/en-US"
-    echo "   - 日文首页: http://localhost:3000/ja-JP"
-    echo "   - 博客列表: http://localhost:3000/zh-CN/blog"
-    echo "   - 分类页面: http://localhost:3000/zh-CN/categories"
-    echo "   - 标签页面: http://localhost:3000/zh-CN/tags"
-    echo "   - 关于页面: http://localhost:3000/zh-CN/about"
-    
-    echo ""
-    echo "🔧 常用命令:"
-    echo "   - 启动服务器: pnpm dev"
-    echo "   - 测试数据库: pnpm test:db:connect"
-    echo "   - 测试API: pnpm test:api"
-    echo "   - 查看容器: docker ps | grep blog-mysql"
-    echo "   - 查看日志: docker logs blog-mysql"
-    echo "   - 停止容器: docker stop blog-mysql"
-    echo "   - 启动容器: docker start blog-mysql"
+  echo ""
+  echo "📊 摘要"
+  echo "=================================================="
+  echo "🐳 MySQL 容器:"
+  if [[ -f deploy/.env.docker ]]; then
+    compose_ps_mysql_line | head -3 || echo "   （compose 未运行）"
+  else
+    docker ps | grep blog-mysql || echo "   未运行"
+  fi
+
+  echo ""
+  echo "🗄️ 数据库（pnpm test:db:connect）:"
+  if pnpm test:db:connect > /dev/null 2>&1; then
+    pnpm test:db:connect 2>/dev/null | grep -E "数据库版本|表数量" || true
+  else
+    echo "   连接失败"
+  fi
+
+  echo ""
+  echo "🌐 URL 提示："
+  echo "   - pnpm dev: http://localhost:3000/zh-CN"
+  echo "   - Compose blog-web（默认）: 见 deploy/.env.docker APP_PORT（如 13001）"
+  echo ""
+  echo "🔧 文档：docs/Docker编排与流水线部署.md"
+  echo "🔧 从零脚本：bash scripts/deploy-from-scratch.sh"
 }
 
-# 主函数
 main() {
-    local all_checks_passed=true
-    
-    # 执行各项检查
-    check_docker_container || all_checks_passed=false
-    check_environment || all_checks_passed=false
-    check_database_connection || all_checks_passed=false
-    check_database_tables || all_checks_passed=false
-    check_api_endpoints || all_checks_passed=false
-    check_frontend_pages || all_checks_passed=false
-    
-    # 显示系统信息
-    show_system_info
-    
-    # 显示最终结果
-    echo ""
-    if [ "$all_checks_passed" = true ]; then
-        log_success "所有检查通过！系统运行正常 🎉"
-    else
-        log_warning "部分检查未通过，请检查上述信息"
-    fi
-    
-    echo ""
-    echo "📝 如需重新部署，请运行: ./scripts/deploy-from-scratch.sh"
+  local ok=true
+
+  check_docker_mysql || ok=false
+  check_environment || ok=false
+  check_database_connection || ok=false
+  check_database_tables || true
+  check_api_endpoints || true
+  check_frontend_pages || true
+
+  show_system_info
+
+  echo ""
+  if [[ "$ok" == true ]]; then
+    log_success "核心检查通过"
+  else
+    log_warning "部分检查未通过，请根据上文提示处理"
+  fi
 }
 
-# 执行主函数
 main "$@"

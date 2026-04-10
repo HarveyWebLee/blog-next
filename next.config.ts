@@ -1,12 +1,22 @@
 import type { NextConfig } from "next";
 
+// standalone 在 Windows 上常因 pnpm symlink 触发 EPERM；Docker/Linux 构建时通过 NEXT_STANDALONE=true 开启（见 Dockerfile）
+const useStandalone = process.env.NEXT_STANDALONE === "true";
+
 const nextConfig: NextConfig = {
+  ...(useStandalone ? { output: "standalone" as const } : {}),
   images: {
     remotePatterns: [
       {
         protocol: "http",
         hostname: "localhost",
         port: "3000",
+        pathname: "/**",
+      },
+      {
+        protocol: "http",
+        hostname: "localhost",
+        port: "13001",
         pathname: "/**",
       },
       {

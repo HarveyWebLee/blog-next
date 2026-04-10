@@ -107,8 +107,13 @@ async function testDatabaseConnection(env: Record<string, string>) {
       console.log("   2. 确保用户有访问该数据库的权限");
     } else if (error.code === "ER_BAD_DB_ERROR") {
       console.log("\n💡 解决建议:");
-      console.log("   1. 数据库不存在，请先创建数据库");
-      console.log("   2. 运行: CREATE DATABASE blog_system;");
+      console.log(
+        "   1. 使用 Docker Compose 时：确认 deploy/.env.docker 中 MYSQL_DATABASE 与 .env.local 中 DB_NAME 一致（compose 会自动建空库）"
+      );
+      console.log(
+        "   2. 若手动维护 MySQL：先创建空库（如 CREATE DATABASE blog_system;），再执行唯一建表流程：pnpm db:migrate 或 pnpm run docker:migrate（勿使用已移除的 init-db.sql）"
+      );
+      console.log("   3. 说明见 docs/Docker编排与流水线部署.md");
     }
 
     return false;

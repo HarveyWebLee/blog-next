@@ -307,8 +307,12 @@ export default function ProfilePosts({ lang }: ProfilePostsProps) {
 
                       {/* 状态标签 */}
                       <div className="flex items-center space-x-2">
-                        <Badge content={post.status} color={statusColors[post.status]} variant="flat" />
-                        <Badge content={post.visibility} color={visibilityColors[post.visibility]} variant="flat" />
+                        <Badge color={statusColors[post.status]} variant="flat">
+                          {post.status}
+                        </Badge>
+                        <Badge color={visibilityColors[post.visibility]} variant="flat">
+                          {post.visibility}
+                        </Badge>
                       </div>
                     </div>
 
