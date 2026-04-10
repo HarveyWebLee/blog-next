@@ -76,7 +76,7 @@ jobs:
 
             # 2) 运行数据库迁移（幂等）
             echo "[DEPLOY] step2: run db migrations"
-            if timeout 300 dc --profile migrate run --rm -T --no-deps db-migrate < /dev/null; then
+            if timeout 300 docker compose -f "${COMPOSE_FILE}" --env-file "${COMPOSE_ENV}" --profile migrate run --rm -T --no-deps db-migrate < /dev/null; then
               echo "[DEPLOY] step2 migrate exit code: 0"
             else
               migrate_exit_code=$?
