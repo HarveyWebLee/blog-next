@@ -44,9 +44,17 @@ cp deploy/env.docker.example deploy/.env.docker
 
 **勿将 `deploy/.env.docker` 提交到 Git**（已在 `.gitignore` 中）。
 
-## 3. 数据库迁移目录
+## 3. 数据库迁移目录（关键）
 
-`Dockerfile.migrate` 会 **`COPY drizzle ./drizzle`**。请保证仓库中存在 **`drizzle/` 下迁移 SQL**（开发机可执行 `pnpm db:generate`）。
+`Dockerfile.migrate` 会 **`COPY drizzle ./drizzle`**，因此仓库必须存在并提交 **`drizzle/`** 迁移目录。
+
+请按以下原则执行：
+
+- **只在两种场景执行 `pnpm db:generate`**：
+  1. 仓库首次没有 `drizzle/`；
+  2. `lib/db/schema.ts` 发生变更，需要产出新迁移。
+- **日常部署不需要每次 generate**：有迁移文件时直接 `db-migrate` 即可。
+- 团队约定：**改 schema 必须同时提交 `drizzle/*.sql`**，否则 CI/目标机构建 `db-migrate` 会因缺少目录失败。
 
 ## 4. 启动顺序
 
@@ -95,12 +103,12 @@ docker compose --env-file deploy/.env.docker up -d --build blog-web
 
 ## 9. 常见问题
 
-| 现象                                   | 处理                                                                             |
-| -------------------------------------- | -------------------------------------------------------------------------------- |
-| `db-migrate` 报找不到迁移              | 确认 `drizzle/` 已提交或已挂载；本地 `pnpm db:generate` / `pnpm db:migrate` 验证 |
-| 应用连不上数据库                       | 检查 `depends_on` 与 MySQL **healthy**；确认 `DB_*` 与 MySQL 一致                |
-| Compose 提示缺少 `MYSQL_ROOT_PASSWORD` | 使用 `docker compose --env-file deploy/.env.docker`，且文件内已赋值              |
-| 宿主机连 MySQL                         | `127.0.0.1:13307`（默认），用户/库见 `.env.docker`                               |
+| 现象                                   | 处理                                                                                                                                                                             |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `db-migrate` 报找不到迁移              | 若日志含 `COPY drizzle ./drizzle ... "/drizzle": not found`：先 `pnpm db:generate` 生成并提交 `drizzle/*.sql`，再重跑 `docker compose ... --profile migrate run --rm db-migrate` |
+| 应用连不上数据库                       | 检查 `depends_on` 与 MySQL **healthy**；确认 `DB_*` 与 MySQL 一致                                                                                                                |
+| Compose 提示缺少 `MYSQL_ROOT_PASSWORD` | 使用 `docker compose --env-file deploy/.env.docker`，且文件内已赋值                                                                                                              |
+| 宿主机连 MySQL                         | `127.0.0.1:13307`（默认），用户/库见 `.env.docker`                                                                                                                               |
 
 ---
 
