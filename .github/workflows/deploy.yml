@@ -70,7 +70,14 @@ jobs:
 
             # 2) 运行数据库迁移（幂等）
             echo "[DEPLOY] step2: run db migrations"
-            docker compose -f "${COMPOSE_FILE}" --env-file "${COMPOSE_ENV}" --profile migrate run --rm db-migrate
+            timeout 300 docker compose -f "${COMPOSE_FILE}" --env-file "${COMPOSE_ENV}" --profile migrate run --rm -T --no-deps db-migrate
+            migrate_exit_code=$?
+            echo "[DEPLOY] step2 migrate exit code: ${migrate_exit_code}"
+            if [ "${migrate_exit_code}" -ne 0 ]; then
+              echo "部署失败：数据库迁移步骤执行异常" >&2
+              docker compose -f "${COMPOSE_FILE}" --env-file "${COMPOSE_ENV}" --profile migrate logs --tail=100 db-migrate || true
+              exit "${migrate_exit_code}"
+            fi
             echo "[DEPLOY] step2 done"
 
             # 3) 构建并更新应用容器
