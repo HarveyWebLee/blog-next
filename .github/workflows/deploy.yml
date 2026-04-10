@@ -6,15 +6,17 @@ on:
       - main
 
 # 避免同一分支多次推送导致并发部署互相覆盖：
-# 新部署到来时会取消正在进行中的旧部署任务。
+# 新部署到来时采用排队执行，避免拉取/构建镜像进行到一半被中断。
 concurrency:
   group: deploy-main
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # 部署步骤包含远程拉取镜像、构建与迁移，网络慢时可能超过 30 分钟。
+    # 适当放宽超时，避免正常部署被误判为超时。
+    timeout-minutes: 60
     env:
       # 目标服务器中的项目目录。
       # 如需修改部署目录，只需改这里即可。
