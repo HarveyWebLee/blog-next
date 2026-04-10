@@ -71,7 +71,7 @@ export function Header({ lang }: HeaderProps) {
 
       {/* 右侧操作区 */}
       <div className="flex items-center space-x-2">
-        <SearchBar />
+        <SearchBar lang={lang} />
         <LanguageSwitcher />
         <ThemeToggle />
         <UserNav />

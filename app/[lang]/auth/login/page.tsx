@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Button, Form, Input } from "@heroui/react";
 import { ArrowLeftIcon, Eye, EyeOff, Lock, Mail } from "lucide-react";
@@ -12,6 +12,80 @@ import { LoginRequest } from "@/types/blog";
 
 export default function LoginPage() {
   const router = useRouter();
+  const params = useParams<{ lang: string }>();
+  const lang = params.lang || "zh-CN";
+  const t =
+    lang === "en-US"
+      ? {
+          backHome: "Back Home",
+          welcome: "Welcome to Wilderness",
+          subtitle: "Please sign in to your account",
+          usernameLabel: "Username or Email",
+          usernamePlaceholder: "Enter username or email",
+          usernameRequired: "Username or email is required",
+          passwordLabel: "Password",
+          passwordPlaceholder: "Enter password",
+          passwordRequired: "Password is required",
+          passwordMin: "Password must be at least 6 characters",
+          hidePassword: "Hide password",
+          showPassword: "Show password",
+          forgot: "Forgot password?",
+          loggingIn: "Signing in...",
+          login: "Sign In",
+          noAccount: "No account yet?",
+          registerNow: "Register now",
+          agreementPrefix: "By signing in, you agree to our ",
+          terms: "Terms",
+          and: " and ",
+          privacy: "Privacy Policy",
+        }
+      : lang === "ja-JP"
+        ? {
+            backHome: "ホームへ戻る",
+            welcome: "荒野へようこそ",
+            subtitle: "アカウントにログインしてください",
+            usernameLabel: "ユーザー名またはメール",
+            usernamePlaceholder: "ユーザー名またはメールを入力",
+            usernameRequired: "ユーザー名またはメールは必須です",
+            passwordLabel: "パスワード",
+            passwordPlaceholder: "パスワードを入力",
+            passwordRequired: "パスワードは必須です",
+            passwordMin: "パスワードは6文字以上必要です",
+            hidePassword: "パスワードを隠す",
+            showPassword: "パスワードを表示",
+            forgot: "パスワードを忘れた？",
+            loggingIn: "ログイン中...",
+            login: "ログイン",
+            noAccount: "アカウントをお持ちでないですか？",
+            registerNow: "今すぐ登録",
+            agreementPrefix: "ログインすることで、",
+            terms: "利用規約",
+            and: "と",
+            privacy: "プライバシーポリシー",
+          }
+        : {
+            backHome: "返回首页",
+            welcome: "欢迎来到荒野",
+            subtitle: "请登录您的账户",
+            usernameLabel: "用户名或邮箱",
+            usernamePlaceholder: "请输入用户名或邮箱",
+            usernameRequired: "用户名或邮箱不能为空",
+            passwordLabel: "密码",
+            passwordPlaceholder: "请输入密码",
+            passwordRequired: "密码不能为空",
+            passwordMin: "密码长度至少6位",
+            hidePassword: "隐藏密码",
+            showPassword: "显示密码",
+            forgot: "忘记密码？",
+            loggingIn: "登录中...",
+            login: "登录",
+            noAccount: "还没有账户？",
+            registerNow: "立即注册",
+            agreementPrefix: "登录即表示您同意我们的",
+            terms: "服务条款",
+            and: "和",
+            privacy: "隐私政策",
+          };
   const { login, isLoading } = useAuth();
 
   const [showPassword, setShowPassword] = useState(false);
@@ -27,7 +101,7 @@ export default function LoginPage() {
       const result = await login(data as unknown as LoginRequest);
       if (result.success) {
         // 登录成功，跳转到首页或之前访问的页面
-        const returnUrl = new URLSearchParams(window.location.search).get("returnUrl") || "/";
+        const returnUrl = new URLSearchParams(window.location.search).get("returnUrl") || `/${lang}`;
         router.push(returnUrl);
       } else {
       }
@@ -43,11 +117,11 @@ export default function LoginPage() {
         {/* 返回按钮 */}
         <div className="mb-6">
           <Link
-            href="/"
+            href={`/${lang}`}
             className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 transition-colors"
           >
             <Button radius="full" color="warning" variant="light" startContent={<ArrowLeftIcon />}>
-              返回首页
+              {t.backHome}
             </Button>
           </Link>
         </div>
@@ -56,8 +130,8 @@ export default function LoginPage() {
         <Card className="shadow-xl">
           <CardHeader className="text-center pb-2">
             <div className="w-full">
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">欢迎来到荒野</h1>
-              <p className="text-gray-400">请登录您的账户</p>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">{t.welcome}</h1>
+              <p className="text-gray-400">{t.subtitle}</p>
             </div>
           </CardHeader>
 
@@ -67,8 +141,8 @@ export default function LoginPage() {
               <Input
                 name="username"
                 type="text"
-                label={<span className="text-gray-200">用户名或邮箱</span>}
-                placeholder="请输入用户名或邮箱"
+                label={<span className="text-gray-200">{t.usernameLabel}</span>}
+                placeholder={t.usernamePlaceholder}
                 startContent={<Mail className="w-4 h-4 text-gray-200" />}
                 variant="bordered"
                 size="lg"
@@ -80,7 +154,7 @@ export default function LoginPage() {
                 isClearable
                 validate={(value) => {
                   if (!value) {
-                    return "用户名或邮箱不能为空";
+                    return t.usernameRequired;
                   }
 
                   return null;
@@ -92,15 +166,15 @@ export default function LoginPage() {
                 name="password"
                 // errorMessage="密码不能为空"
                 type={showPassword ? "text" : "password"}
-                label={<span className="text-gray-200">密码</span>}
-                placeholder="请输入密码"
+                label={<span className="text-gray-200">{t.passwordLabel}</span>}
+                placeholder={t.passwordPlaceholder}
                 validate={(value) => {
                   if (!value) {
-                    return "密码不能为空";
+                    return t.passwordRequired;
                   }
 
                   if (value.length < 6) {
-                    return "密码长度至少6位";
+                    return t.passwordMin;
                   }
                   return null;
                 }}
@@ -110,7 +184,7 @@ export default function LoginPage() {
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="focus:outline-none"
-                    aria-label={showPassword ? "隐藏密码" : "显示密码"}
+                    aria-label={showPassword ? t.hidePassword : t.showPassword}
                   >
                     {showPassword ? (
                       <EyeOff className="w-4 h-4 text-gray-200" />
@@ -131,10 +205,10 @@ export default function LoginPage() {
               {/* 忘记密码链接 */}
               <div className="w-full flex justify-end">
                 <Link
-                  href="/auth/forgot-password"
+                  href={`/${lang}/auth/forgot-password`}
                   className="text-sm text-blue-600 hover:text-blue-800 transition-colors"
                 >
-                  忘记密码？
+                  {t.forgot}
                 </Link>
               </div>
 
@@ -147,18 +221,18 @@ export default function LoginPage() {
                 isLoading={isSubmitting || isLoading}
                 disabled={isSubmitting || isLoading}
               >
-                {isSubmitting ? "登录中..." : "登录"}
+                {isSubmitting ? t.loggingIn : t.login}
               </Button>
 
               {/* 注册链接 */}
               <div className="w-full text-center">
                 <span className="text-sm">
-                  <span className="text-gray-200">还没有账户？ </span>
+                  <span className="text-gray-200">{t.noAccount} </span>
                   <Link
-                    href="/auth/register"
+                    href={`/${lang}/auth/register`}
                     className="text-blue-600 hover:text-blue-800 font-medium transition-colors"
                   >
-                    立即注册
+                    {t.registerNow}
                   </Link>
                 </span>
               </div>
@@ -169,13 +243,13 @@ export default function LoginPage() {
         {/* 底部信息 */}
         <div className="mt-8 text-center">
           <p className="text-xs text-gray-200">
-            登录即表示您同意我们的{" "}
-            <Link href="/terms" className="text-blue-600 hover:underline">
-              服务条款
+            {t.agreementPrefix}{" "}
+            <Link href={`/${lang}/terms`} className="text-blue-600 hover:underline">
+              {t.terms}
             </Link>{" "}
-            和{" "}
-            <Link href="/privacy" className="text-blue-600 hover:underline">
-              隐私政策
+            {t.and}{" "}
+            <Link href={`/${lang}/privacy`} className="text-blue-600 hover:underline">
+              {t.privacy}
             </Link>
           </p>
         </div>

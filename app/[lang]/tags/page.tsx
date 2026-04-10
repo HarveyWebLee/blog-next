@@ -7,6 +7,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useParams } from "next/navigation";
 import { Badge, Button, Card, CardBody, CardHeader, Chip, Input, Select, SelectItem, Spinner } from "@heroui/react";
 import {
   AlertCircle,
@@ -33,13 +34,152 @@ import {
 
 import { TagCloud } from "@/components/ui/tag-cloud";
 import { useTags } from "@/lib/hooks/useTags";
+import { Locale } from "@/types";
 import { Tag } from "@/types/blog";
+
+const TAG_PAGE_TEXT: Record<
+  Locale,
+  {
+    createdAt: string;
+    viewsSuffix: string;
+    activeTag: string;
+    inactiveTag: string;
+    sortByName: string;
+    sortByPostCount: string;
+    sortByCreatedAt: string;
+    searchTags: string;
+    onlyActive: string;
+    selectSort: string;
+    popularTags: string;
+    postUnit: string;
+    totalTags: string;
+    activeTags: string;
+    totalPosts: string;
+    avgPosts: string;
+    loadFailed: string;
+    retry: string;
+    tagCloud: string;
+    loadingTags: string;
+    emptyTitle: string;
+    emptyDesc: string;
+    refreshPage: string;
+    prevPage: string;
+    nextPage: string;
+    pageInfo: (page: number, totalPages: number) => string;
+    confirmDelete: string;
+  }
+> = {
+  "zh-CN": {
+    createdAt: "创建于",
+    viewsSuffix: "次浏览",
+    activeTag: "活跃标签",
+    inactiveTag: "非活跃标签",
+    sortByName: "按名称排序",
+    sortByPostCount: "按文章数量排序",
+    sortByCreatedAt: "按创建时间排序",
+    searchTags: "搜索标签...",
+    onlyActive: "仅显示活跃",
+    selectSort: "选择排序方式",
+    popularTags: "热门标签",
+    postUnit: "篇文章",
+    totalTags: "总标签数",
+    activeTags: "活跃标签",
+    totalPosts: "总文章数",
+    avgPosts: "平均文章",
+    loadFailed: "加载失败",
+    retry: "重试",
+    tagCloud: "标签云",
+    loadingTags: "加载标签中...",
+    emptyTitle: "未找到标签",
+    emptyDesc: "暂无标签数据，请稍后再试或联系管理员",
+    refreshPage: "刷新页面",
+    prevPage: "上一页",
+    nextPage: "下一页",
+    pageInfo: (page, totalPages) => `第 ${page} 页，共 ${totalPages} 页`,
+    confirmDelete: "确定要删除这个标签吗？",
+  },
+  "en-US": {
+    createdAt: "Created at",
+    viewsSuffix: "views",
+    activeTag: "Active Tag",
+    inactiveTag: "Inactive Tag",
+    sortByName: "Sort by Name",
+    sortByPostCount: "Sort by Post Count",
+    sortByCreatedAt: "Sort by Created Time",
+    searchTags: "Search tags...",
+    onlyActive: "Only active",
+    selectSort: "Select sort method",
+    popularTags: "Popular Tags",
+    postUnit: "posts",
+    totalTags: "Total Tags",
+    activeTags: "Active Tags",
+    totalPosts: "Total Posts",
+    avgPosts: "Avg Posts",
+    loadFailed: "Load failed",
+    retry: "Retry",
+    tagCloud: "Tag Cloud",
+    loadingTags: "Loading tags...",
+    emptyTitle: "No tags found",
+    emptyDesc: "No tag data available, please try again later",
+    refreshPage: "Refresh",
+    prevPage: "Previous",
+    nextPage: "Next",
+    pageInfo: (page, totalPages) => `Page ${page} of ${totalPages}`,
+    confirmDelete: "Are you sure you want to delete this tag?",
+  },
+  "ja-JP": {
+    createdAt: "作成日",
+    viewsSuffix: "閲覧",
+    activeTag: "有効タグ",
+    inactiveTag: "無効タグ",
+    sortByName: "名前順",
+    sortByPostCount: "記事数順",
+    sortByCreatedAt: "作成日時順",
+    searchTags: "タグを検索...",
+    onlyActive: "有効のみ表示",
+    selectSort: "並び順を選択",
+    popularTags: "人気タグ",
+    postUnit: "記事",
+    totalTags: "タグ総数",
+    activeTags: "有効タグ",
+    totalPosts: "記事総数",
+    avgPosts: "平均記事数",
+    loadFailed: "読み込み失敗",
+    retry: "再試行",
+    tagCloud: "タグクラウド",
+    loadingTags: "タグを読み込み中...",
+    emptyTitle: "タグが見つかりません",
+    emptyDesc: "タグデータがありません。後でもう一度お試しください",
+    refreshPage: "再読み込み",
+    prevPage: "前へ",
+    nextPage: "次へ",
+    pageInfo: (page, totalPages) => `${page} / ${totalPages} ページ`,
+    confirmDelete: "このタグを削除してもよろしいですか？",
+  },
+};
+
+const resolveLocale = (lang: string): Locale => {
+  if (lang === "en-US" || lang === "ja-JP") return lang;
+  return "zh-CN";
+};
 
 /**
  * 玻璃态标签卡片组件
  * 展示单个标签的信息和统计，具有玻璃态效果和交互动画
  */
-function TagCard({ tag, index, onDelete }: { tag: Tag; index: number; onDelete?: (id: number) => void }) {
+function TagCard({
+  tag,
+  index,
+  onDelete,
+  locale,
+  t,
+}: {
+  tag: Tag;
+  index: number;
+  onDelete?: (id: number) => void;
+  locale: Locale;
+  t: (typeof TAG_PAGE_TEXT)[Locale];
+}) {
   const [isHovered, setIsHovered] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
 
@@ -114,11 +254,15 @@ function TagCard({ tag, index, onDelete }: { tag: Tag; index: number; onDelete?:
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div className="flex items-center gap-2 text-sm text-default-600">
               <Calendar className="w-4 h-4" />
-              <span>创建于 {new Date(tag.createdAt).toLocaleDateString("zh-CN")}</span>
+              <span>
+                {t.createdAt} {new Date(tag.createdAt).toLocaleDateString(locale)}
+              </span>
             </div>
             <div className="flex items-center gap-2 text-sm text-default-600">
               <Eye className="w-4 h-4" />
-              <span>{Math.floor(Math.random() * 1000)} 次浏览</span>
+              <span>
+                {Math.floor(Math.random() * 1000)} {t.viewsSuffix}
+              </span>
             </div>
           </div>
 
@@ -157,7 +301,7 @@ function TagCard({ tag, index, onDelete }: { tag: Tag; index: number; onDelete?:
 
             <div className="flex items-center gap-1 text-xs text-default-500">
               <Zap className="w-3 h-3" />
-              <span>{tag.isActive ? "活跃标签" : "非活跃标签"}</span>
+              <span>{tag.isActive ? t.activeTag : t.inactiveTag}</span>
             </div>
           </div>
 
@@ -187,6 +331,7 @@ function SearchAndFilter({
   onViewModeChange,
   loading,
   onRefresh,
+  t,
 }: {
   searchQuery: string;
   onSearchChange: (query: string) => void;
@@ -200,11 +345,12 @@ function SearchAndFilter({
   onViewModeChange: (mode: "grid" | "list") => void;
   loading: boolean;
   onRefresh: () => void;
+  t: (typeof TAG_PAGE_TEXT)[Locale];
 }) {
   const sortOptions = [
-    { key: "name", label: "按名称排序", icon: TagIcon },
-    { key: "postCount", label: "按文章数量排序", icon: BarChart3 },
-    { key: "createdAt", label: "按创建时间排序", icon: Calendar },
+    { key: "name", label: t.sortByName, icon: TagIcon },
+    { key: "postCount", label: t.sortByPostCount, icon: BarChart3 },
+    { key: "createdAt", label: t.sortByCreatedAt, icon: Calendar },
   ];
 
   return (
@@ -214,7 +360,7 @@ function SearchAndFilter({
           {/* 搜索输入框 */}
           <div className="relative">
             <Input
-              placeholder="搜索标签..."
+              placeholder={t.searchTags}
               value={searchQuery}
               onValueChange={onSearchChange}
               startContent={<Search className="w-5 h-5 text-default-400" />}
@@ -245,7 +391,7 @@ function SearchAndFilter({
                 startContent={<Filter className="w-4 h-4" />}
                 className="backdrop-blur-xl bg-white/10 dark:bg-black/10 hover:bg-white/20 dark:hover:bg-black/20"
               >
-                仅显示活跃
+                {t.onlyActive}
               </Button>
               <Button
                 size="sm"
@@ -263,7 +409,7 @@ function SearchAndFilter({
             <div className="flex items-center gap-3 flex-1">
               <Select
                 size="sm"
-                placeholder="选择排序方式"
+                placeholder={t.selectSort}
                 selectedKeys={new Set([sortBy])}
                 onSelectionChange={(keys) => onSortChange(Array.from(keys)[0] as string)}
                 className="max-w-xs"
@@ -325,7 +471,7 @@ function SearchAndFilter({
 /**
  * 热门标签组件 - 玻璃态版本
  */
-function PopularTags({ tags }: { tags: Tag[] }) {
+function PopularTags({ tags, t }: { tags: Tag[]; t: (typeof TAG_PAGE_TEXT)[Locale] }) {
   const popularTags = tags
     .filter((tag) => tag.isActive)
     .sort((a, b) => (b.postCount || 0) - (a.postCount || 0))
@@ -338,7 +484,9 @@ function PopularTags({ tags }: { tags: Tag[] }) {
           <div className="p-2 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20">
             <TrendingUp className="w-6 h-6 text-primary" />
           </div>
-          <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">热门标签</span>
+          <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+            {t.popularTags}
+          </span>
         </h2>
       </CardHeader>
       <CardBody>
@@ -356,7 +504,9 @@ function PopularTags({ tags }: { tags: Tag[] }) {
                 <p className="text-sm font-semibold truncate group-hover:text-primary transition-colors duration-300">
                   {tag.name}
                 </p>
-                <p className="text-xs text-default-500">{tag.postCount || 0} 篇文章</p>
+                <p className="text-xs text-default-500">
+                  {tag.postCount || 0} {t.postUnit}
+                </p>
               </div>
             </div>
           ))}
@@ -369,7 +519,7 @@ function PopularTags({ tags }: { tags: Tag[] }) {
 /**
  * 标签统计组件 - 玻璃态版本
  */
-function TagStats({ tags, pagination }: { tags: Tag[]; pagination: any }) {
+function TagStats({ tags, pagination, t }: { tags: Tag[]; pagination: any; t: (typeof TAG_PAGE_TEXT)[Locale] }) {
   const stats = useMemo(() => {
     const total = pagination?.total || tags.length;
     const active = tags.filter((tag) => tag.isActive).length;
@@ -380,10 +530,10 @@ function TagStats({ tags, pagination }: { tags: Tag[]; pagination: any }) {
   }, [tags, pagination]);
 
   const statItems = [
-    { label: "总标签数", value: stats.total, icon: TagIcon, color: "text-primary" },
-    { label: "活跃标签", value: stats.active, icon: Zap, color: "text-success" },
-    { label: "总文章数", value: stats.totalPosts, icon: BarChart3, color: "text-warning" },
-    { label: "平均文章", value: stats.avgPosts, icon: TrendingUp, color: "text-secondary" },
+    { label: t.totalTags, value: stats.total, icon: TagIcon, color: "text-primary" },
+    { label: t.activeTags, value: stats.active, icon: Zap, color: "text-success" },
+    { label: t.totalPosts, value: stats.totalPosts, icon: BarChart3, color: "text-warning" },
+    { label: t.avgPosts, value: stats.avgPosts, icon: TrendingUp, color: "text-secondary" },
   ];
 
   return (
@@ -410,7 +560,7 @@ function TagStats({ tags, pagination }: { tags: Tag[]; pagination: any }) {
 /**
  * 错误提示组件
  */
-function ErrorAlert({ error, onRetry }: { error: string; onRetry: () => void }) {
+function ErrorAlert({ error, onRetry, t }: { error: string; onRetry: () => void; t: (typeof TAG_PAGE_TEXT)[Locale] }) {
   return (
     <Card className="mb-8 border-0 backdrop-blur-xl bg-red-500/10 dark:bg-red-500/5 animate-fade-in-up">
       <CardBody className="p-6">
@@ -419,11 +569,11 @@ function ErrorAlert({ error, onRetry }: { error: string; onRetry: () => void }) 
             <AlertCircle className="w-6 h-6 text-red-500" />
           </div>
           <div className="flex-1">
-            <h3 className="text-lg font-semibold text-red-600 dark:text-red-400">加载失败</h3>
+            <h3 className="text-lg font-semibold text-red-600 dark:text-red-400">{t.loadFailed}</h3>
             <p className="text-red-500 dark:text-red-400 mt-1">{error}</p>
           </div>
           <Button color="danger" variant="light" onPress={onRetry} startContent={<RefreshCw className="w-4 h-4" />}>
-            重试
+            {t.retry}
           </Button>
         </div>
       </CardBody>
@@ -435,6 +585,9 @@ function ErrorAlert({ error, onRetry }: { error: string; onRetry: () => void }) 
  * 主标签页面组件
  */
 export default function TagsPage() {
+  const params = useParams<{ lang: string }>();
+  const locale = resolveLocale(params.lang);
+  const t = TAG_PAGE_TEXT[locale];
   // 使用自定义 Hook 管理标签数据
   const {
     tags,
@@ -516,10 +669,10 @@ export default function TagsPage() {
 
   // 处理删除标签
   const handleDeleteTag = async (id: number) => {
-    if (confirm("确定要删除这个标签吗？")) {
+    if (confirm(t.confirmDelete)) {
       const success = await deleteTag(id);
       if (success) {
-        console.log("标签删除成功");
+        console.log("Tag deleted successfully");
       }
     }
   };
@@ -542,10 +695,10 @@ export default function TagsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       {/* 错误提示 */}
-      {error && <ErrorAlert error={error} onRetry={handleRefresh} />}
+      {error && <ErrorAlert error={error} onRetry={handleRefresh} t={t} />}
 
       {/* 统计信息 */}
-      <TagStats tags={tags} pagination={pagination} />
+      <TagStats tags={tags} pagination={pagination} t={t} />
 
       {/* 标签云 */}
       {tags.length > 0 && (
@@ -555,7 +708,9 @@ export default function TagsPage() {
               <div className="p-2 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20">
                 <Palette className="w-6 h-6 text-primary" />
               </div>
-              <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">标签云</span>
+              <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                {t.tagCloud}
+              </span>
             </h2>
           </CardHeader>
           <CardBody>
@@ -576,7 +731,7 @@ export default function TagsPage() {
       )}
 
       {/* 热门标签 */}
-      {tags.length > 0 && <PopularTags tags={tags} />}
+      {tags.length > 0 && <PopularTags tags={tags} t={t} />}
 
       {/* 搜索和筛选 */}
       <SearchAndFilter
@@ -592,6 +747,7 @@ export default function TagsPage() {
         onViewModeChange={handleViewModeChange}
         loading={loading}
         onRefresh={handleRefresh}
+        t={t}
       />
 
       {/* 标签列表 */}
@@ -604,12 +760,12 @@ export default function TagsPage() {
           <div className="col-span-full flex justify-center py-12">
             <div className="flex flex-col items-center gap-4">
               <Spinner size="lg" color="primary" />
-              <p className="text-default-600">加载标签中...</p>
+              <p className="text-default-600">{t.loadingTags}</p>
             </div>
           </div>
         ) : filteredAndSortedTags.length > 0 ? (
           filteredAndSortedTags.map((tag, index) => (
-            <TagCard key={tag.id} tag={tag} index={index} onDelete={handleDeleteTag} />
+            <TagCard key={tag.id} tag={tag} index={index} onDelete={handleDeleteTag} locale={locale} t={t} />
           ))
         ) : (
           <div className="col-span-full">
@@ -619,10 +775,10 @@ export default function TagsPage() {
                   <div className="p-4 rounded-full bg-gradient-to-br from-default-200 to-default-300 dark:from-default-700 dark:to-default-800">
                     <TagIcon className="w-12 h-12 text-default-400" />
                   </div>
-                  <h3 className="text-2xl font-bold text-foreground">未找到标签</h3>
-                  <p className="text-default-600 max-w-md">暂无标签数据，请稍后再试或联系管理员</p>
+                  <h3 className="text-2xl font-bold text-foreground">{t.emptyTitle}</h3>
+                  <p className="text-default-600 max-w-md">{t.emptyDesc}</p>
                   <Button color="primary" variant="light" onPress={handleRefresh} className="mt-4">
-                    刷新页面
+                    {t.refreshPage}
                   </Button>
                 </div>
               </CardBody>
@@ -647,11 +803,9 @@ export default function TagsPage() {
                   isDisabled={!pagination.hasPrev}
                   className="backdrop-blur-xl bg-white/10 dark:bg-black/10"
                 >
-                  上一页
+                  {t.prevPage}
                 </Button>
-                <span className="text-sm text-default-600">
-                  第 {pagination.page} 页，共 {pagination.totalPages} 页
-                </span>
+                <span className="text-sm text-default-600">{t.pageInfo(pagination.page, pagination.totalPages)}</span>
                 <Button
                   size="sm"
                   variant="bordered"
@@ -662,7 +816,7 @@ export default function TagsPage() {
                   isDisabled={!pagination.hasNext}
                   className="backdrop-blur-xl bg-white/10 dark:bg-black/10"
                 >
-                  下一页
+                  {t.nextPage}
                 </Button>
               </div>
             </CardBody>

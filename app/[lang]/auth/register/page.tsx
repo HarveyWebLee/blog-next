@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Button } from "@heroui/button";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Input } from "@heroui/input";
@@ -11,6 +11,182 @@ import { AlertCircle, ArrowLeftIcon, CheckCircle, Clock, Eye, EyeOff, Lock, Mail
 
 export default function RegisterPage() {
   const router = useRouter();
+  const params = useParams<{ lang: string }>();
+  const lang = params.lang || "zh-CN";
+  const t =
+    lang === "en-US"
+      ? {
+          validEmail: "Please enter a valid email",
+          codeSent: "Verification code sent to your email",
+          sendCodeFailed: "Failed to send verification code",
+          sendCodeRetry: "Failed to send code, please retry",
+          registerFailed: "Registration failed",
+          registerRetry: "Registration failed, please retry",
+          loginMessage: "Registration successful, please sign in",
+          backHome: "Back Home",
+          createAccount: "Create Account",
+          secureRegister: "Register with email verification",
+          username: "Username",
+          usernamePlaceholder: "Enter username",
+          usernameRequired: "Username is required",
+          usernameMin: "Username must be at least 3 chars",
+          usernameMax: "Username must be at most 12 chars",
+          displayName: "Display Name",
+          displayNamePlaceholder: "Enter display name",
+          displayNameRequired: "Display name is required",
+          displayNameMin: "Display name must be at least 3 chars",
+          displayNameMax: "Display name must be at most 12 chars",
+          email: "Email",
+          emailPlaceholder: "Enter email",
+          emailRequired: "Email is required",
+          codeTitle: "Email Verification Code",
+          sent: "Sent",
+          codePlaceholder: "Enter 6-digit code",
+          codeRequired: "Verification code is required",
+          codeLength: "Code must be 6 digits",
+          codeRemain: "digits remaining",
+          sending: "Sending...",
+          resendIn: "Resend",
+          resend: "Resend",
+          sendCode: "Send Code",
+          checkInbox: "Code sent",
+          sentTo: "Sent to",
+          checkSpam: "Please check inbox and spam folder",
+          password: "Password",
+          passwordPlaceholder: "Enter password",
+          hidePassword: "Hide password",
+          showPassword: "Show password",
+          confirmPassword: "Confirm Password",
+          confirmPasswordPlaceholder: "Re-enter password",
+          hideConfirm: "Hide confirm password",
+          showConfirm: "Show confirm password",
+          confirmRequired: "Confirm password is required",
+          passwordMin: "Password must be at least 8 chars",
+          passwordMismatch: "Passwords do not match",
+          registering: "Registering...",
+          submit: "Create Account",
+          hasAccount: "Already have an account?",
+          loginNow: "Sign in",
+          agreePrefix: "By registering, you agree to our ",
+          terms: "Terms",
+          and: " and ",
+          privacy: "Privacy Policy",
+        }
+      : lang === "ja-JP"
+        ? {
+            validEmail: "有効なメールアドレスを入力してください",
+            codeSent: "認証コードを送信しました",
+            sendCodeFailed: "認証コード送信に失敗しました",
+            sendCodeRetry: "送信に失敗しました。再試行してください",
+            registerFailed: "登録に失敗しました",
+            registerRetry: "登録に失敗しました。再試行してください",
+            loginMessage: "登録成功、ログインしてください",
+            backHome: "ホームへ戻る",
+            createAccount: "アカウント作成",
+            secureRegister: "メール認証で安全に登録",
+            username: "ユーザー名",
+            usernamePlaceholder: "ユーザー名を入力",
+            usernameRequired: "ユーザー名は必須です",
+            usernameMin: "ユーザー名は3文字以上必要です",
+            usernameMax: "ユーザー名は12文字以内です",
+            displayName: "表示名",
+            displayNamePlaceholder: "表示名を入力",
+            displayNameRequired: "表示名は必須です",
+            displayNameMin: "表示名は3文字以上必要です",
+            displayNameMax: "表示名は12文字以内です",
+            email: "メールアドレス",
+            emailPlaceholder: "メールアドレスを入力",
+            emailRequired: "メールアドレスは必須です",
+            codeTitle: "メール認証コード",
+            sent: "送信済み",
+            codePlaceholder: "6桁コードを入力",
+            codeRequired: "認証コードは必須です",
+            codeLength: "認証コードは6桁です",
+            codeRemain: "桁不足",
+            sending: "送信中...",
+            resendIn: "再送信",
+            resend: "再送信",
+            sendCode: "認証コード送信",
+            checkInbox: "認証コード送信済み",
+            sentTo: "送信先",
+            checkSpam: "受信箱と迷惑メールをご確認ください",
+            password: "パスワード",
+            passwordPlaceholder: "パスワードを入力",
+            hidePassword: "パスワードを隠す",
+            showPassword: "パスワードを表示",
+            confirmPassword: "パスワード確認",
+            confirmPasswordPlaceholder: "パスワードを再入力",
+            hideConfirm: "確認パスワードを隠す",
+            showConfirm: "確認パスワードを表示",
+            confirmRequired: "確認パスワードは必須です",
+            passwordMin: "パスワードは8文字以上必要です",
+            passwordMismatch: "パスワードが一致しません",
+            registering: "登録中...",
+            submit: "アカウント作成",
+            hasAccount: "すでにアカウントをお持ちですか？",
+            loginNow: "ログイン",
+            agreePrefix: "登録することで、",
+            terms: "利用規約",
+            and: "と",
+            privacy: "プライバシーポリシー",
+          }
+        : {
+            validEmail: "请输入有效的邮箱地址",
+            codeSent: "验证码已发送到您的邮箱",
+            sendCodeFailed: "发送验证码失败",
+            sendCodeRetry: "发送验证码失败，请稍后重试",
+            registerFailed: "注册失败",
+            registerRetry: "注册失败，请稍后重试",
+            loginMessage: "注册成功，请登录",
+            backHome: "返回首页",
+            createAccount: "创建账户",
+            secureRegister: "使用邮箱验证码注册，安全便捷",
+            username: "用户名",
+            usernamePlaceholder: "请输入用户名",
+            usernameRequired: "用户名不能为空",
+            usernameMin: "用户名长度至少3位",
+            usernameMax: "用户名长度最多12位",
+            displayName: "显示名称",
+            displayNamePlaceholder: "请输入显示名称",
+            displayNameRequired: "显示名称不能为空",
+            displayNameMin: "显示名称长度至少3位",
+            displayNameMax: "显示名称长度最多12位",
+            email: "邮箱地址",
+            emailPlaceholder: "请输入邮箱地址",
+            emailRequired: "邮箱地址不能为空",
+            codeTitle: "邮箱验证码",
+            sent: "已发送",
+            codePlaceholder: "请输入6位验证码",
+            codeRequired: "验证码不能为空",
+            codeLength: "验证码必须是6位数字",
+            codeRemain: "位",
+            sending: "发送中...",
+            resendIn: "重新发送",
+            resend: "重新发送",
+            sendCode: "发送验证码",
+            checkInbox: "验证码已发送",
+            sentTo: "已发送到",
+            checkSpam: "请检查邮箱（包括垃圾邮件文件夹）",
+            password: "密码",
+            passwordPlaceholder: "请输入密码",
+            hidePassword: "隐藏密码",
+            showPassword: "显示密码",
+            confirmPassword: "确认密码",
+            confirmPasswordPlaceholder: "请再次输入密码",
+            hideConfirm: "隐藏确认密码",
+            showConfirm: "显示确认密码",
+            confirmRequired: "确认密码不能为空",
+            passwordMin: "密码长度至少8位",
+            passwordMismatch: "两次输入的密码不一致",
+            registering: "注册中...",
+            submit: "创建账户",
+            hasAccount: "已有账户？",
+            loginNow: "立即登录",
+            agreePrefix: "注册即表示您同意我们的",
+            terms: "服务条款",
+            and: "和",
+            privacy: "隐私政策",
+          };
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -35,7 +211,7 @@ export default function RegisterPage() {
 
     // 验证邮箱地址是否为空或格式不正确
     if (!emailValue?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue.trim())) {
-      setEmailError("请输入有效的邮箱地址");
+      setEmailError(t.validEmail);
       return;
     }
 
@@ -64,13 +240,13 @@ export default function RegisterPage() {
           });
         }, 1000);
         setEmailError("");
-        setSuccessMessage("验证码已发送到您的邮箱");
+        setSuccessMessage(t.codeSent);
         setTimeout(() => setSuccessMessage(""), 3000);
       } else {
-        setEmailError(data.message || "发送验证码失败");
+        setEmailError(data.message || t.sendCodeFailed);
       }
     } catch (error) {
-      setEmailError("发送验证码失败，请稍后重试");
+      setEmailError(t.sendCodeRetry);
     } finally {
       setIsSendingCode(false);
     }
@@ -99,16 +275,16 @@ export default function RegisterPage() {
 
       if (data.success) {
         // 注册成功，跳转到登录页面
-        router.push("/auth/login?message=注册成功，请登录");
+        router.push(`/${lang}/auth/login?message=${encodeURIComponent(t.loginMessage)}`);
       } else {
         if (data.message?.includes("验证码")) {
           setCodeError(data.message);
         } else {
-          setEmailError(data.message || "注册失败");
+          setEmailError(data.message || t.registerFailed);
         }
       }
     } catch (error) {
-      setEmailError("注册失败，请稍后重试");
+      setEmailError(t.registerRetry);
     } finally {
       setIsSubmitting(false);
     }
@@ -120,11 +296,11 @@ export default function RegisterPage() {
         {/* 返回按钮 */}
         <div className="mb-6">
           <Link
-            href="/"
+            href={`/${lang}`}
             className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 transition-colors"
           >
             <Button radius="full" color="warning" variant="light" startContent={<ArrowLeftIcon />}>
-              返回首页
+              {t.backHome}
             </Button>
           </Link>
         </div>
@@ -143,8 +319,8 @@ export default function RegisterPage() {
         <Card className="shadow-xl">
           <CardHeader className="text-center pb-2">
             <div className="w-full">
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">创建账户</h1>
-              <p className="text-gray-400">使用邮箱验证码注册，安全便捷</p>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">{t.createAccount}</h1>
+              <p className="text-gray-400">{t.secureRegister}</p>
             </div>
           </CardHeader>
 
@@ -153,9 +329,9 @@ export default function RegisterPage() {
               {/* 用户名输入 */}
               <Input
                 type="text"
-                label={<span className="text-gray-200">用户名</span>}
+                label={<span className="text-gray-200">{t.username}</span>}
                 name="username"
-                placeholder="请输入用户名"
+                placeholder={t.usernamePlaceholder}
                 startContent={<User className="w-4 h-4 text-gray-200" />}
                 variant="bordered"
                 size="lg"
@@ -166,15 +342,15 @@ export default function RegisterPage() {
                 }}
                 validate={(value) => {
                   if (!value) {
-                    return "用户名不能为空";
+                    return t.usernameRequired;
                   }
 
                   if (value.length < 3) {
-                    return "用户名长度至少3位";
+                    return t.usernameMin;
                   }
 
                   if (value.length > 12) {
-                    return "用户名长度最多12位";
+                    return t.usernameMax;
                   }
 
                   return null;
@@ -184,9 +360,9 @@ export default function RegisterPage() {
               {/* 显示名称输入 */}
               <Input
                 type="text"
-                label={<span className="text-gray-200">显示名称</span>}
+                label={<span className="text-gray-200">{t.displayName}</span>}
                 name="displayName"
-                placeholder="请输入显示名称"
+                placeholder={t.displayNamePlaceholder}
                 startContent={<User className="w-4 h-4 text-gray-200" />}
                 variant="bordered"
                 size="lg"
@@ -197,15 +373,15 @@ export default function RegisterPage() {
                 }}
                 validate={(value) => {
                   if (!value?.trim()) {
-                    return "显示名称不能为空";
+                    return t.displayNameRequired;
                   }
 
                   if (value.length < 3) {
-                    return "显示名称长度至少3位";
+                    return t.displayNameMin;
                   }
 
                   if (value.length > 12) {
-                    return "显示名称长度最多12位";
+                    return t.displayNameMax;
                   }
 
                   return null;
@@ -216,8 +392,8 @@ export default function RegisterPage() {
               <Input
                 type="email"
                 name="email"
-                label={<span className="text-gray-200">邮箱地址</span>}
-                placeholder="请输入邮箱地址"
+                label={<span className="text-gray-200">{t.email}</span>}
+                placeholder={t.emailPlaceholder}
                 startContent={<Mail className="w-4 h-4 text-gray-200" />}
                 variant="bordered"
                 size="lg"
@@ -234,11 +410,11 @@ export default function RegisterPage() {
                 }}
                 validate={(value) => {
                   if (!value?.trim()) {
-                    return "邮箱地址不能为空";
+                    return t.emailRequired;
                   }
 
                   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value?.trim())) {
-                    return "请输入有效的邮箱地址";
+                    return t.validEmail;
                   }
 
                   return null;
@@ -259,11 +435,11 @@ export default function RegisterPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Shield className="w-4 h-4 text-blue-500" />
-                    <span className="text-sm font-medium text-gray-200">邮箱验证码</span>
+                    <span className="text-sm font-medium text-gray-200">{t.codeTitle}</span>
                     {codeSent && (
                       <div className="flex items-center space-x-1 text-green-500 text-xs">
                         <CheckCircle className="w-3 h-3" />
-                        <span>已发送</span>
+                        <span>{t.sent}</span>
                       </div>
                     )}
                   </div>
@@ -281,7 +457,7 @@ export default function RegisterPage() {
                     <Input
                       type="text"
                       name="verificationCode"
-                      placeholder="请输入6位验证码"
+                      placeholder={t.codePlaceholder}
                       startContent={
                         <div className="flex items-center space-x-1 text-gray-400">
                           <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
@@ -310,11 +486,11 @@ export default function RegisterPage() {
                       }}
                       validate={(value) => {
                         if (!value?.trim()) {
-                          return "验证码不能为空";
+                          return t.codeRequired;
                         }
 
                         if (value && value.length !== 6) {
-                          return "验证码必须是6位数字";
+                          return t.codeLength;
                         }
 
                         return null;
@@ -324,7 +500,7 @@ export default function RegisterPage() {
                     {/* 验证码输入提示 */}
                     {verificationCode.length > 0 && verificationCode.length < 6 && (
                       <div className="absolute -bottom-6 left-0 text-xs text-gray-400">
-                        还需输入 {6 - verificationCode.length} 位
+                        {6 - verificationCode.length} {t.codeRemain}
                       </div>
                     )}
                   </div>
@@ -358,12 +534,12 @@ export default function RegisterPage() {
                     }
                   >
                     {isSendingCode
-                      ? "发送中..."
+                      ? t.sending
                       : countdown > 0
-                        ? `重新发送 (${countdown}s)`
+                        ? `${t.resendIn} (${countdown}s)`
                         : codeSent
-                          ? "重新发送"
-                          : "发送验证码"}
+                          ? t.resend
+                          : t.sendCode}
                   </Button>
                 </div>
 
@@ -381,13 +557,11 @@ export default function RegisterPage() {
                     <div className="flex items-start space-x-2">
                       <Mail className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
                       <div className="text-sm">
-                        <div className="text-blue-600 dark:text-blue-400 font-medium">验证码已发送</div>
+                        <div className="text-blue-600 dark:text-blue-400 font-medium">{t.checkInbox}</div>
                         <div className="text-gray-500 dark:text-gray-400 text-xs mt-1">
-                          已发送到 <span className="font-medium text-gray-700 dark:text-gray-300">{email}</span>
+                          {t.sentTo} <span className="font-medium text-gray-700 dark:text-gray-300">{email}</span>
                         </div>
-                        <div className="text-gray-400 dark:text-gray-500 text-xs mt-1">
-                          请检查邮箱（包括垃圾邮件文件夹）
-                        </div>
+                        <div className="text-gray-400 dark:text-gray-500 text-xs mt-1">{t.checkSpam}</div>
                       </div>
                     </div>
                   </div>
@@ -398,15 +572,15 @@ export default function RegisterPage() {
               <Input
                 type={showPassword ? "text" : "password"}
                 name="password"
-                label={<span className="text-gray-200">密码</span>}
-                placeholder="请输入密码"
+                label={<span className="text-gray-200">{t.password}</span>}
+                placeholder={t.passwordPlaceholder}
                 startContent={<Lock className="w-4 h-4 text-gray-200" />}
                 endContent={
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="focus:outline-none"
-                    aria-label={showPassword ? "隐藏密码" : "显示密码"}
+                    aria-label={showPassword ? t.hidePassword : t.showPassword}
                   >
                     {showPassword ? (
                       <EyeOff className="w-4 h-4 text-gray-200" />
@@ -424,15 +598,15 @@ export default function RegisterPage() {
                 }}
                 validate={(value) => {
                   if (!value) {
-                    return "确认密码不能为空";
+                    return t.confirmRequired;
                   }
 
                   if (value.length < 8) {
-                    return "密码长度至少8位";
+                    return t.passwordMin;
                   }
 
                   if (confirmPassword && value && value !== confirmPassword) {
-                    return "两次输入的密码不一致";
+                    return t.passwordMismatch;
                   }
 
                   return null;
@@ -448,15 +622,15 @@ export default function RegisterPage() {
               <Input
                 type={showConfirmPassword ? "text" : "password"}
                 name="confirmPassword"
-                label={<span className="text-gray-200">确认密码</span>}
-                placeholder="请再次输入密码"
+                label={<span className="text-gray-200">{t.confirmPassword}</span>}
+                placeholder={t.confirmPasswordPlaceholder}
                 startContent={<Lock className="w-4 h-4 text-gray-200" />}
                 endContent={
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     className="focus:outline-none"
-                    aria-label={showConfirmPassword ? "隐藏确认密码" : "显示确认密码"}
+                    aria-label={showConfirmPassword ? t.hideConfirm : t.showConfirm}
                   >
                     {showConfirmPassword ? (
                       <EyeOff className="w-4 h-4 text-gray-400" />
@@ -474,16 +648,16 @@ export default function RegisterPage() {
                 }}
                 validate={(value) => {
                   if (!value) {
-                    return "确认密码不能为空";
+                    return t.confirmRequired;
                   }
 
                   if (value.length < 8) {
-                    return "密码长度至少8位";
+                    return t.passwordMin;
                   }
 
                   //  实时校验
                   if (password && value && value !== password) {
-                    return "两次输入的密码不一致";
+                    return t.passwordMismatch;
                   }
 
                   return null;
@@ -504,15 +678,18 @@ export default function RegisterPage() {
                 disabled={isSubmitting || !verificationCode || verificationCode.length !== 6}
                 startContent={<Shield className="w-4 h-4" />}
               >
-                {isSubmitting ? "注册中..." : "创建账户"}
+                {isSubmitting ? t.registering : t.submit}
               </Button>
 
               {/* 登录链接 */}
               <div className="w-full text-center">
                 <span className="text-sm text-gray-600">
-                  已有账户？
-                  <Link href="/auth/login" className="text-blue-600 hover:text-blue-800 font-medium transition-colors">
-                    立即登录
+                  {t.hasAccount}
+                  <Link
+                    href={`/${lang}/auth/login`}
+                    className="text-blue-600 hover:text-blue-800 font-medium transition-colors"
+                  >
+                    {t.loginNow}
                   </Link>
                 </span>
               </div>
@@ -523,13 +700,13 @@ export default function RegisterPage() {
         {/* 底部信息 */}
         <div className="mt-8 text-center">
           <p className="text-xs text-gray-200">
-            注册即表示您同意我们的{" "}
-            <Link href="/terms" className="text-blue-600 hover:underline">
-              服务条款
+            {t.agreePrefix}{" "}
+            <Link href={`/${lang}/terms`} className="text-blue-600 hover:underline">
+              {t.terms}
             </Link>{" "}
-            和{" "}
-            <Link href="/privacy" className="text-blue-600 hover:underline">
-              隐私政策
+            {t.and}{" "}
+            <Link href={`/${lang}/privacy`} className="text-blue-600 hover:underline">
+              {t.privacy}
             </Link>
           </p>
         </div>

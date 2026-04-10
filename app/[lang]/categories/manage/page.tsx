@@ -6,7 +6,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   Badge,
   Button,
@@ -50,13 +50,159 @@ import {
 } from "lucide-react";
 
 import { message } from "@/lib/utils";
+import { Locale } from "@/types";
 import { ApiResponse, Category, CategoryQueryParams, PaginatedResponseData } from "@/types/blog";
+
+const resolveLocale = (lang: string): Locale => {
+  if (lang === "en-US" || lang === "ja-JP") return lang;
+  return "zh-CN";
+};
+
+const MANAGE_TEXT: Record<
+  Locale,
+  {
+    pageTitle: string;
+    pageDesc: string;
+    totalLabel: string;
+    activeLabel: string;
+    inactiveLabel: string;
+    searchPlaceholder: string;
+    all: string;
+    active: string;
+    inactive: string;
+    createCategory: string;
+    listTitle: string;
+    totalCount: (count: number) => string;
+    noData: string;
+    noDataDesc: string;
+    tableInfo: string;
+    tableDesc: string;
+    tablePostCount: string;
+    tableStatus: string;
+    tableCreatedAt: string;
+    tableActions: string;
+    noDesc: string;
+    postUnit: string;
+    edit: string;
+    del: string;
+    deleting: string;
+    deleteConfirmTitle: string;
+    deleteConfirmDesc: (name?: string) => string;
+    deleteWarning: string;
+    cancel: string;
+    deleteFailed: string;
+    updateFailed: string;
+  }
+> = {
+  "zh-CN": {
+    pageTitle: "分类管理",
+    pageDesc: "管理博客分类，包括创建、编辑、删除和状态控制",
+    totalLabel: "总分类",
+    activeLabel: "激活",
+    inactiveLabel: "停用",
+    searchPlaceholder: "搜索分类名称...",
+    all: "全部",
+    active: "激活",
+    inactive: "停用",
+    createCategory: "创建分类",
+    listTitle: "分类列表",
+    totalCount: (count) => `共 ${count} 个分类`,
+    noData: "暂无分类",
+    noDataDesc: "开始创建你的第一个分类吧",
+    tableInfo: "分类信息",
+    tableDesc: "描述",
+    tablePostCount: "文章数量",
+    tableStatus: "状态",
+    tableCreatedAt: "创建时间",
+    tableActions: "操作",
+    noDesc: "无描述",
+    postUnit: "篇",
+    edit: "编辑",
+    del: "删除",
+    deleting: "删除中...",
+    deleteConfirmTitle: "确认删除",
+    deleteConfirmDesc: (name) => `确定要删除分类 ${name || ""} 吗？`,
+    deleteWarning: "注意：如果该分类下还有文章或子分类，将无法删除。",
+    cancel: "取消",
+    deleteFailed: "删除分类失败",
+    updateFailed: "更新分类状态失败",
+  },
+  "en-US": {
+    pageTitle: "Category Management",
+    pageDesc: "Manage blog categories including create, edit, delete and status",
+    totalLabel: "Total",
+    activeLabel: "Active",
+    inactiveLabel: "Inactive",
+    searchPlaceholder: "Search categories...",
+    all: "All",
+    active: "Active",
+    inactive: "Inactive",
+    createCategory: "Create Category",
+    listTitle: "Category List",
+    totalCount: (count) => `${count} categories`,
+    noData: "No categories",
+    noDataDesc: "Create your first category",
+    tableInfo: "Category",
+    tableDesc: "Description",
+    tablePostCount: "Posts",
+    tableStatus: "Status",
+    tableCreatedAt: "Created At",
+    tableActions: "Actions",
+    noDesc: "No description",
+    postUnit: "posts",
+    edit: "Edit",
+    del: "Delete",
+    deleting: "Deleting...",
+    deleteConfirmTitle: "Confirm Delete",
+    deleteConfirmDesc: (name) => `Are you sure you want to delete ${name || "this category"}?`,
+    deleteWarning: "If this category has posts or children, it cannot be deleted.",
+    cancel: "Cancel",
+    deleteFailed: "Failed to delete category",
+    updateFailed: "Failed to update category status",
+  },
+  "ja-JP": {
+    pageTitle: "カテゴリー管理",
+    pageDesc: "カテゴリの作成・編集・削除と状態管理",
+    totalLabel: "総数",
+    activeLabel: "有効",
+    inactiveLabel: "無効",
+    searchPlaceholder: "カテゴリー名を検索...",
+    all: "すべて",
+    active: "有効",
+    inactive: "無効",
+    createCategory: "カテゴリー作成",
+    listTitle: "カテゴリー一覧",
+    totalCount: (count) => `${count} 件`,
+    noData: "カテゴリーがありません",
+    noDataDesc: "最初のカテゴリーを作成しましょう",
+    tableInfo: "カテゴリー",
+    tableDesc: "説明",
+    tablePostCount: "記事数",
+    tableStatus: "状態",
+    tableCreatedAt: "作成日",
+    tableActions: "操作",
+    noDesc: "説明なし",
+    postUnit: "件",
+    edit: "編集",
+    del: "削除",
+    deleting: "削除中...",
+    deleteConfirmTitle: "削除確認",
+    deleteConfirmDesc: (name) => `${name || "このカテゴリー"} を削除しますか？`,
+    deleteWarning: "記事や子カテゴリーがある場合は削除できません。",
+    cancel: "キャンセル",
+    deleteFailed: "カテゴリーの削除に失敗しました",
+    updateFailed: "状態更新に失敗しました",
+  },
+};
 
 /**
  * 分类管理页面组件
  */
 export default function CategoriesManagePage() {
   const router = useRouter();
+  const params = useParams<{ lang: string }>();
+  const locale = resolveLocale(params.lang);
+  const t = MANAGE_TEXT[locale];
 
   // 状态管理
   const [categories, setCategories] = useState<Category[]>([]);
@@ -143,11 +289,11 @@ export default function CategoriesManagePage() {
         setSelectedCategory(null);
         fetchCategories();
       } else {
-        message.error(result.message || "删除分类失败");
+        message.error(result.message || t.deleteFailed);
       }
     } catch (error) {
       console.error("删除分类失败:", error);
-      message.error("删除分类失败");
+      message.error(t.deleteFailed);
     } finally {
       setDeleteLoading(false);
     }
@@ -175,11 +321,11 @@ export default function CategoriesManagePage() {
       if (result.success) {
         fetchCategories();
       } else {
-        message.error(result.message || "更新分类状态失败");
+        message.error(result.message || t.updateFailed);
       }
     } catch (error) {
       console.error("更新分类状态失败:", error);
-      message.error("更新分类状态失败");
+      message.error(t.updateFailed);
     }
   };
 
@@ -197,9 +343,9 @@ export default function CategoriesManagePage() {
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
         <div>
           <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-            分类管理
+            {t.pageTitle}
           </h1>
-          <p className="text-default-600 mt-2 text-lg">管理博客分类，包括创建、编辑、删除和状态控制</p>
+          <p className="text-default-600 mt-2 text-lg">{t.pageDesc}</p>
         </div>
 
         {/* 统计卡片 */}
@@ -209,7 +355,7 @@ export default function CategoriesManagePage() {
               <BarChart3 className="w-5 h-5 text-primary" />
               <div>
                 <p className="text-2xl font-bold text-foreground">{total}</p>
-                <p className="text-sm text-default-500">总分类</p>
+                <p className="text-sm text-default-500">{t.totalLabel}</p>
               </div>
             </div>
           </Card>
@@ -218,7 +364,7 @@ export default function CategoriesManagePage() {
               <Eye className="w-5 h-5 text-success" />
               <div>
                 <p className="text-2xl font-bold text-success">{activeCategories}</p>
-                <p className="text-sm text-default-500">激活</p>
+                <p className="text-sm text-default-500">{t.activeLabel}</p>
               </div>
             </div>
           </Card>
@@ -227,7 +373,7 @@ export default function CategoriesManagePage() {
               <EyeOff className="w-5 h-5 text-warning" />
               <div>
                 <p className="text-2xl font-bold text-warning">{inactiveCategories}</p>
-                <p className="text-sm text-default-500">停用</p>
+                <p className="text-sm text-default-500">{t.inactiveLabel}</p>
               </div>
             </div>
           </Card>
@@ -240,7 +386,7 @@ export default function CategoriesManagePage() {
           <div className="flex flex-col lg:flex-row gap-4">
             {/* 搜索框 */}
             <Input
-              placeholder="搜索分类名称..."
+              placeholder={t.searchPlaceholder}
               value={searchQuery}
               onValueChange={handleSearch}
               startContent={<Search className="w-4 h-4 text-default-400" />}
@@ -255,7 +401,7 @@ export default function CategoriesManagePage() {
                 onPress={() => handleStatusFilter(undefined)}
                 startContent={<Filter className="w-4 h-4" />}
               >
-                全部
+                {t.all}
               </Button>
               <Button
                 variant={statusFilter === true ? "solid" : "bordered"}
@@ -263,7 +409,7 @@ export default function CategoriesManagePage() {
                 onPress={() => handleStatusFilter(true)}
                 startContent={<Eye className="w-4 h-4" />}
               >
-                激活
+                {t.active}
               </Button>
               <Button
                 variant={statusFilter === false ? "solid" : "bordered"}
@@ -271,7 +417,7 @@ export default function CategoriesManagePage() {
                 onPress={() => handleStatusFilter(false)}
                 startContent={<EyeOff className="w-4 h-4" />}
               >
-                停用
+                {t.inactive}
               </Button>
             </div>
 
@@ -279,10 +425,10 @@ export default function CategoriesManagePage() {
             <Button
               color="primary"
               startContent={<Plus className="w-4 h-4" />}
-              onPress={() => router.push("/categories/manage/create")}
+              onPress={() => router.push(`/${params.lang}/categories/manage/create`)}
               className="lg:ml-auto"
             >
-              创建分类
+              {t.createCategory}
             </Button>
           </div>
         </CardBody>
@@ -293,10 +439,10 @@ export default function CategoriesManagePage() {
         <CardHeader>
           <div className="flex items-center gap-2">
             <Folder className="w-5 h-5" />
-            <span className="text-lg font-semibold">分类列表</span>
+            <span className="text-lg font-semibold">{t.listTitle}</span>
             <Badge color="primary" variant="flat">
               <Chip size="sm" variant="flat">
-                共 {total} 个分类
+                {t.totalCount(total)}
               </Chip>
             </Badge>
           </div>
@@ -309,26 +455,26 @@ export default function CategoriesManagePage() {
           ) : categories.length === 0 ? (
             <div className="text-center py-12">
               <Folder className="w-16 h-16 text-default-300 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-default-600 mb-2">暂无分类</h3>
-              <p className="text-default-500 mb-4">开始创建你的第一个分类吧</p>
+              <h3 className="text-lg font-semibold text-default-600 mb-2">{t.noData}</h3>
+              <p className="text-default-500 mb-4">{t.noDataDesc}</p>
               <Button
                 color="primary"
                 startContent={<Plus className="w-4 h-4" />}
-                onPress={() => router.push("/categories/manage/create")}
+                onPress={() => router.push(`/${params.lang}/categories/manage/create`)}
               >
-                创建分类
+                {t.createCategory}
               </Button>
             </div>
           ) : (
             <>
-              <Table aria-label="分类列表" className="min-h-[400px]">
+              <Table aria-label={t.listTitle} className="min-h-[400px]">
                 <TableHeader>
-                  <TableColumn>分类信息</TableColumn>
-                  <TableColumn>描述</TableColumn>
-                  <TableColumn>文章数量</TableColumn>
-                  <TableColumn>状态</TableColumn>
-                  <TableColumn>创建时间</TableColumn>
-                  <TableColumn>操作</TableColumn>
+                  <TableColumn>{t.tableInfo}</TableColumn>
+                  <TableColumn>{t.tableDesc}</TableColumn>
+                  <TableColumn>{t.tablePostCount}</TableColumn>
+                  <TableColumn>{t.tableStatus}</TableColumn>
+                  <TableColumn>{t.tableCreatedAt}</TableColumn>
+                  <TableColumn>{t.tableActions}</TableColumn>
                 </TableHeader>
                 <TableBody>
                   {categories.map((category) => (
@@ -351,7 +497,7 @@ export default function CategoriesManagePage() {
                           {category.description ? (
                             <p className="truncate text-default-700">{category.description}</p>
                           ) : (
-                            <span className="text-default-400 italic">无描述</span>
+                            <span className="text-default-400 italic">{t.noDesc}</span>
                           )}
                         </div>
                       </TableCell>
@@ -361,7 +507,7 @@ export default function CategoriesManagePage() {
                           variant="flat"
                           color={category.postCount && category.postCount > 0 ? "primary" : "default"}
                         >
-                          {category.postCount || 0} 篇
+                          {category.postCount || 0} {t.postUnit}
                         </Chip>
                       </TableCell>
                       <TableCell>
@@ -372,13 +518,13 @@ export default function CategoriesManagePage() {
                             color="success"
                             size="sm"
                           />
-                          <span className="text-sm text-default-600">{category.isActive ? "激活" : "停用"}</span>
+                          <span className="text-sm text-default-600">{category.isActive ? t.active : t.inactive}</span>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2 text-sm text-default-600">
                           <Calendar className="w-4 h-4" />
-                          {new Date(category.createdAt).toLocaleDateString("zh-CN")}
+                          {new Date(category.createdAt).toLocaleDateString(locale)}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -392,9 +538,9 @@ export default function CategoriesManagePage() {
                             <DropdownItem
                               key="edit"
                               startContent={<Edit className="w-4 h-4" />}
-                              onPress={() => router.push(`/categories/manage/edit/${category.id}`)}
+                              onPress={() => router.push(`/${params.lang}/categories/manage/edit/${category.id}`)}
                             >
-                              编辑
+                              {t.edit}
                             </DropdownItem>
                             <DropdownItem
                               key="delete"
@@ -403,7 +549,7 @@ export default function CategoriesManagePage() {
                               startContent={<Trash2 className="w-4 h-4" />}
                               onPress={() => openDeleteModal(category)}
                             >
-                              删除
+                              {t.del}
                             </DropdownItem>
                           </DropdownMenu>
                         </Dropdown>
@@ -437,25 +583,23 @@ export default function CategoriesManagePage() {
           <ModalHeader className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
               <Trash2 className="w-5 h-5 text-danger" />
-              确认删除
+              {t.deleteConfirmTitle}
             </div>
           </ModalHeader>
           <ModalBody>
             <div className="space-y-3">
-              <p>
-                确定要删除分类 <strong className="text-foreground">{selectedCategory?.name}</strong> 吗？
-              </p>
+              <p>{t.deleteConfirmDesc(selectedCategory?.name)}</p>
               <div className="p-3 bg-warning-50 border border-warning-200 rounded-lg">
                 <p className="text-sm text-warning-700 flex items-center gap-2">
                   <EyeOff className="w-4 h-4" />
-                  注意：如果该分类下还有文章或子分类，将无法删除。
+                  {t.deleteWarning}
                 </p>
               </div>
             </div>
           </ModalBody>
           <ModalFooter>
             <Button variant="light" onPress={() => setIsDeleteModalOpen(false)}>
-              取消
+              {t.cancel}
             </Button>
             <Button
               color="danger"
@@ -463,7 +607,7 @@ export default function CategoriesManagePage() {
               isLoading={deleteLoading}
               startContent={!deleteLoading && <Trash2 className="w-4 h-4" />}
             >
-              {deleteLoading ? "删除中..." : "删除"}
+              {deleteLoading ? t.deleting : t.del}
             </Button>
           </ModalFooter>
         </ModalContent>

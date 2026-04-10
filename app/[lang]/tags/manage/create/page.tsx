@@ -5,15 +5,59 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Button, Card, CardBody, CardHeader, Chip, Divider, Input, Switch, Textarea } from "@heroui/react";
 import { ArrowLeft, Eye, FileText, Hash, Palette, Plus, Tag as TagIcon } from "lucide-react";
 
 import { message } from "@/lib/utils";
+import { Locale } from "@/types";
 import { ApiResponse, CreateTagRequest } from "@/types/blog";
+
+const resolveLocale = (lang: string): Locale => {
+  if (lang === "en-US" || lang === "ja-JP") return lang;
+  return "zh-CN";
+};
 
 export default function CreateTagPage() {
   const router = useRouter();
+  const params = useParams<{ lang: string }>();
+  const locale = resolveLocale(params.lang);
+  const txt =
+    locale === "en-US"
+      ? {
+          title: "Create Tag",
+          subtitle: "Create a new blog tag",
+          required: "Tag name is required",
+          failed: "Failed to create tag",
+          create: "Create Tag",
+          creating: "Creating...",
+          cancel: "Cancel",
+          active: "Active",
+          inactive: "Inactive",
+        }
+      : locale === "ja-JP"
+        ? {
+            title: "タグ作成",
+            subtitle: "新しいブログタグを作成",
+            required: "タグ名は必須です",
+            failed: "タグ作成に失敗しました",
+            create: "タグ作成",
+            creating: "作成中...",
+            cancel: "キャンセル",
+            active: "有効",
+            inactive: "無効",
+          }
+        : {
+            title: "创建标签",
+            subtitle: "创建新的博客标签",
+            required: "标签名称是必填项",
+            failed: "创建标签失败",
+            create: "创建标签",
+            creating: "创建中...",
+            cancel: "取消",
+            active: "激活",
+            inactive: "停用",
+          };
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<CreateTagRequest>({
     name: "",
@@ -46,7 +90,7 @@ export default function CreateTagPage() {
     e.preventDefault();
 
     if (!formData.name.trim()) {
-      message.warning("标签名称是必填项");
+      message.warning(txt.required);
       return;
     }
 
@@ -67,14 +111,14 @@ export default function CreateTagPage() {
       const result: ApiResponse = await response.json();
 
       if (result.success) {
-        router.push("/tags/manage");
+        router.push(`/${params.lang}/tags/manage`);
         router.refresh();
       } else {
-        message.error(result.message || "创建标签失败");
+        message.error(result.message || txt.failed);
       }
     } catch (error) {
       console.error("创建标签失败:", error);
-      message.error("创建标签失败");
+      message.error(txt.failed);
     } finally {
       setLoading(false);
     }
@@ -105,9 +149,9 @@ export default function CreateTagPage() {
         </Button>
         <div>
           <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-            创建标签
+            {txt.title}
           </h1>
-          <p className="text-default-600 mt-2 text-lg">创建新的博客标签</p>
+          <p className="text-default-600 mt-2 text-lg">{txt.subtitle}</p>
         </div>
       </div>
 
@@ -201,7 +245,7 @@ export default function CreateTagPage() {
                         size="lg"
                       />
                       <div>
-                        <p className="font-medium text-foreground">{formData.isActive ? "激活" : "停用"}</p>
+                        <p className="font-medium text-foreground">{formData.isActive ? txt.active : txt.inactive}</p>
                         <p className="text-sm text-default-500">
                           {formData.isActive ? "标签将显示在网站上" : "标签将隐藏"}
                         </p>
@@ -214,7 +258,7 @@ export default function CreateTagPage() {
 
                 <div className="flex gap-4 pt-4">
                   <Button variant="light" onPress={() => router.back()} className="flex-1">
-                    取消
+                    {txt.cancel}
                   </Button>
                   <Button
                     type="submit"
@@ -223,7 +267,7 @@ export default function CreateTagPage() {
                     isLoading={loading}
                     className="flex-1"
                   >
-                    {loading ? "创建中..." : "创建标签"}
+                    {loading ? txt.creating : txt.create}
                   </Button>
                 </div>
               </form>
@@ -260,7 +304,7 @@ export default function CreateTagPage() {
 
                   <div className="flex items-center justify-center gap-2">
                     <Chip size="sm" color={formData.isActive ? "success" : "warning"} variant="flat">
-                      {formData.isActive ? "激活" : "停用"}
+                      {formData.isActive ? txt.active : txt.inactive}
                     </Chip>
                   </div>
                 </div>
@@ -269,7 +313,7 @@ export default function CreateTagPage() {
                   <p>• 标签名称: {formData.name || "未设置"}</p>
                   <p>• 标签标识: {formData.slug || "将自动生成"}</p>
                   <p>• 标签颜色: {formData.color}</p>
-                  <p>• 状态: {formData.isActive ? "激活" : "停用"}</p>
+                  <p>• 状态: {formData.isActive ? txt.active : txt.inactive}</p>
                 </div>
               </div>
             </CardBody>

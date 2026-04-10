@@ -22,11 +22,17 @@ import {
 import { ArrowLeft, Calendar, Edit, Eye, FileText, Hash, Palette, Save, Tag as TagIcon } from "lucide-react";
 
 import { message } from "@/lib/utils";
+import { Locale } from "@/types";
 import { ApiResponse, Tag, UpdateTagRequest } from "@/types/blog";
 
 interface EditTagPageProps {
   params: Promise<{ id: string; lang: string }>;
 }
+
+const resolveLocale = (lang: string): Locale => {
+  if (lang === "en-US" || lang === "ja-JP") return lang;
+  return "zh-CN";
+};
 
 export default function EditTagPage({ params }: EditTagPageProps) {
   const router = useRouter();
@@ -40,6 +46,49 @@ export default function EditTagPage({ params }: EditTagPageProps) {
     color: "#667eea",
     isActive: true,
   });
+  const [lang, setLang] = useState<Locale>("zh-CN");
+  const txt =
+    lang === "en-US"
+      ? {
+          failedLoad: "Failed to load tag",
+          required: "Tag name is required",
+          failedSave: "Failed to update tag",
+          title: "Edit Tag",
+          save: "Save Changes",
+          saving: "Saving...",
+          cancel: "Cancel",
+          back: "Back",
+          notFound: "Tag not found",
+          active: "Active",
+          inactive: "Inactive",
+        }
+      : lang === "ja-JP"
+        ? {
+            failedLoad: "タグ情報の取得に失敗しました",
+            required: "タグ名は必須です",
+            failedSave: "タグ更新に失敗しました",
+            title: "タグ編集",
+            save: "変更を保存",
+            saving: "保存中...",
+            cancel: "キャンセル",
+            back: "戻る",
+            notFound: "タグが存在しません",
+            active: "有効",
+            inactive: "無効",
+          }
+        : {
+            failedLoad: "获取标签信息失败",
+            required: "标签名称是必填项",
+            failedSave: "更新标签失败",
+            title: "编辑标签",
+            save: "保存更改",
+            saving: "保存中...",
+            cancel: "取消",
+            back: "返回",
+            notFound: "标签不存在",
+            active: "激活",
+            inactive: "停用",
+          };
 
   const fetchTag = useCallback(
     async (tagId: string) => {
@@ -57,18 +106,18 @@ export default function EditTagPage({ params }: EditTagPageProps) {
             isActive: result.data.isActive,
           });
         } else {
-          message.error(result.message || "获取标签信息失败");
+          message.error(result.message || txt.failedLoad);
           router.back();
         }
       } catch (error) {
         console.error("获取标签信息失败:", error);
-        message.error("获取标签信息失败");
+        message.error(txt.failedLoad);
         router.back();
       } finally {
         setLoading(false);
       }
     },
-    [router]
+    [router, txt.failedLoad]
   );
 
   // 更新标签
@@ -76,7 +125,7 @@ export default function EditTagPage({ params }: EditTagPageProps) {
     e.preventDefault();
 
     if (!formData.name?.trim()) {
-      message.warning("标签名称是必填项");
+      message.warning(txt.required);
       return;
     }
 
@@ -96,14 +145,14 @@ export default function EditTagPage({ params }: EditTagPageProps) {
       const result: ApiResponse = await response.json();
 
       if (result.success) {
-        router.push("/tags/manage");
+        router.push(`/${lang}/tags/manage`);
         router.refresh();
       } else {
-        message.error(result.message || "更新标签失败");
+        message.error(result.message || txt.failedSave);
       }
     } catch (error) {
       console.error("更新标签失败:", error);
-      message.error("更新标签失败");
+      message.error(txt.failedSave);
     } finally {
       setSaving(false);
     }
@@ -112,6 +161,7 @@ export default function EditTagPage({ params }: EditTagPageProps) {
   useEffect(() => {
     const initPage = async () => {
       const resolvedParams = await params;
+      setLang(resolveLocale(resolvedParams.lang));
       fetchTag(resolvedParams.id);
     };
 
@@ -146,10 +196,10 @@ export default function EditTagPage({ params }: EditTagPageProps) {
     return (
       <div className="text-center py-12">
         <TagIcon className="w-16 h-16 text-default-300 mx-auto mb-4" />
-        <h3 className="text-lg font-semibold text-default-600 mb-2">标签不存在</h3>
+        <h3 className="text-lg font-semibold text-default-600 mb-2">{txt.notFound}</h3>
         <p className="text-default-500 mb-4">请检查标签ID是否正确</p>
         <Button color="primary" onPress={() => router.back()}>
-          返回
+          {txt.back}
         </Button>
       </div>
     );
@@ -164,7 +214,7 @@ export default function EditTagPage({ params }: EditTagPageProps) {
         </Button>
         <div className="flex-1">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-            编辑标签
+            {txt.title}
           </h1>
           <p className="text-default-600 mt-2 text-lg">编辑标签：{tag.name}</p>
         </div>
@@ -265,7 +315,7 @@ export default function EditTagPage({ params }: EditTagPageProps) {
                         size="lg"
                       />
                       <div>
-                        <p className="font-medium text-foreground">{formData.isActive ? "激活" : "停用"}</p>
+                        <p className="font-medium text-foreground">{formData.isActive ? txt.active : txt.inactive}</p>
                         <p className="text-sm text-default-500">
                           {formData.isActive ? "标签将显示在网站上" : "标签将隐藏"}
                         </p>
@@ -278,7 +328,7 @@ export default function EditTagPage({ params }: EditTagPageProps) {
 
                 <div className="flex gap-4 pt-4">
                   <Button variant="light" onPress={() => router.back()} className="flex-1">
-                    取消
+                    {txt.cancel}
                   </Button>
                   <Button
                     type="submit"
@@ -287,7 +337,7 @@ export default function EditTagPage({ params }: EditTagPageProps) {
                     isLoading={saving}
                     className="flex-1"
                   >
-                    {saving ? "保存中..." : "保存更改"}
+                    {saving ? txt.saving : txt.save}
                   </Button>
                 </div>
               </form>
@@ -325,7 +375,7 @@ export default function EditTagPage({ params }: EditTagPageProps) {
 
                   <div className="flex items-center justify-center gap-2">
                     <Chip size="sm" color={formData.isActive ? "success" : "warning"} variant="flat">
-                      {formData.isActive ? "激活" : "停用"}
+                      {formData.isActive ? txt.active : txt.inactive}
                     </Chip>
                   </div>
                 </div>
@@ -349,11 +399,11 @@ export default function EditTagPage({ params }: EditTagPageProps) {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-default-500">创建时间</span>
-                  <span className="font-medium">{new Date(tag.createdAt).toLocaleDateString("zh-CN")}</span>
+                  <span className="font-medium">{new Date(tag.createdAt).toLocaleDateString(lang)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-default-500">更新时间</span>
-                  <span className="font-medium">{new Date(tag.updatedAt).toLocaleDateString("zh-CN")}</span>
+                  <span className="font-medium">{new Date(tag.updatedAt).toLocaleDateString(lang)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-default-500">文章数量</span>
@@ -362,7 +412,7 @@ export default function EditTagPage({ params }: EditTagPageProps) {
                 <div className="flex justify-between">
                   <span className="text-default-500">当前状态</span>
                   <Chip size="sm" color={tag.isActive ? "success" : "warning"} variant="flat">
-                    {tag.isActive ? "激活" : "停用"}
+                    {tag.isActive ? txt.active : txt.inactive}
                   </Chip>
                 </div>
               </div>
