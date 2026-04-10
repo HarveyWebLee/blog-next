@@ -2,6 +2,10 @@
   "name": "blog-next",
   "version": "0.0.1",
   "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HarveyWebLee/blog-next.git"
+  },
   "packageManager": "pnpm@9.0.0",
   "scripts": {
     "dev": "next dev --turbopack",
@@ -26,7 +30,8 @@
     "lint:fix": "eslint \"./**/*.+(ts|tsx)\" --fix",
     "format:check": "prettier . --check",
     "prepare": "husky",
-    "precommit": "pnpm format:check && lint-staged"
+    "precommit": "pnpm format:check && lint-staged",
+    "release:dry-run": "semantic-release --dry-run"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
@@ -75,6 +80,12 @@
     "@eslint/eslintrc": "^3.3.1",
     "@eslint/js": "^9.15.0",
     "@ianvs/prettier-plugin-sort-imports": "^4.7.0",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/commit-analyzer": "^13.0.1",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^12.0.6",
+    "@semantic-release/npm": "^13.1.5",
+    "@semantic-release/release-notes-generator": "^14.1.0",
     "@tailwindcss/postcss": "^4.1.13",
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.7",
@@ -98,6 +109,7 @@
     "prettier-plugin-css-order": "^2.1.2",
     "prettier-plugin-sort-json": "^4.1.1",
     "sass": "^1.93.2",
+    "semantic-release": "^25.0.3",
     "tailwindcss": "^4.1.13",
     "tsx": "^4.20.5",
     "typescript": "^5.7.2"

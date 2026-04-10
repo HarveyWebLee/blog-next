@@ -90,7 +90,7 @@
 
 ### 版本与 CHANGELOG（semantic-release）
 
-项目使用 semantic-release 根据提交信息自动生成版本号与 CHANGELOG，推送到 **main** 后由 GitLab CI 执行。
+项目使用 semantic-release 根据提交信息自动生成版本号与 CHANGELOG，推送到 **main** 后由 **GitHub Actions**（`.github/workflows/release.yml`）执行。
 
 | type                         | 版本变更                      |
 | ---------------------------- | ----------------------------- |
