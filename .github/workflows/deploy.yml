@@ -7,6 +7,10 @@ on:
 
 # 避免同一分支多次推送导致并发部署互相覆盖：
 # 新部署到来时采用排队执行，避免拉取/构建镜像进行到一半被中断。
+# 部署问题记录（已踩坑）：
+# 1) 远程构建期间 SSH 链路偶发中断（Broken pipe）-> 增加 keepalive 参数。
+# 2) db-migrate 在 SSH heredoc 场景可能“看似完成但不返回”-> run 时断开 stdin（< /dev/null）。
+# 3) 仅看“迁移成功”无法判断整体部署完成 -> 增加阶段标记、容器运行态校验与日志输出。
 concurrency:
   group: deploy-main
   cancel-in-progress: false
@@ -55,6 +59,8 @@ jobs:
             cd "${APP_DIR}"
             COMPOSE_FILE="${APP_DIR}/docker-compose.yml"
             COMPOSE_ENV="${APP_DIR}/deploy/.env.docker"
+            APP_HEALTH_URL="http://127.0.0.1:13001/"
+            dc() { docker compose -f "${COMPOSE_FILE}" --env-file "${COMPOSE_ENV}" "$@"; }
             echo "[DEPLOY] init: cwd=${APP_DIR}"
 
             # 始终对齐远端 main，确保部署内容可追踪、可复现。
@@ -65,43 +71,42 @@ jobs:
 
             # 1) 先确保依赖服务在线（若已在线会保持不变）
             echo "[DEPLOY] step1: ensure mysql/redis running"
-            docker compose -f "${COMPOSE_FILE}" --env-file "${COMPOSE_ENV}" up -d mysql redis
+            dc up -d mysql redis
             echo "[DEPLOY] step1 done"
 
             # 2) 运行数据库迁移（幂等）
             echo "[DEPLOY] step2: run db migrations"
-            set +e
-            timeout 300 docker compose -f "${COMPOSE_FILE}" --env-file "${COMPOSE_ENV}" --profile migrate run --rm -T --no-deps db-migrate < /dev/null
-            migrate_exit_code=$?
-            set -e
-            echo "[DEPLOY] step2 migrate exit code: ${migrate_exit_code}"
-            if [ "${migrate_exit_code}" -ne 0 ]; then
+            if timeout 300 dc --profile migrate run --rm -T --no-deps db-migrate < /dev/null; then
+              echo "[DEPLOY] step2 migrate exit code: 0"
+            else
+              migrate_exit_code=$?
+              echo "[DEPLOY] step2 migrate exit code: ${migrate_exit_code}"
               if [ "${migrate_exit_code}" -eq 124 ]; then
                 echo "部署失败：数据库迁移步骤超时（超过 300 秒）" >&2
               else
                 echo "部署失败：数据库迁移步骤执行异常（退出码 ${migrate_exit_code}）" >&2
               fi
-              docker compose -f "${COMPOSE_FILE}" --env-file "${COMPOSE_ENV}" --profile migrate logs --tail=100 db-migrate || true
+              dc --profile migrate logs --tail=100 db-migrate || true
               exit "${migrate_exit_code}"
             fi
             echo "[DEPLOY] step2 done"
 
             # 3) 构建并更新应用容器
             echo "[DEPLOY] step3: build and start blog-web"
-            docker compose -f "${COMPOSE_FILE}" --env-file "${COMPOSE_ENV}" up -d --build blog-web
+            dc up -d --build blog-web
             echo "[DEPLOY] step3 done"
 
             # 4) 打印当前服务状态，便于在 GitHub Actions 日志中直接确认部署结果
             echo "[DEPLOY] step4: print compose status"
-            docker compose -f "${COMPOSE_FILE}" --env-file "${COMPOSE_ENV}" ps
+            dc ps
             echo "[DEPLOY] step4 done"
 
             # 5) 健康校验：确保 blog-web 容器存在且处于运行态，否则让流水线失败
             echo "[DEPLOY] step5: verify blog-web running"
-            cid="$(docker compose -f "${COMPOSE_FILE}" --env-file "${COMPOSE_ENV}" ps -q blog-web)"
+            cid="$(dc ps -q blog-web)"
             if [ -z "${cid}" ]; then
               echo "部署失败：blog-web 容器不存在" >&2
-              docker compose -f "${COMPOSE_FILE}" --env-file "${COMPOSE_ENV}" logs --tail=100 blog-web || true
+              dc logs --tail=100 blog-web || true
               exit 1
             fi
 
@@ -111,5 +116,14 @@ jobs:
               exit 1
             fi
             echo "[DEPLOY] step5 done"
+
+            # 6) 应用探活：确认 HTTP 可访问，避免“容器已运行但服务未就绪”
+            echo "[DEPLOY] step6: probe app health (${APP_HEALTH_URL})"
+            if ! curl -fsS --max-time 10 "${APP_HEALTH_URL}" > /dev/null; then
+              echo "部署失败：应用 HTTP 探活未通过（${APP_HEALTH_URL}）" >&2
+              docker logs --tail=100 "${cid}" || true
+              exit 1
+            fi
+            echo "[DEPLOY] step6 done"
             echo "[DEPLOY] all steps completed"
           EOF
