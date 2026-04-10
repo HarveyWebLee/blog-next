@@ -55,25 +55,36 @@ jobs:
             cd "${APP_DIR}"
             COMPOSE_FILE="${APP_DIR}/docker-compose.yml"
             COMPOSE_ENV="${APP_DIR}/deploy/.env.docker"
+            echo "[DEPLOY] init: cwd=${APP_DIR}"
 
             # 始终对齐远端 main，确保部署内容可追踪、可复现。
             git fetch origin main
             git checkout main
             git pull --ff-only origin main
+            echo "[DEPLOY] git sync done"
 
             # 1) 先确保依赖服务在线（若已在线会保持不变）
+            echo "[DEPLOY] step1: ensure mysql/redis running"
             docker compose -f "${COMPOSE_FILE}" --env-file "${COMPOSE_ENV}" up -d mysql redis
+            echo "[DEPLOY] step1 done"
 
             # 2) 运行数据库迁移（幂等）
+            echo "[DEPLOY] step2: run db migrations"
             docker compose -f "${COMPOSE_FILE}" --env-file "${COMPOSE_ENV}" --profile migrate run --rm db-migrate
+            echo "[DEPLOY] step2 done"
 
             # 3) 构建并更新应用容器
+            echo "[DEPLOY] step3: build and start blog-web"
             docker compose -f "${COMPOSE_FILE}" --env-file "${COMPOSE_ENV}" up -d --build blog-web
+            echo "[DEPLOY] step3 done"
 
             # 4) 打印当前服务状态，便于在 GitHub Actions 日志中直接确认部署结果
+            echo "[DEPLOY] step4: print compose status"
             docker compose -f "${COMPOSE_FILE}" --env-file "${COMPOSE_ENV}" ps
+            echo "[DEPLOY] step4 done"
 
             # 5) 健康校验：确保 blog-web 容器存在且处于运行态，否则让流水线失败
+            echo "[DEPLOY] step5: verify blog-web running"
             cid="$(docker compose -f "${COMPOSE_FILE}" --env-file "${COMPOSE_ENV}" ps -q blog-web)"
             if [ -z "${cid}" ]; then
               echo "部署失败：blog-web 容器不存在" >&2
@@ -86,4 +97,6 @@ jobs:
               docker logs --tail=100 "${cid}" || true
               exit 1
             fi
+            echo "[DEPLOY] step5 done"
+            echo "[DEPLOY] all steps completed"
           EOF
