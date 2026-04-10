@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           # semantic-release 需要完整提交历史以计算自上次 tag 以来的变更
           fetch-depth: 0
@@ -27,10 +27,10 @@ jobs:
       # 不在此写 version：与 package.json 的 packageManager（pnpm@9.0.0）双写会触发
       # pnpm/action-setup「Multiple versions」错误；由 action 从 packageManager 字段解析版本。
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: pnpm
