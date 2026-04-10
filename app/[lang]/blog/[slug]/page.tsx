@@ -41,6 +41,76 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
   const [comment, setComment] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
+  const lang = resolvedParams?.lang || "zh-CN";
+  const t =
+    lang === "en-US"
+      ? {
+          fetchFailed: "Failed to load post",
+          passwordWrong: "Incorrect password, try again",
+          verifyFailed: "Verification failed, try again",
+          commentRequired: "Please enter comment content",
+          guest: "Guest",
+          commentSuccess: "Comment submitted successfully!",
+          commentFailed: "Failed to submit comment, try again",
+          passwordLabel: "Access Password",
+          passwordPlaceholder: "Enter password",
+          published: "✨ Published",
+          draft: "📝 Draft",
+          archived: "📦 Archived",
+          unknownAuthor: "Unknown Author",
+          liked: "Liked",
+          like: "Like",
+          commentLabel: "💭 Leave a comment",
+          commentPlaceholder: "Share your thoughts...",
+          submitting: "Submitting...",
+          submitComment: "Post Comment",
+          anonymous: "Anonymous",
+        }
+      : lang === "ja-JP"
+        ? {
+            fetchFailed: "記事の取得に失敗しました",
+            passwordWrong: "パスワードが違います",
+            verifyFailed: "検証に失敗しました",
+            commentRequired: "コメント内容を入力してください",
+            guest: "ゲスト",
+            commentSuccess: "コメントを投稿しました！",
+            commentFailed: "コメント投稿に失敗しました",
+            passwordLabel: "アクセスパスワード",
+            passwordPlaceholder: "パスワードを入力",
+            published: "✨ 公開済み",
+            draft: "📝 下書き",
+            archived: "📦 アーカイブ",
+            unknownAuthor: "不明な著者",
+            liked: "いいね済み",
+            like: "いいね",
+            commentLabel: "💭 コメントを投稿",
+            commentPlaceholder: "ご意見をどうぞ...",
+            submitting: "投稿中...",
+            submitComment: "コメント投稿",
+            anonymous: "匿名ユーザー",
+          }
+        : {
+            fetchFailed: "获取博客失败",
+            passwordWrong: "密码错误，请重试",
+            verifyFailed: "验证失败，请重试",
+            commentRequired: "请输入评论内容",
+            guest: "访客",
+            commentSuccess: "评论提交成功！",
+            commentFailed: "评论提交失败，请重试",
+            passwordLabel: "访问密码",
+            passwordPlaceholder: "输入密码",
+            published: "✨ 已发布",
+            draft: "📝 草稿",
+            archived: "📦 已归档",
+            unknownAuthor: "未知作者",
+            liked: "已点赞",
+            like: "点赞",
+            commentLabel: "💭 发表您的评论",
+            commentPlaceholder: "写下您的想法和见解...",
+            submitting: "发布中...",
+            submitComment: "发表评论",
+            anonymous: "匿名用户",
+          };
 
   // 解析params
   useEffect(() => {
@@ -70,13 +140,13 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
           if (result.message.includes("密码")) {
             setShowPasswordForm(true);
           } else {
-            message.error("获取博客失败");
+            message.error(t.fetchFailed);
             router.push("/blog");
           }
         }
       } catch (error) {
         console.error("获取博客失败:", error);
-        message.error("获取博客失败");
+        message.error(t.fetchFailed);
         router.push("/blog");
       } finally {
         setLoading(false);
@@ -84,7 +154,7 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
     };
 
     fetchPost();
-  }, [resolvedParams?.slug, router]);
+  }, [resolvedParams?.slug, router, t.fetchFailed]);
 
   // 验证密码
   const handlePasswordSubmit = async (e: React.FormEvent) => {
@@ -111,11 +181,11 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
           setPost(postResult.data);
         }
       } else {
-        setPasswordError("密码错误，请重试");
+        setPasswordError(t.passwordWrong);
       }
     } catch (error) {
       console.error("验证密码失败:", error);
-      setPasswordError("验证失败，请重试");
+      setPasswordError(t.verifyFailed);
     }
   };
 
@@ -124,7 +194,7 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
     e.preventDefault();
 
     if (!comment.trim()) {
-      message.warning("请输入评论内容");
+      message.warning(t.commentRequired);
       return;
     }
 
@@ -139,7 +209,7 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
         body: JSON.stringify({
           postId: post?.id,
           content: comment,
-          authorName: "访客",
+          authorName: t.guest,
         }),
       });
 
@@ -147,7 +217,7 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
 
       if (result.success) {
         setComment("");
-        message.success("评论提交成功！");
+        message.success(t.commentSuccess);
         // 重新获取博客数据以显示新评论
         const postResponse = await fetch(`/api/posts/slug/${resolvedParams?.slug}?includeRelations=true`);
         const postResult = await postResponse.json();
@@ -159,7 +229,7 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
       }
     } catch (error) {
       console.error("提交评论失败:", error);
-      message.error("评论提交失败，请重试");
+      message.error(t.commentFailed);
     } finally {
       setSubmittingComment(false);
     }
@@ -224,11 +294,11 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
             <CardBody className="pt-0">
               <form onSubmit={handlePasswordSubmit} className="space-y-6">
                 <Input
-                  label="访问密码"
+                  label={t.passwordLabel}
                   type="password"
                   value={password}
                   onValueChange={setPassword}
-                  placeholder="输入密码"
+                  placeholder={t.passwordPlaceholder}
                   variant="bordered"
                   isRequired
                   errorMessage={passwordError}
@@ -321,7 +391,7 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
                           : "status-archived"
                     }`}
                   >
-                    {post.status === "published" ? "✨ 已发布" : post.status === "draft" ? "📝 草稿" : "📦 已归档"}
+                    {post.status === "published" ? t.published : post.status === "draft" ? t.draft : t.archived}
                   </Chip>
                   {post.visibility === "private" && (
                     <Chip color="secondary" variant="flat" size="lg" className="animate-blog-scale-in delay-300">
@@ -353,8 +423,8 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
               {/* 博客元信息 - 使用渐变色悬停效果 */}
               <div className="flex flex-wrap items-center gap-6 text-sm text-default-500 py-4 border-y border-divider animate-blog-slide-in-right delay-300">
                 <div className="meta-item flex items-center gap-2">
-                  <Avatar size="sm" name={post.author?.displayName || "未知作者"} className="w-8 h-8 hover-lift" />
-                  <span className="font-medium">{post.author?.displayName || "未知作者"}</span>
+                  <Avatar size="sm" name={post.author?.displayName || t.unknownAuthor} className="w-8 h-8 hover-lift" />
+                  <span className="font-medium">{post.author?.displayName || t.unknownAuthor}</span>
                 </div>
                 <div className="meta-item flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
@@ -444,7 +514,7 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
                         isLiked ? "gradient-button-danger" : ""
                       }`}
                     >
-                      {isLiked ? "已点赞" : "点赞"} ({post.likeCount})
+                      {isLiked ? t.liked : t.like} ({post.likeCount})
                     </Button>
                     <Button
                       variant="flat"
@@ -500,8 +570,8 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
                   <div className="animate-blog-slide-in-right delay-100">
                     <form onSubmit={handleCommentSubmit} className="space-y-6">
                       <Textarea
-                        label="💭 发表您的评论"
-                        placeholder="写下您的想法和见解..."
+                        label={t.commentLabel}
+                        placeholder={t.commentPlaceholder}
                         value={comment}
                         onValueChange={setComment}
                         variant="bordered"
@@ -521,7 +591,7 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
                         className="button-hover-effect gradient-button-primary"
                         startContent={!submittingComment && <ThumbsUp className="w-5 h-5" />}
                       >
-                        {submittingComment ? "发布中..." : "发表评论"}
+                        {submittingComment ? t.submitting : t.submitComment}
                       </Button>
                     </form>
                   </div>
@@ -543,12 +613,12 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
                                 <div className="flex items-center gap-3 mb-4">
                                   <Avatar
                                     size="md"
-                                    name={comment.author?.displayName || comment.authorName || "匿名用户"}
+                                    name={comment.author?.displayName || comment.authorName || t.anonymous}
                                     className="hover-lift"
                                   />
                                   <div className="flex-1">
                                     <p className="font-semibold text-lg">
-                                      {comment.author?.displayName || comment.authorName || "匿名用户"}
+                                      {comment.author?.displayName || comment.authorName || t.anonymous}
                                     </p>
                                     <p className="text-sm text-default-400">
                                       {new Date(comment.createdAt).toLocaleDateString("zh-CN", {

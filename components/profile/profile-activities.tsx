@@ -40,17 +40,67 @@ const activityColors = {
   profile_updated: "text-indigo-500 bg-indigo-50 dark:bg-indigo-900/20",
 };
 
-const activityLabels = {
-  post_created: "创建了文章",
-  post_updated: "更新了文章",
-  comment_created: "发表了评论",
-  post_liked: "点赞了文章",
-  user_followed: "关注了用户",
-  post_viewed: "浏览了文章",
-  profile_updated: "更新了资料",
-};
-
 export default function ProfileActivities({ lang }: ProfileActivitiesProps) {
+  const t =
+    lang === "en-US"
+      ? {
+          title: "Recent Activities",
+          viewAll: "View All",
+          loading: "Loading...",
+          loadMore: "Load More",
+          empty: "No activities yet",
+          labels: {
+            post_created: "Created post",
+            post_updated: "Updated post",
+            comment_created: "Commented",
+            post_liked: "Liked post",
+            user_followed: "Followed user",
+            post_viewed: "Viewed post",
+            profile_updated: "Updated profile",
+          },
+          agoMin: "m ago",
+          agoHour: "h ago",
+          agoDay: "d ago",
+        }
+      : lang === "ja-JP"
+        ? {
+            title: "最近のアクティビティ",
+            viewAll: "すべて表示",
+            loading: "読み込み中...",
+            loadMore: "もっと見る",
+            empty: "アクティビティはありません",
+            labels: {
+              post_created: "記事を作成",
+              post_updated: "記事を更新",
+              comment_created: "コメントを投稿",
+              post_liked: "記事にいいね",
+              user_followed: "ユーザーをフォロー",
+              post_viewed: "記事を閲覧",
+              profile_updated: "プロフィールを更新",
+            },
+            agoMin: "分前",
+            agoHour: "時間前",
+            agoDay: "日前",
+          }
+        : {
+            title: "最近活动",
+            viewAll: "查看全部",
+            loading: "加载中...",
+            loadMore: "加载更多",
+            empty: "暂无活动记录",
+            labels: {
+              post_created: "创建了文章",
+              post_updated: "更新了文章",
+              comment_created: "发表了评论",
+              post_liked: "点赞了文章",
+              user_followed: "关注了用户",
+              post_viewed: "浏览了文章",
+              profile_updated: "更新了资料",
+            },
+            agoMin: "分钟前",
+            agoHour: "小时前",
+            agoDay: "天前",
+          };
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -144,11 +194,11 @@ export default function ProfileActivities({ lang }: ProfileActivitiesProps) {
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
 
     if (minutes < 60) {
-      return `${minutes}分钟前`;
+      return `${minutes}${t.agoMin}`;
     } else if (hours < 24) {
-      return `${hours}小时前`;
+      return `${hours}${t.agoHour}`;
     } else {
-      return `${days}天前`;
+      return `${days}${t.agoDay}`;
     }
   };
 
@@ -183,9 +233,9 @@ export default function ProfileActivities({ lang }: ProfileActivitiesProps) {
     <Card>
       <CardBody className="p-6">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">最近活动</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{t.title}</h3>
           <Button variant="light" size="sm" endContent={<MoreHorizontal className="w-4 h-4" />}>
-            查看全部
+            {t.viewAll}
           </Button>
         </div>
 
@@ -195,7 +245,7 @@ export default function ProfileActivities({ lang }: ProfileActivitiesProps) {
             const colorClass =
               activityColors[activity.action as keyof typeof activityColors] ||
               "text-gray-500 bg-gray-50 dark:bg-gray-900/20";
-            const label = activityLabels[activity.action as keyof typeof activityLabels] || activity.action;
+            const label = t.labels[activity.action as keyof typeof t.labels] || activity.action;
 
             return (
               <div
@@ -233,7 +283,7 @@ export default function ProfileActivities({ lang }: ProfileActivitiesProps) {
         {hasMore && (
           <div className="mt-6 text-center">
             <Button variant="flat" onClick={loadMore} disabled={loading}>
-              {loading ? "加载中..." : "加载更多"}
+              {loading ? t.loading : t.loadMore}
             </Button>
           </div>
         )}
@@ -241,7 +291,7 @@ export default function ProfileActivities({ lang }: ProfileActivitiesProps) {
         {activities.length === 0 && !loading && (
           <div className="text-center py-8">
             <Clock className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500 dark:text-gray-400">暂无活动记录</p>
+            <p className="text-gray-500 dark:text-gray-400">{t.empty}</p>
           </div>
         )}
       </CardBody>

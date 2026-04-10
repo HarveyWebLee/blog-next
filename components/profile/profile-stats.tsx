@@ -80,6 +80,57 @@ const statsItems = [
 ];
 
 export default function ProfileStats({ lang }: ProfileStatsProps) {
+  const t =
+    lang === "en-US"
+      ? {
+          loadFailed: "Unable to load statistics",
+          title: "Statistics",
+          lastActivity: "Last activity",
+          quickActions: ["View My Posts", "Manage Favorites", "View Notifications", "Activity Log"],
+          labels: {
+            totalPosts: "My Posts",
+            totalComments: "My Comments",
+            totalViews: "Total Views",
+            totalLikes: "Total Likes",
+            totalFavorites: "Favorites",
+            totalFollowers: "Followers",
+            totalFollowing: "Following",
+            unreadNotifications: "Unread",
+          },
+        }
+      : lang === "ja-JP"
+        ? {
+            loadFailed: "統計情報を読み込めません",
+            title: "データ統計",
+            lastActivity: "最終アクティビティ",
+            quickActions: ["自分の記事を見る", "お気に入り管理", "通知を見る", "アクティビティログ"],
+            labels: {
+              totalPosts: "自分の記事",
+              totalComments: "自分のコメント",
+              totalViews: "総閲覧数",
+              totalLikes: "総いいね数",
+              totalFavorites: "お気に入り",
+              totalFollowers: "フォロワー",
+              totalFollowing: "フォロー中",
+              unreadNotifications: "未読通知",
+            },
+          }
+        : {
+            loadFailed: "无法加载统计信息",
+            title: "数据统计",
+            lastActivity: "最后活动",
+            quickActions: ["查看我的文章", "管理收藏", "查看通知", "活动日志"],
+            labels: {
+              totalPosts: "我的文章",
+              totalComments: "我的评论",
+              totalViews: "总浏览量",
+              totalLikes: "总点赞数",
+              totalFavorites: "我的收藏",
+              totalFollowers: "粉丝数",
+              totalFollowing: "关注数",
+              unreadNotifications: "未读通知",
+            },
+          };
   const [stats, setStats] = useState<StatsData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -138,7 +189,7 @@ export default function ProfileStats({ lang }: ProfileStatsProps) {
     return (
       <Card>
         <CardBody className="p-6 text-center">
-          <p className="text-gray-500">无法加载统计信息</p>
+          <p className="text-gray-500">{t.loadFailed}</p>
         </CardBody>
       </Card>
     );
@@ -148,10 +199,10 @@ export default function ProfileStats({ lang }: ProfileStatsProps) {
     <Card>
       <CardBody className="p-6">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">数据统计</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{t.title}</h3>
           {stats.lastActivityAt && (
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              最后活动: {stats.lastActivityAt.toLocaleString()}
+              {t.lastActivity}: {stats.lastActivityAt.toLocaleString(lang)}
             </p>
           )}
         </div>
@@ -171,7 +222,9 @@ export default function ProfileStats({ lang }: ProfileStatsProps) {
                     <Icon className={`w-5 h-5 ${item.color}`} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{item.label}</p>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                      {t.labels[item.key as keyof typeof t.labels]}
+                    </p>
                     <p className={`text-2xl font-bold ${item.color}`}>{value.toLocaleString()}</p>
                   </div>
                 </div>
@@ -184,16 +237,16 @@ export default function ProfileStats({ lang }: ProfileStatsProps) {
         <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
           <div className="flex flex-wrap gap-2">
             <button className="px-4 py-2 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors">
-              查看我的文章
+              {t.quickActions[0]}
             </button>
             <button className="px-4 py-2 text-sm bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors">
-              管理收藏
+              {t.quickActions[1]}
             </button>
             <button className="px-4 py-2 text-sm bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors">
-              查看通知
+              {t.quickActions[2]}
             </button>
             <button className="px-4 py-2 text-sm bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-colors">
-              活动日志
+              {t.quickActions[3]}
             </button>
           </div>
         </div>

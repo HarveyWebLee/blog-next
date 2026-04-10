@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import { Avatar } from "@heroui/avatar";
 import { Button } from "@heroui/button";
 import { Card, CardBody, CardHeader } from "@heroui/card";
@@ -30,6 +31,140 @@ import { BlogNavigation } from "@/components/blog/blog-navigation";
 import { PostData, PostStatus, PostVisibility } from "@/types/blog";
 
 export default function BlogManagePage() {
+  const params = useParams<{ lang: string }>();
+  const lang = params.lang || "zh-CN";
+  const t =
+    lang === "en-US"
+      ? {
+          title: "Blog Management",
+          subtitle: "Manage all your posts",
+          create: "Create Post",
+          searchFilter: "Search & Filter",
+          searchFilterDesc: "Quickly find the posts you need",
+          search: "Search post title...",
+          statusPlaceholder: "Select status",
+          visibilityPlaceholder: "Select visibility",
+          sortPlaceholder: "Sort by",
+          sortCreatedAt: "Created At",
+          sortUpdatedAt: "Updated At",
+          sortTitle: "Title",
+          sortViewCount: "Views",
+          viewMode: "View mode:",
+          views: "views",
+          loading: "Loading...",
+          empty: "No posts",
+          emptyDesc: "Create your first post!",
+          createFirst: "Create First Post",
+          apply: "Apply",
+          reset: "Reset",
+          list: "Post List",
+          total: "posts",
+          prev: "Previous",
+          next: "Next",
+          page: "Page",
+          of: "of",
+          deleteConfirm: "Are you sure to delete this post?",
+          deleted: "Delete",
+          edit: "Edit",
+          view: "View",
+          unknown: "Unknown",
+          uncategorized: "Uncategorized",
+          statusAll: "All Status",
+          visibilityAll: "All Visibility",
+          statusPublished: "Published",
+          statusDraft: "Draft",
+          statusArchived: "Archived",
+          visibilityPublic: "Public",
+          visibilityPrivate: "Private",
+          visibilityPassword: "Password Protected",
+        }
+      : lang === "ja-JP"
+        ? {
+            title: "ブログ管理",
+            subtitle: "すべての記事を管理",
+            create: "記事作成",
+            searchFilter: "検索と絞り込み",
+            searchFilterDesc: "必要な記事をすばやく見つける",
+            search: "記事タイトルを検索...",
+            statusPlaceholder: "状態を選択",
+            visibilityPlaceholder: "公開範囲を選択",
+            sortPlaceholder: "並び順",
+            sortCreatedAt: "作成日時",
+            sortUpdatedAt: "更新日時",
+            sortTitle: "タイトル",
+            sortViewCount: "閲覧数",
+            viewMode: "表示モード:",
+            views: "閲覧",
+            loading: "読み込み中...",
+            empty: "記事がありません",
+            emptyDesc: "最初の記事を作成しましょう！",
+            createFirst: "最初の記事を作成",
+            apply: "適用",
+            reset: "リセット",
+            list: "記事一覧",
+            total: "件",
+            prev: "前へ",
+            next: "次へ",
+            page: "ページ",
+            of: "/",
+            deleteConfirm: "このブログを削除しますか？",
+            deleted: "削除",
+            edit: "編集",
+            view: "表示",
+            unknown: "不明",
+            uncategorized: "未分類",
+            statusAll: "すべての状態",
+            visibilityAll: "すべての公開範囲",
+            statusPublished: "公開済み",
+            statusDraft: "下書き",
+            statusArchived: "アーカイブ",
+            visibilityPublic: "公開",
+            visibilityPrivate: "非公開",
+            visibilityPassword: "パスワード保護",
+          }
+        : {
+            title: "博客管理",
+            subtitle: "管理您的所有博客文章，创建精彩内容",
+            create: "创建博客",
+            searchFilter: "搜索和过滤",
+            searchFilterDesc: "快速找到您需要的文章",
+            search: "搜索博客标题...",
+            statusPlaceholder: "选择状态",
+            visibilityPlaceholder: "选择可见性",
+            sortPlaceholder: "排序方式",
+            sortCreatedAt: "创建时间",
+            sortUpdatedAt: "更新时间",
+            sortTitle: "标题",
+            sortViewCount: "浏览量",
+            viewMode: "视图模式:",
+            views: "浏览",
+            loading: "加载中...",
+            empty: "暂无博客文章",
+            emptyDesc: "开始创建您的第一篇博客文章吧！",
+            createFirst: "创建第一篇博客",
+            apply: "应用过滤",
+            reset: "重置",
+            list: "博客列表",
+            total: "篇文章",
+            prev: "上一页",
+            next: "下一页",
+            page: "第",
+            of: "页 / 共",
+            deleteConfirm: "确定要删除这篇博客吗？",
+            deleted: "删除",
+            edit: "编辑",
+            view: "查看",
+            unknown: "未知",
+            uncategorized: "未分类",
+            statusAll: "所有状态",
+            visibilityAll: "所有可见性",
+            statusPublished: "已发布",
+            statusDraft: "草稿",
+            statusArchived: "已归档",
+            visibilityPublic: "公开",
+            visibilityPrivate: "私有",
+            visibilityPassword: "密码保护",
+          };
   const [posts, setPosts] = useState<PostData[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -73,7 +208,7 @@ export default function BlogManagePage() {
 
   // 删除博客
   const handleDelete = async (postId: number) => {
-    if (!confirm("确定要删除这篇博客吗？")) return;
+    if (!confirm(t.deleteConfirm)) return;
 
     try {
       const response = await fetch(`/api/posts/${postId}`, {
@@ -120,13 +255,13 @@ export default function BlogManagePage() {
   const getStatusText = (status: PostStatus) => {
     switch (status) {
       case "published":
-        return "已发布";
+        return t.statusPublished;
       case "draft":
-        return "草稿";
+        return t.statusDraft;
       case "archived":
-        return "已归档";
+        return t.statusArchived;
       default:
-        return "未知";
+        return t.unknown;
     }
   };
 
@@ -134,13 +269,13 @@ export default function BlogManagePage() {
   const getVisibilityText = (visibility: PostVisibility) => {
     switch (visibility) {
       case "public":
-        return "公开";
+        return t.visibilityPublic;
       case "private":
-        return "私有";
+        return t.visibilityPrivate;
       case "password":
-        return "密码保护";
+        return t.visibilityPassword;
       default:
-        return "未知";
+        return t.unknown;
     }
   };
 
@@ -153,21 +288,21 @@ export default function BlogManagePage() {
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-8">
         <div className="space-y-2">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-            博客管理
+            {t.title}
           </h1>
-          <p className="text-default-500 text-lg">管理您的所有博客文章，创建精彩内容</p>
+          <p className="text-default-500 text-lg">{t.subtitle}</p>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3">
           <Button
             as="a"
-            href="/blog/manage/create"
+            href={`/${lang}/blog/manage/create`}
             color="primary"
             size="lg"
             startContent={<Plus className="w-5 h-5" />}
             className="font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
           >
-            创建博客
+            {t.create}
           </Button>
         </div>
       </div>
@@ -180,15 +315,15 @@ export default function BlogManagePage() {
               <Filter className="w-6 h-6 text-primary" />
             </div>
             <div>
-              <h3 className="text-xl font-semibold">搜索和过滤</h3>
-              <p className="text-default-500">快速找到您需要的文章</p>
+              <h3 className="text-xl font-semibold">{t.searchFilter}</h3>
+              <p className="text-default-500">{t.searchFilterDesc}</p>
             </div>
           </div>
         </CardHeader>
         <CardBody className="pt-0">
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-4">
             <Input
-              placeholder="搜索博客标题..."
+              placeholder={t.search}
               value={searchTerm}
               onValueChange={setSearchTerm}
               startContent={<Search className="w-4 h-4 text-default-400" />}
@@ -197,7 +332,7 @@ export default function BlogManagePage() {
               className="w-full"
             />
             <Select
-              placeholder="选择状态"
+              placeholder={t.statusPlaceholder}
               selectedKeys={[statusFilter]}
               onSelectionChange={(keys) => {
                 const selectedKey = Array.from(keys)[0] as string;
@@ -206,13 +341,13 @@ export default function BlogManagePage() {
               variant="bordered"
               size="lg"
             >
-              <SelectItem key="all">所有状态</SelectItem>
-              <SelectItem key="draft">草稿</SelectItem>
-              <SelectItem key="published">已发布</SelectItem>
-              <SelectItem key="archived">已归档</SelectItem>
+              <SelectItem key="all">{t.statusAll}</SelectItem>
+              <SelectItem key="draft">{t.statusDraft}</SelectItem>
+              <SelectItem key="published">{t.statusPublished}</SelectItem>
+              <SelectItem key="archived">{t.statusArchived}</SelectItem>
             </Select>
             <Select
-              placeholder="选择可见性"
+              placeholder={t.visibilityPlaceholder}
               selectedKeys={[visibilityFilter]}
               onSelectionChange={(keys) => {
                 const selectedKey = Array.from(keys)[0] as string;
@@ -221,13 +356,13 @@ export default function BlogManagePage() {
               variant="bordered"
               size="lg"
             >
-              <SelectItem key="all">所有可见性</SelectItem>
-              <SelectItem key="public">公开</SelectItem>
-              <SelectItem key="private">私有</SelectItem>
-              <SelectItem key="password">密码保护</SelectItem>
+              <SelectItem key="all">{t.visibilityAll}</SelectItem>
+              <SelectItem key="public">{t.visibilityPublic}</SelectItem>
+              <SelectItem key="private">{t.visibilityPrivate}</SelectItem>
+              <SelectItem key="password">{t.visibilityPassword}</SelectItem>
             </Select>
             <Select
-              placeholder="排序方式"
+              placeholder={t.sortPlaceholder}
               selectedKeys={[sortBy]}
               onSelectionChange={(keys) => {
                 const selectedKey = Array.from(keys)[0] as string;
@@ -237,16 +372,16 @@ export default function BlogManagePage() {
               size="lg"
               startContent={<SortAsc className="w-4 h-4" />}
             >
-              <SelectItem key="createdAt">创建时间</SelectItem>
-              <SelectItem key="updatedAt">更新时间</SelectItem>
-              <SelectItem key="title">标题</SelectItem>
-              <SelectItem key="viewCount">浏览量</SelectItem>
+              <SelectItem key="createdAt">{t.sortCreatedAt}</SelectItem>
+              <SelectItem key="updatedAt">{t.sortUpdatedAt}</SelectItem>
+              <SelectItem key="title">{t.sortTitle}</SelectItem>
+              <SelectItem key="viewCount">{t.sortViewCount}</SelectItem>
             </Select>
           </div>
 
           <div className="flex flex-wrap gap-3">
             <Button color="primary" variant="flat" onPress={fetchPosts} size="lg">
-              应用过滤
+              {t.apply}
             </Button>
             <Button
               variant="bordered"
@@ -258,7 +393,7 @@ export default function BlogManagePage() {
               }}
               size="lg"
             >
-              重置
+              {t.reset}
             </Button>
           </div>
         </CardBody>
@@ -267,16 +402,16 @@ export default function BlogManagePage() {
       {/* 视图控制区域 */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div className="flex items-center gap-4">
-          <h3 className="text-xl font-semibold">博客列表</h3>
+          <h3 className="text-xl font-semibold">{t.list}</h3>
           {!loading && posts.length > 0 && (
             <Chip color="primary" variant="flat" size="lg">
-              共 {posts.length} 篇文章
+              {posts.length} {t.total}
             </Chip>
           )}
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-sm text-default-500">视图模式:</span>
+          <span className="text-sm text-default-500">{t.viewMode}</span>
           <div className="flex bg-default-100 rounded-lg p-1">
             <Button
               isIconOnly
@@ -306,23 +441,23 @@ export default function BlogManagePage() {
           {loading ? (
             <div className="text-center py-16">
               <Spinner size="lg" color="primary" />
-              <p className="mt-4 text-default-500 text-lg">加载中...</p>
+              <p className="mt-4 text-default-500 text-lg">{t.loading}</p>
             </div>
           ) : posts.length === 0 ? (
             <div className="text-center py-16">
               <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-default-100 flex items-center justify-center">
                 <Bookmark className="w-12 h-12 text-default-400" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">暂无博客文章</h3>
-              <p className="text-default-500 mb-6">开始创建您的第一篇博客文章吧！</p>
+              <h3 className="text-xl font-semibold mb-2">{t.empty}</h3>
+              <p className="text-default-500 mb-6">{t.emptyDesc}</p>
               <Button
                 as="a"
-                href="/blog/manage/create"
+                href={`/${lang}/blog/manage/create`}
                 color="primary"
                 size="lg"
                 startContent={<Plus className="w-5 h-5" />}
               >
-                创建第一篇博客
+                {t.createFirst}
               </Button>
             </div>
           ) : (
@@ -361,17 +496,17 @@ export default function BlogManagePage() {
                                 key="view"
                                 startContent={<Eye className="w-4 h-4" />}
                                 as="a"
-                                href={`/blog/${post.id}`}
+                                href={`/${lang}/blog/${post.id}`}
                               >
-                                查看
+                                {t.view}
                               </DropdownItem>
                               <DropdownItem
                                 key="edit"
                                 startContent={<Edit className="w-4 h-4" />}
                                 as="a"
-                                href={`/blog/manage/edit/${post.id}`}
+                                href={`/${lang}/blog/manage/edit/${post.id}`}
                               >
-                                编辑
+                                {t.edit}
                               </DropdownItem>
                               <DropdownItem
                                 key="delete"
@@ -379,30 +514,30 @@ export default function BlogManagePage() {
                                 startContent={<Trash2 className="w-4 h-4" />}
                                 onPress={() => handleDelete(post.id)}
                               >
-                                删除
+                                {t.deleted}
                               </DropdownItem>
                             </DropdownMenu>
                           </Dropdown>
                         </div>
 
-                        <p className="text-default-500 text-sm line-clamp-3 mb-4 flex-1">
-                          {post.excerpt || "暂无摘要"}
-                        </p>
+                        <p className="text-default-500 text-sm line-clamp-3 mb-4 flex-1">{post.excerpt || "..."}</p>
 
                         <div className="space-y-3">
                           <div className="flex items-center gap-2 text-sm text-default-400">
-                            <Avatar size="sm" name={post.author?.displayName || "未知"} className="w-5 h-5" />
-                            <span>{post.author?.displayName || "未知"}</span>
+                            <Avatar size="sm" name={post.author?.displayName || t.unknown} className="w-5 h-5" />
+                            <span>{post.author?.displayName || t.unknown}</span>
                           </div>
 
                           <div className="grid grid-cols-2 gap-2 text-xs text-default-400">
                             <div className="flex items-center gap-1">
                               <Bookmark className="w-3 h-3" />
-                              <span className="truncate">{post.category?.name || "未分类"}</span>
+                              <span className="truncate">{post.category?.name || t.uncategorized}</span>
                             </div>
                             <div className="flex items-center gap-1">
                               <TrendingUp className="w-3 h-3" />
-                              <span>{post.viewCount} 浏览</span>
+                              <span>
+                                {post.viewCount} {t.views}
+                              </span>
                             </div>
                           </div>
 
@@ -417,7 +552,7 @@ export default function BlogManagePage() {
                                 variant="light"
                                 color="default"
                                 as="a"
-                                href={`/blog/${post.id}`}
+                                href={`/${lang}/blog/${post.id}`}
                               >
                                 <Eye className="w-3 h-3" />
                               </Button>
@@ -427,7 +562,7 @@ export default function BlogManagePage() {
                                 variant="light"
                                 color="primary"
                                 as="a"
-                                href={`/blog/manage/edit/${post.id}`}
+                                href={`/${lang}/blog/manage/edit/${post.id}`}
                               >
                                 <Edit className="w-3 h-3" />
                               </Button>
@@ -449,20 +584,22 @@ export default function BlogManagePage() {
                             </Chip>
                           </div>
 
-                          <p className="text-default-500 text-sm line-clamp-2 mb-4">{post.excerpt || "暂无摘要"}</p>
+                          <p className="text-default-500 text-sm line-clamp-2 mb-4">{post.excerpt || "..."}</p>
 
                           <div className="flex flex-wrap items-center gap-4 text-sm text-default-400">
                             <div className="flex items-center gap-2">
-                              <Avatar size="sm" name={post.author?.displayName || "未知"} className="w-4 h-4" />
-                              <span>{post.author?.displayName || "未知"}</span>
+                              <Avatar size="sm" name={post.author?.displayName || t.unknown} className="w-4 h-4" />
+                              <span>{post.author?.displayName || t.unknown}</span>
                             </div>
                             <div className="flex items-center gap-1">
                               <Bookmark className="w-4 h-4" />
-                              <span>{post.category?.name || "未分类"}</span>
+                              <span>{post.category?.name || t.uncategorized}</span>
                             </div>
                             <div className="flex items-center gap-1">
                               <TrendingUp className="w-4 h-4" />
-                              <span>{post.viewCount} 浏览</span>
+                              <span>
+                                {post.viewCount} {t.views}
+                              </span>
                             </div>
                             <div className="flex items-center gap-1">
                               <Calendar className="w-4 h-4" />
@@ -472,7 +609,14 @@ export default function BlogManagePage() {
                         </div>
 
                         <div className="flex items-center gap-2">
-                          <Button isIconOnly size="sm" variant="light" color="default" as="a" href={`/blog/${post.id}`}>
+                          <Button
+                            isIconOnly
+                            size="sm"
+                            variant="light"
+                            color="default"
+                            as="a"
+                            href={`/${lang}/blog/${post.id}`}
+                          >
                             <Eye className="w-4 h-4" />
                           </Button>
                           <Button
@@ -481,7 +625,7 @@ export default function BlogManagePage() {
                             variant="light"
                             color="primary"
                             as="a"
-                            href={`/blog/manage/edit/${post.id}`}
+                            href={`/${lang}/blog/manage/edit/${post.id}`}
                           >
                             <Edit className="w-4 h-4" />
                           </Button>
@@ -498,7 +642,7 @@ export default function BlogManagePage() {
                                 startContent={<Trash2 className="w-4 h-4" />}
                                 onPress={() => handleDelete(post.id)}
                               >
-                                删除
+                                {t.deleted}
                               </DropdownItem>
                             </DropdownMenu>
                           </Dropdown>
@@ -524,10 +668,12 @@ export default function BlogManagePage() {
                 isDisabled={currentPage === 1}
                 size="lg"
               >
-                上一页
+                {t.prev}
               </Button>
               <Chip color="primary" variant="flat" size="lg">
-                第 {currentPage} 页 / 共 {totalPages} 页
+                {lang === "zh-CN"
+                  ? `${t.page} ${currentPage} ${t.of} ${totalPages} 页`
+                  : `${t.page} ${currentPage} ${t.of} ${totalPages}`}
               </Chip>
               <Button
                 variant="bordered"
@@ -535,7 +681,7 @@ export default function BlogManagePage() {
                 isDisabled={currentPage === totalPages}
                 size="lg"
               >
-                下一页
+                {t.next}
               </Button>
             </div>
           </Card>

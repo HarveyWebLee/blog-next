@@ -9,6 +9,13 @@ interface ProfileNavigationProps {
 }
 
 export default function ProfileNavigation({ onMenuClick, lang }: ProfileNavigationProps) {
+  const t =
+    lang === "en-US"
+      ? { title: "Profile Center", subtitle: "Manage your account and content", online: "Online" }
+      : lang === "ja-JP"
+        ? { title: "プロフィール", subtitle: "アカウントとコンテンツを管理", online: "オンライン" }
+        : { title: "个人中心", subtitle: "管理您的账户和内容", online: "在线" };
+
   return (
     <div className="sticky top-0 z-30 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
       <div className="flex items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
@@ -19,8 +26,8 @@ export default function ProfileNavigation({ onMenuClick, lang }: ProfileNavigati
           </Button>
 
           <div className="hidden sm:block">
-            <h1 className="text-xl font-semibold text-gray-900 dark:text-white">个人中心</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">管理您的账户和内容</p>
+            <h1 className="text-xl font-semibold text-gray-900 dark:text-white">{t.title}</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{t.subtitle}</p>
           </div>
         </div>
 
@@ -46,8 +53,8 @@ export default function ProfileNavigation({ onMenuClick, lang }: ProfileNavigati
               <span className="text-sm font-medium text-white">U</span>
             </div>
             <div className="hidden sm:block">
-              <p className="text-sm font-medium text-gray-900 dark:text-white">用户名</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">在线</p>
+              <p className="text-sm font-medium text-gray-900 dark:text-white">User</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{t.online}</p>
             </div>
           </div>
         </div>

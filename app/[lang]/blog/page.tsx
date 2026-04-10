@@ -28,6 +28,46 @@ import { PostData } from "@/types/blog";
 export default function BlogWithAPIPage() {
   const router = useRouter();
   const params = useParams();
+  const lang = (params.lang as string) || "zh-CN";
+  const t =
+    lang === "en-US"
+      ? {
+          loadFailed: "Load failed",
+          filterTitle: "Filter Posts",
+          selectCategory: "Select category",
+          searchPlaceholder: "Search title or content...",
+          selectSort: "Select sort",
+          loading: "Loading...",
+          emptyTitle: "No posts",
+          totalFound: "posts found",
+          pagePrefix: "Page",
+          pageMiddle: "of",
+        }
+      : lang === "ja-JP"
+        ? {
+            loadFailed: "読み込み失敗",
+            filterTitle: "記事を絞り込む",
+            selectCategory: "カテゴリを選択",
+            searchPlaceholder: "タイトルまたは内容を検索...",
+            selectSort: "並び順を選択",
+            loading: "読み込み中...",
+            emptyTitle: "記事がありません",
+            totalFound: "件の記事",
+            pagePrefix: "ページ",
+            pageMiddle: "/",
+          }
+        : {
+            loadFailed: "加载失败",
+            filterTitle: "筛选文章",
+            selectCategory: "选择分类",
+            searchPlaceholder: "搜索文章标题或内容...",
+            selectSort: "选择排序",
+            loading: "加载中...",
+            emptyTitle: "暂无文章",
+            totalFound: "篇文章",
+            pagePrefix: "第",
+            pageMiddle: "页 / 共",
+          };
   const [searchValue, setSearchValue] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [sortBy, setSortBy] = useState("publishedAt");
@@ -83,7 +123,7 @@ export default function BlogWithAPIPage() {
       await incrementViewCount(post.id);
       router.push(`/${params.lang}/blog/${post.slug}`);
     } catch (error) {
-      console.error("增加浏览次数失败:", error);
+      console.error("Failed to increment view count:", error);
     }
   };
 
@@ -98,7 +138,7 @@ export default function BlogWithAPIPage() {
           <CardBody className="text-center p-8">
             <div className="text-danger mb-4">
               <RefreshCwIcon className="w-12 h-12 mx-auto mb-4 animate-pulse" />
-              <h2 className="text-2xl font-bold mb-2">加载失败</h2>
+              <h2 className="text-2xl font-bold mb-2">{t.loadFailed}</h2>
               <p className="text-default-500">{error}</p>
             </div>
             <Button
@@ -126,7 +166,7 @@ export default function BlogWithAPIPage() {
             <CardHeader className="flex gap-3">
               <FilterIcon className="w-5 h-5 text-primary" />
               <div className="flex flex-col">
-                <p className="text-lg font-semibold">筛选文章</p>
+                <p className="text-lg font-semibold">{t.filterTitle}</p>
                 <p className="text-small text-default-500">通过搜索、分类和排序找到您需要的文章</p>
               </div>
             </CardHeader>
@@ -136,7 +176,7 @@ export default function BlogWithAPIPage() {
                 <div className="relative">
                   <Input
                     type="text"
-                    placeholder="搜索文章标题或内容..."
+                    placeholder={t.searchPlaceholder}
                     value={searchValue}
                     onValueChange={handleSearch}
                     startContent={<SearchIcon className="w-4 h-4 text-default-400" />}
@@ -157,7 +197,7 @@ export default function BlogWithAPIPage() {
 
                 {/* 分类筛选 */}
                 <Select
-                  placeholder="选择分类"
+                  placeholder={t.selectCategory}
                   selectedKeys={new Set([categoryFilter])}
                   onSelectionChange={(keys) => {
                     const selectedKey = Array.from(keys)[0] as string;
@@ -181,7 +221,7 @@ export default function BlogWithAPIPage() {
 
                 {/* 排序 */}
                 <Select
-                  placeholder="选择排序"
+                  placeholder={t.selectSort}
                   selectedKeys={new Set([sortBy])}
                   onSelectionChange={(keys) => {
                     const selectedKey = Array.from(keys)[0] as string;
@@ -210,14 +250,14 @@ export default function BlogWithAPIPage() {
             <Card className="border-0 backdrop-blur-xl bg-white/10 dark:bg-black/10 animate-fade-in-up">
               <CardBody className="text-center py-12">
                 <Spinner size="lg" color="primary" />
-                <p className="mt-4 text-default-500">加载中...</p>
+                <p className="mt-4 text-default-500">{t.loading}</p>
               </CardBody>
             </Card>
           ) : posts.length === 0 ? (
             <Card className="border-0 backdrop-blur-xl bg-white/10 dark:bg-black/10 animate-fade-in-up">
               <CardBody className="text-center py-12">
                 <BookOpenIcon className="w-16 h-16 mx-auto mb-4 text-default-300 animate-float" />
-                <h3 className="text-xl font-semibold mb-2">暂无文章</h3>
+                <h3 className="text-xl font-semibold mb-2">{t.emptyTitle}</h3>
                 <p className="text-default-500">当前没有找到符合条件的文章</p>
               </CardBody>
             </Card>
@@ -231,7 +271,7 @@ export default function BlogWithAPIPage() {
                   color="primary"
                   className="backdrop-blur-xl bg-white/10 dark:bg-black/10"
                 >
-                  共找到 {pagination.total} 篇文章
+                  {pagination.total} {t.totalFound}
                 </Chip>
                 <Chip
                   startContent={<CalendarIcon className="w-4 h-4" />}
@@ -239,7 +279,7 @@ export default function BlogWithAPIPage() {
                   color="secondary"
                   className="backdrop-blur-xl bg-white/10 dark:bg-black/10"
                 >
-                  第 {pagination.page} 页 / 共 {pagination.totalPages} 页
+                  {t.pagePrefix} {pagination.page} {t.pageMiddle} {pagination.totalPages} 页
                 </Chip>
               </div>
 
@@ -247,7 +287,12 @@ export default function BlogWithAPIPage() {
               <div className="blog-grid grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                 {(posts || []).map((post, index) => (
                   <div key={post.id} className="animate-fade-in-up" style={{ animationDelay: `${index * 100}ms` }}>
-                    <PostCard post={post} onView={() => handleViewPost(post)} onLike={() => handleLikePost(post)} />
+                    <PostCard
+                      post={post}
+                      lang={lang}
+                      onView={() => handleViewPost(post)}
+                      onLike={() => handleLikePost(post)}
+                    />
                   </div>
                 ))}
               </div>
@@ -282,7 +327,7 @@ export default function BlogWithAPIPage() {
         {/* 侧边栏 */}
         <div className="lg:col-span-1">
           <div className="animate-fade-in-up" style={{ animationDelay: "200ms" }}>
-            <BlogSidebar />
+            <BlogSidebar lang={lang} />
           </div>
         </div>
       </div>

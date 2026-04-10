@@ -48,15 +48,85 @@ const notificationColors = {
   system: "text-gray-500 bg-gray-50 dark:bg-gray-900/20",
 };
 
-const notificationLabels = {
-  comment: "评论",
-  like: "点赞",
-  follow: "关注",
-  mention: "提及",
-  system: "系统",
-};
-
 export default function ProfileNotifications({ lang }: ProfileNotificationsProps) {
+  const t =
+    lang === "en-US"
+      ? {
+          title: "Notifications",
+          subtitle: "Manage your notifications",
+          markAll: "Mark all as read",
+          allTypes: "All Types",
+          allStatus: "All Status",
+          unread: "Unread",
+          read: "Read",
+          isNew: "New",
+          readAt: "Read",
+          markRead: "Mark as read",
+          del: "Delete",
+          more: "More",
+          emptyMatch: "No matching notifications",
+          empty: "No notifications",
+          emptyMatchDesc: "Try adjusting filters",
+          emptyDesc: "You will receive notifications here",
+          refresh: "Refresh",
+          labels: { comment: "Comment", like: "Like", follow: "Follow", mention: "Mention", system: "System" },
+          agoMin: "m ago",
+          agoHour: "h ago",
+          agoDay: "d ago",
+        }
+      : lang === "ja-JP"
+        ? {
+            title: "通知",
+            subtitle: "通知を管理",
+            markAll: "すべて既読",
+            allTypes: "すべての種類",
+            allStatus: "すべての状態",
+            unread: "未読",
+            read: "既読",
+            isNew: "新着",
+            readAt: "既読",
+            markRead: "既読にする",
+            del: "削除",
+            more: "その他",
+            emptyMatch: "一致する通知がありません",
+            empty: "通知はありません",
+            emptyMatchDesc: "条件を調整してください",
+            emptyDesc: "新しい通知がここに表示されます",
+            refresh: "更新",
+            labels: {
+              comment: "コメント",
+              like: "いいね",
+              follow: "フォロー",
+              mention: "メンション",
+              system: "システム",
+            },
+            agoMin: "分前",
+            agoHour: "時間前",
+            agoDay: "日前",
+          }
+        : {
+            title: "通知中心",
+            subtitle: "管理您的通知消息",
+            markAll: "全部标记为已读",
+            allTypes: "全部类型",
+            allStatus: "全部状态",
+            unread: "未读",
+            read: "已读",
+            isNew: "新",
+            readAt: "已读于",
+            markRead: "标记为已读",
+            del: "删除",
+            more: "更多",
+            emptyMatch: "没有找到匹配的通知",
+            empty: "暂无通知",
+            emptyMatchDesc: "尝试调整筛选条件",
+            emptyDesc: "当有新的活动时，您会在这里收到通知",
+            refresh: "刷新通知",
+            labels: { comment: "评论", like: "点赞", follow: "关注", mention: "提及", system: "系统" },
+            agoMin: "分钟前",
+            agoHour: "小时前",
+            agoDay: "天前",
+          };
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -155,11 +225,11 @@ export default function ProfileNotifications({ lang }: ProfileNotificationsProps
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
 
     if (minutes < 60) {
-      return `${minutes}分钟前`;
+      return `${minutes}${t.agoMin}`;
     } else if (hours < 24) {
-      return `${hours}小时前`;
+      return `${hours}${t.agoHour}`;
     } else {
-      return `${days}天前`;
+      return `${days}${t.agoDay}`;
     }
   };
 
@@ -234,8 +304,8 @@ export default function ProfileNotifications({ lang }: ProfileNotificationsProps
       {/* 页面头部 */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">通知中心</h1>
-          <p className="text-gray-500 dark:text-gray-400">管理您的通知消息</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t.title}</h1>
+          <p className="text-gray-500 dark:text-gray-400">{t.subtitle}</p>
         </div>
         <div className="flex items-center space-x-2">
           {unreadCount > 0 && (
@@ -244,7 +314,7 @@ export default function ProfileNotifications({ lang }: ProfileNotificationsProps
             </Badge>
           )}
           <Button color="primary" variant="flat" size="sm" onClick={handleMarkAllAsRead} disabled={unreadCount === 0}>
-            全部标记为已读
+            {t.markAll}
           </Button>
         </div>
       </div>
@@ -260,12 +330,12 @@ export default function ProfileNotifications({ lang }: ProfileNotificationsProps
                 onChange={(e) => setTypeFilter(e.target.value)}
                 className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="all">全部类型</option>
-                <option value="comment">评论</option>
-                <option value="like">点赞</option>
-                <option value="follow">关注</option>
-                <option value="mention">提及</option>
-                <option value="system">系统</option>
+                <option value="all">{t.allTypes}</option>
+                <option value="comment">{t.labels.comment}</option>
+                <option value="like">{t.labels.like}</option>
+                <option value="follow">{t.labels.follow}</option>
+                <option value="mention">{t.labels.mention}</option>
+                <option value="system">{t.labels.system}</option>
               </select>
             </div>
             <div className="flex items-center space-x-2">
@@ -274,9 +344,9 @@ export default function ProfileNotifications({ lang }: ProfileNotificationsProps
                 onChange={(e) => setReadFilter(e.target.value)}
                 className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="all">全部状态</option>
-                <option value="unread">未读</option>
-                <option value="read">已读</option>
+                <option value="all">{t.allStatus}</option>
+                <option value="unread">{t.unread}</option>
+                <option value="read">{t.read}</option>
               </select>
             </div>
           </div>
@@ -288,7 +358,7 @@ export default function ProfileNotifications({ lang }: ProfileNotificationsProps
         {filteredNotifications.map((notification) => {
           const Icon = notificationIcons[notification.type];
           const colorClass = notificationColors[notification.type];
-          const label = notificationLabels[notification.type];
+          const label = t.labels[notification.type];
 
           return (
             <Card
@@ -329,7 +399,7 @@ export default function ProfileNotifications({ lang }: ProfileNotificationsProps
                           </Chip>
                           {!notification.isRead && (
                             <Badge color="danger" size="sm" variant="flat">
-                              新
+                              {t.isNew}
                             </Badge>
                           )}
                         </div>
@@ -341,7 +411,11 @@ export default function ProfileNotifications({ lang }: ProfileNotificationsProps
                         {/* 通知时间 */}
                         <div className="flex items-center space-x-4 text-xs text-gray-500 dark:text-gray-400">
                           <span>{formatTimeAgo(notification.createdAt)}</span>
-                          {notification.readAt && <span>已读于 {formatTimeAgo(notification.readAt)}</span>}
+                          {notification.readAt && (
+                            <span>
+                              {t.readAt} {formatTimeAgo(notification.readAt)}
+                            </span>
+                          )}
                         </div>
                       </div>
 
@@ -356,7 +430,7 @@ export default function ProfileNotifications({ lang }: ProfileNotificationsProps
                             startContent={<Check className="w-4 h-4" />}
                             onClick={() => handleMarkAsRead(notification.id)}
                           >
-                            标记为已读
+                            {t.markRead}
                           </Button>
                         )}
                         <Button
@@ -367,7 +441,7 @@ export default function ProfileNotifications({ lang }: ProfileNotificationsProps
                           startContent={<Trash2 className="w-4 h-4" />}
                           onClick={() => handleDeleteNotification(notification.id)}
                         >
-                          删除
+                          {t.del}
                         </Button>
                         <Button
                           isIconOnly
@@ -375,7 +449,7 @@ export default function ProfileNotifications({ lang }: ProfileNotificationsProps
                           size="sm"
                           startContent={<MoreHorizontal className="w-4 h-4" />}
                         >
-                          更多
+                          {t.more}
                         </Button>
                       </div>
                     </div>
@@ -393,13 +467,13 @@ export default function ProfileNotifications({ lang }: ProfileNotificationsProps
           <CardBody className="p-12 text-center">
             <Bell className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-              {typeFilter !== "all" || readFilter !== "all" ? "没有找到匹配的通知" : "暂无通知"}
+              {typeFilter !== "all" || readFilter !== "all" ? t.emptyMatch : t.empty}
             </h3>
             <p className="text-gray-500 dark:text-gray-400 mb-6">
-              {typeFilter !== "all" || readFilter !== "all" ? "尝试调整筛选条件" : "当有新的活动时，您会在这里收到通知"}
+              {typeFilter !== "all" || readFilter !== "all" ? t.emptyMatchDesc : t.emptyDesc}
             </p>
             <Button color="primary" variant="flat">
-              刷新通知
+              {t.refresh}
             </Button>
           </CardBody>
         </Card>

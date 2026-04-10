@@ -46,7 +46,194 @@ import {
 export default function EditBlogPage() {
   const router = useRouter();
   const params = useParams();
+  const lang = (params.lang as string) || "zh-CN";
   const postId = params.id as string;
+  const t =
+    lang === "en-US"
+      ? {
+          fetchFailed: "Failed to fetch post",
+          updateSuccess: "Post updated!",
+          updateFailed: "Update failed",
+          loading: "Loading post...",
+          notFound: "Post not found",
+          notFoundDesc: "The post may be removed",
+          backManage: "Back to Manage",
+          back: "Back",
+          editTitle: "Edit Post",
+          editMode: "Edit Mode",
+          cancel: "Cancel",
+          saving: "Saving...",
+          save: "Save Changes",
+          fillRequired: "Please fill title and content",
+          editDescPrefix: "Editing:",
+          lastUpdated: "Last updated:",
+          basicInfo: "Basic Information",
+          basicInfoDesc: "Edit the basic information of the post",
+          title: "Title",
+          titlePlaceholder: "Enter an engaging post title",
+          titleHint: "The title will auto-generate a URL slug",
+          slug: "URL Slug",
+          slugPlaceholder: "Auto-generate or enter manually",
+          slugHint: "Used to build post links",
+          excerpt: "Excerpt",
+          excerptPlaceholder: "Write an engaging excerpt to introduce your content...",
+          excerptHint: "Shown in post list and search results",
+          featuredImage: "Featured Image",
+          featuredImagePlaceholder: "Enter image URL",
+          featuredImageHint: "Recommended size: 1200x630",
+          categoryTag: "Category & Tags",
+          categoryTagDesc: "Choose suitable category and tags",
+          selectCategory: "Select Category",
+          selectCategoryPlaceholder: "Choose a category",
+          selectCategoryHint: "Help readers find your post",
+          selectTags: "Select Tags",
+          noTags: "No tags available",
+          tagsHint: "Click tags to select, multiple selection supported",
+          editorPlaceholder: "Start writing your post... Markdown is supported",
+          publishSettings: "Publish Settings",
+          publishSettingsDesc: "Configure post status and visibility",
+          publishStatus: "Publish Status",
+          publishStatusPlaceholder: "Select publish status",
+          statusDraft: "Draft",
+          statusPublished: "Published",
+          statusArchived: "Archived",
+          publishStatusHint: "Draft is not public. Published posts are visible to readers.",
+          visibility: "Visibility",
+          visibilityPlaceholder: "Select visibility",
+          visibilityPublic: "Public",
+          visibilityPrivate: "Private",
+          visibilityPassword: "Password Protected",
+          visibilityHint: "Control who can access your post",
+          password: "Access Password",
+          passwordPlaceholder: "Set access password",
+          passwordHint: "Visitors must enter the password to view the post",
+          allowComments: "Allow Comments",
+          allowCommentsHint: "Readers can comment on this post",
+          savedAt: "Saved at:",
+        }
+      : lang === "ja-JP"
+        ? {
+            fetchFailed: "記事取得に失敗しました",
+            updateSuccess: "記事を更新しました！",
+            updateFailed: "更新に失敗しました",
+            loading: "記事を読み込み中...",
+            notFound: "記事が存在しません",
+            notFoundDesc: "削除された可能性があります",
+            backManage: "管理へ戻る",
+            back: "戻る",
+            editTitle: "記事を編集",
+            editMode: "編集モード",
+            cancel: "キャンセル",
+            saving: "保存中...",
+            save: "変更を保存",
+            fillRequired: "タイトルと内容を入力してください",
+            editDescPrefix: "編集中:",
+            lastUpdated: "最終更新:",
+            basicInfo: "基本情報",
+            basicInfoDesc: "記事の基本情報を編集",
+            title: "タイトル",
+            titlePlaceholder: "魅力的な記事タイトルを入力",
+            titleHint: "タイトルからURLスラッグを自動生成します",
+            slug: "URLスラッグ",
+            slugPlaceholder: "自動生成または手動入力",
+            slugHint: "記事リンクの生成に使用します",
+            excerpt: "概要",
+            excerptPlaceholder: "読者に内容を伝える魅力的な概要を書いてください...",
+            excerptHint: "記事一覧と検索結果に表示されます",
+            featuredImage: "アイキャッチ画像",
+            featuredImagePlaceholder: "画像URLを入力",
+            featuredImageHint: "推奨サイズ: 1200x630",
+            categoryTag: "カテゴリとタグ",
+            categoryTagDesc: "適切なカテゴリとタグを選択",
+            selectCategory: "カテゴリを選択",
+            selectCategoryPlaceholder: "カテゴリを選択",
+            selectCategoryHint: "読者が記事を見つけやすくなります",
+            selectTags: "タグを選択",
+            noTags: "利用可能なタグがありません",
+            tagsHint: "タグをクリックして複数選択できます",
+            editorPlaceholder: "記事を書き始めましょう... Markdown対応",
+            publishSettings: "公開設定",
+            publishSettingsDesc: "記事の公開状態と可視性を設定",
+            publishStatus: "公開状態",
+            publishStatusPlaceholder: "公開状態を選択",
+            statusDraft: "下書き",
+            statusPublished: "公開",
+            statusArchived: "アーカイブ",
+            publishStatusHint: "下書きは非公開です。公開後に読者が閲覧できます。",
+            visibility: "可視性",
+            visibilityPlaceholder: "可視性を選択",
+            visibilityPublic: "公開",
+            visibilityPrivate: "非公開",
+            visibilityPassword: "パスワード保護",
+            visibilityHint: "誰が記事を閲覧できるかを制御します",
+            password: "アクセスパスワード",
+            passwordPlaceholder: "アクセスパスワードを設定",
+            passwordHint: "閲覧にはパスワード入力が必要です",
+            allowComments: "コメントを許可",
+            allowCommentsHint: "読者がこの記事にコメントできます",
+            savedAt: "保存時刻:",
+          }
+        : {
+            fetchFailed: "获取博客数据失败",
+            updateSuccess: "博客更新成功！",
+            updateFailed: "更新失败",
+            loading: "加载博客数据中...",
+            notFound: "博客不存在",
+            notFoundDesc: "您要编辑的博客可能已被删除或不存在",
+            backManage: "返回管理页面",
+            back: "返回",
+            editTitle: "编辑博客",
+            editMode: "编辑模式",
+            cancel: "取消",
+            saving: "保存中...",
+            save: "保存更改",
+            fillRequired: "请填写标题和内容",
+            editDescPrefix: "编辑:",
+            lastUpdated: "最后更新:",
+            basicInfo: "基本信息",
+            basicInfoDesc: "编辑博客的基本信息",
+            title: "标题",
+            titlePlaceholder: "输入吸引人的博客标题",
+            titleHint: "标题将自动生成URL别名",
+            slug: "URL别名",
+            slugPlaceholder: "自动生成或手动输入",
+            slugHint: "用于生成博客链接",
+            excerpt: "摘要",
+            excerptPlaceholder: "写一段吸引人的摘要，让读者了解文章内容...",
+            excerptHint: "摘要将显示在博客列表和搜索结果中",
+            featuredImage: "特色图片",
+            featuredImagePlaceholder: "输入图片链接地址",
+            featuredImageHint: "建议尺寸：1200x630",
+            categoryTag: "分类和标签",
+            categoryTagDesc: "为您的博客选择合适的分类和标签",
+            selectCategory: "选择分类",
+            selectCategoryPlaceholder: "选择一个分类",
+            selectCategoryHint: "选择最适合的分类，帮助读者找到您的文章",
+            selectTags: "选择标签",
+            noTags: "暂无可用标签",
+            tagsHint: "点击标签进行选择，可以多选",
+            editorPlaceholder: "开始编写您的博客内容...支持Markdown格式",
+            publishSettings: "发布设置",
+            publishSettingsDesc: "配置博客的发布状态和可见性",
+            publishStatus: "发布状态",
+            publishStatusPlaceholder: "选择发布状态",
+            statusDraft: "草稿",
+            statusPublished: "发布",
+            statusArchived: "归档",
+            publishStatusHint: "草稿不会公开显示，发布后读者可以访问",
+            visibility: "可见性",
+            visibilityPlaceholder: "选择可见性",
+            visibilityPublic: "公开",
+            visibilityPrivate: "私有",
+            visibilityPassword: "密码保护",
+            visibilityHint: "控制谁可以访问您的博客",
+            password: "访问密码",
+            passwordPlaceholder: "设置访问密码",
+            passwordHint: "设置密码后，访问者需要输入密码才能查看博客",
+            allowComments: "允许评论",
+            allowCommentsHint: "读者可以对此博客发表评论",
+            savedAt: "最后保存:",
+          };
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -97,13 +284,13 @@ export default function EditBlogPage() {
             tagIds: postData.tags?.map((tag: any) => tag.id) || [],
           });
         } else {
-          message.error("获取博客数据失败");
-          router.push("/blog/manage");
+          message.error(t.fetchFailed);
+          router.push(`/${lang}/blog/manage`);
         }
       } catch (error) {
         console.error("获取博客数据失败:", error);
-        message.error("获取博客数据失败");
-        router.push("/blog/manage");
+        message.error(t.fetchFailed);
+        router.push(`/${lang}/blog/manage`);
       } finally {
         setLoading(false);
       }
@@ -112,7 +299,7 @@ export default function EditBlogPage() {
     if (postId) {
       fetchPost();
     }
-  }, [postId, router]);
+  }, [postId, router, lang, t.fetchFailed]);
 
   // 处理表单输入变化
   const handleInputChange = (field: keyof UpdatePostRequest, value: any) => {
@@ -156,7 +343,7 @@ export default function EditBlogPage() {
     e.preventDefault();
 
     if (!formData.title?.trim() || !formData.content?.trim()) {
-      message.warning("请填写标题和内容");
+      message.warning(t.fillRequired);
       return;
     }
 
@@ -174,14 +361,14 @@ export default function EditBlogPage() {
       const result = await response.json();
 
       if (result.success) {
-        message.success("博客更新成功！");
-        router.push("/blog/manage");
+        message.success(t.updateSuccess);
+        router.push(`/${lang}/blog/manage`);
       } else {
-        message.error(`更新失败: ${result.message}`);
+        message.error(`${t.updateFailed}: ${result.message}`);
       }
     } catch (error) {
       console.error("更新博客失败:", error);
-      message.error("更新博客失败，请重试");
+      message.error(t.updateFailed);
     } finally {
       setSaving(false);
     }
@@ -192,7 +379,7 @@ export default function EditBlogPage() {
       <Card className="shadow-lg border-0">
         <CardBody className="text-center py-16">
           <Spinner size="lg" color="primary" />
-          <p className="mt-4 text-default-500 text-lg">加载博客数据中...</p>
+          <p className="mt-4 text-default-500 text-lg">{t.loading}</p>
         </CardBody>
       </Card>
     );
@@ -205,15 +392,15 @@ export default function EditBlogPage() {
           <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-danger-100 flex items-center justify-center">
             <FileText className="w-12 h-12 text-danger" />
           </div>
-          <h3 className="text-xl font-semibold mb-2">博客不存在</h3>
-          <p className="text-default-500 mb-6">您要编辑的博客可能已被删除或不存在</p>
+          <h3 className="text-xl font-semibold mb-2">{t.notFound}</h3>
+          <p className="text-default-500 mb-6">{t.notFoundDesc}</p>
           <Button
-            onPress={() => router.push("/blog/manage")}
+            onPress={() => router.push(`/${lang}/blog/manage`)}
             color="primary"
             size="lg"
             startContent={<ArrowLeft className="w-4 h-4" />}
           >
-            返回管理页面
+            {t.backManage}
           </Button>
         </CardBody>
       </Card>
@@ -232,22 +419,24 @@ export default function EditBlogPage() {
             startContent={<ArrowLeft className="w-5 h-5" />}
             className="shadow-sm hover:shadow-md transition-all duration-300"
           >
-            返回
+            {t.back}
           </Button>
           <div>
             <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              编辑博客
+              {t.editTitle}
             </h1>
-            <p className="text-default-500 text-lg mt-2">编辑: {post.posts.title}</p>
+            <p className="text-default-500 text-lg mt-2">
+              {t.editDescPrefix} {post.posts.title}
+            </p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
           <Chip color="secondary" variant="flat" size="lg" startContent={<Edit3 className="w-4 h-4" />}>
-            编辑模式
+            {t.editMode}
           </Chip>
           <Chip color="default" variant="flat" size="lg" startContent={<Clock className="w-4 h-4" />}>
-            最后更新: {new Date(post.posts.updatedAt).toLocaleDateString()}
+            {t.lastUpdated} {new Date(post.posts.updatedAt).toLocaleDateString(lang)}
           </Chip>
         </div>
       </div>
@@ -261,8 +450,8 @@ export default function EditBlogPage() {
                 <FileText className="w-6 h-6 text-primary" />
               </div>
               <div>
-                <h3 className="text-xl font-semibold">基本信息</h3>
-                <p className="text-default-500">编辑博客的基本信息</p>
+                <h3 className="text-xl font-semibold">{t.basicInfo}</h3>
+                <p className="text-default-500">{t.basicInfoDesc}</p>
               </div>
             </div>
           </CardHeader>
@@ -270,8 +459,8 @@ export default function EditBlogPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Input
-                  label="标题"
-                  placeholder="输入吸引人的博客标题"
+                  label={t.title}
+                  placeholder={t.titlePlaceholder}
                   value={formData.title}
                   onValueChange={handleTitleChange}
                   variant="bordered"
@@ -280,27 +469,27 @@ export default function EditBlogPage() {
                   startContent={<Type className="w-4 h-4 text-default-400" />}
                   className="w-full"
                 />
-                <p className="text-xs text-default-400">标题将自动生成URL别名</p>
+                <p className="text-xs text-default-400">{t.titleHint}</p>
               </div>
 
               <div className="space-y-2">
                 <Input
-                  label="URL别名"
-                  placeholder="自动生成或手动输入"
+                  label={t.slug}
+                  placeholder={t.slugPlaceholder}
                   value={formData.slug}
                   onValueChange={(value: string) => handleInputChange("slug", value)}
                   variant="bordered"
                   size="lg"
                   className="w-full"
                 />
-                <p className="text-xs text-default-400">用于生成博客链接</p>
+                <p className="text-xs text-default-400">{t.slugHint}</p>
               </div>
             </div>
 
             <div className="space-y-2">
               <Textarea
-                label="摘要"
-                placeholder="写一段吸引人的摘要，让读者了解文章内容..."
+                label={t.excerpt}
+                placeholder={t.excerptPlaceholder}
                 value={formData.excerpt}
                 onValueChange={(value: string) => handleInputChange("excerpt", value)}
                 variant="bordered"
@@ -308,13 +497,13 @@ export default function EditBlogPage() {
                 minRows={4}
                 className="w-full"
               />
-              <p className="text-xs text-default-400">摘要将显示在博客列表和搜索结果中</p>
+              <p className="text-xs text-default-400">{t.excerptHint}</p>
             </div>
 
             <div className="space-y-2">
               <Input
-                label="特色图片"
-                placeholder="输入图片链接地址"
+                label={t.featuredImage}
+                placeholder={t.featuredImagePlaceholder}
                 value={formData.featuredImage}
                 onValueChange={(value: string) => handleInputChange("featuredImage", value)}
                 variant="bordered"
@@ -323,7 +512,7 @@ export default function EditBlogPage() {
                 startContent={<ImageIcon className="w-4 h-4 text-default-400" />}
                 className="w-full"
               />
-              <p className="text-xs text-default-400">建议使用高质量图片，尺寸推荐 1200x630</p>
+              <p className="text-xs text-default-400">{t.featuredImageHint}</p>
             </div>
           </CardBody>
         </Card>
@@ -336,16 +525,16 @@ export default function EditBlogPage() {
                 <Folder className="w-6 h-6 text-success" />
               </div>
               <div>
-                <h3 className="text-xl font-semibold">分类和标签</h3>
-                <p className="text-default-500">为您的博客选择合适的分类和标签</p>
+                <h3 className="text-xl font-semibold">{t.categoryTag}</h3>
+                <p className="text-default-500">{t.categoryTagDesc}</p>
               </div>
             </div>
           </CardHeader>
           <CardBody className="pt-0 space-y-6">
             <div className="space-y-2">
               <Select
-                label="选择分类"
-                placeholder="选择一个分类"
+                label={t.selectCategory}
+                placeholder={t.selectCategoryPlaceholder}
                 selectedKeys={formData.categoryId ? new Set([formData.categoryId.toString()]) : new Set()}
                 onSelectionChange={(keys) => {
                   const selectedKey = Array.from(keys)[0] as string;
@@ -361,13 +550,13 @@ export default function EditBlogPage() {
                   <SelectItem key={category.id.toString()}>{category.name}</SelectItem>
                 ))}
               </Select>
-              <p className="text-xs text-default-400">选择最适合的分类，帮助读者找到您的文章</p>
+              <p className="text-xs text-default-400">{t.selectCategoryHint}</p>
             </div>
 
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <TagIcon className="w-4 h-4 text-default-400" />
-                <span className="text-sm font-medium">选择标签</span>
+                <span className="text-sm font-medium">{t.selectTags}</span>
                 {tagsLoading && <Spinner size="sm" />}
               </div>
 
@@ -386,9 +575,9 @@ export default function EditBlogPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-default-400">暂无可用标签</p>
+                <p className="text-sm text-default-400">{t.noTags}</p>
               )}
-              <p className="text-xs text-default-400">点击标签进行选择，可以多选</p>
+              <p className="text-xs text-default-400">{t.tagsHint}</p>
             </div>
           </CardBody>
         </Card>
@@ -397,7 +586,7 @@ export default function EditBlogPage() {
         <SimpleEditor
           value={formData.content}
           onChange={(content: string) => handleInputChange("content", content)}
-          placeholder="开始编写您的博客内容...支持Markdown格式"
+          placeholder={t.editorPlaceholder}
           height="600px"
           onSave={() => {
             // 自动保存逻辑
@@ -415,8 +604,8 @@ export default function EditBlogPage() {
                 <Settings className="w-6 h-6 text-warning" />
               </div>
               <div>
-                <h3 className="text-xl font-semibold">发布设置</h3>
-                <p className="text-default-500">配置博客的发布状态和可见性</p>
+                <h3 className="text-xl font-semibold">{t.publishSettings}</h3>
+                <p className="text-default-500">{t.publishSettingsDesc}</p>
               </div>
             </div>
           </CardHeader>
@@ -424,8 +613,8 @@ export default function EditBlogPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Select
-                  label="发布状态"
-                  placeholder="选择发布状态"
+                  label={t.publishStatus}
+                  placeholder={t.publishStatusPlaceholder}
                   selectedKeys={formData.status ? new Set([formData.status]) : new Set()}
                   onSelectionChange={(keys) => {
                     const selectedKey = Array.from(keys)[0] as string;
@@ -437,22 +626,22 @@ export default function EditBlogPage() {
                   className="w-full"
                 >
                   <SelectItem key="draft" startContent={<FileText className="w-4 h-4" />}>
-                    草稿
+                    {t.statusDraft}
                   </SelectItem>
                   <SelectItem key="published" startContent={<Sparkles className="w-4 h-4" />}>
-                    发布
+                    {t.statusPublished}
                   </SelectItem>
                   <SelectItem key="archived" startContent={<FileText className="w-4 h-4" />}>
-                    归档
+                    {t.statusArchived}
                   </SelectItem>
                 </Select>
-                <p className="text-xs text-default-400">草稿不会公开显示，发布后读者可以访问</p>
+                <p className="text-xs text-default-400">{t.publishStatusHint}</p>
               </div>
 
               <div className="space-y-2">
                 <Select
-                  label="可见性"
-                  placeholder="选择可见性"
+                  label={t.visibility}
+                  placeholder={t.visibilityPlaceholder}
                   selectedKeys={formData.visibility ? new Set([formData.visibility]) : new Set()}
                   onSelectionChange={(keys) => {
                     const selectedKey = Array.from(keys)[0] as string;
@@ -464,24 +653,24 @@ export default function EditBlogPage() {
                   className="w-full"
                 >
                   <SelectItem key="public" startContent={<Eye className="w-4 h-4" />}>
-                    公开
+                    {t.visibilityPublic}
                   </SelectItem>
                   <SelectItem key="private" startContent={<EyeOff className="w-4 h-4" />}>
-                    私有
+                    {t.visibilityPrivate}
                   </SelectItem>
                   <SelectItem key="password" startContent={<Lock className="w-4 h-4" />}>
-                    密码保护
+                    {t.visibilityPassword}
                   </SelectItem>
                 </Select>
-                <p className="text-xs text-default-400">控制谁可以访问您的博客</p>
+                <p className="text-xs text-default-400">{t.visibilityHint}</p>
               </div>
             </div>
 
             {formData.visibility === "password" && (
               <div className="space-y-2">
                 <Input
-                  label="访问密码"
-                  placeholder="设置访问密码"
+                  label={t.password}
+                  placeholder={t.passwordPlaceholder}
                   type={showPassword ? "text" : "password"}
                   value={formData.password}
                   onValueChange={(value: string) => handleInputChange("password", value)}
@@ -495,7 +684,7 @@ export default function EditBlogPage() {
                   }
                   className="w-full"
                 />
-                <p className="text-xs text-default-400">设置密码后，访问者需要输入密码才能查看博客</p>
+                <p className="text-xs text-default-400">{t.passwordHint}</p>
               </div>
             )}
 
@@ -503,8 +692,8 @@ export default function EditBlogPage() {
               <div className="flex items-center gap-3">
                 <MessageSquare className="w-5 h-5 text-default-500" />
                 <div>
-                  <p className="font-medium">允许评论</p>
-                  <p className="text-sm text-default-500">读者可以对此博客发表评论</p>
+                  <p className="font-medium">{t.allowComments}</p>
+                  <p className="text-sm text-default-500">{t.allowCommentsHint}</p>
                 </div>
               </div>
               <Switch
@@ -522,12 +711,14 @@ export default function EditBlogPage() {
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
               <div className="flex items-center gap-2 text-sm text-default-500">
                 <Clock className="w-4 h-4" />
-                <span>最后保存: {new Date().toLocaleTimeString()}</span>
+                <span>
+                  {t.savedAt} {new Date().toLocaleTimeString(lang)}
+                </span>
               </div>
 
               <div className="flex gap-4">
                 <Button variant="bordered" size="lg" onPress={() => router.back()} className="min-w-24">
-                  取消
+                  {t.cancel}
                 </Button>
                 <Button
                   type="submit"
@@ -537,7 +728,7 @@ export default function EditBlogPage() {
                   startContent={!saving && <Save className="w-5 h-5" />}
                   className="min-w-32 font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
                 >
-                  {saving ? "保存中..." : "保存更改"}
+                  {saving ? t.saving : t.save}
                 </Button>
               </div>
             </div>

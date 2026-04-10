@@ -11,13 +11,20 @@ import { PostData } from "@/types/blog";
 
 interface PostCardProps {
   post: PostData;
+  lang?: string;
   onView?: () => void;
   onLike?: () => void;
 }
 
-export function PostCard({ post, onView, onLike }: PostCardProps) {
+export function PostCard({ post, lang = "zh-CN", onView, onLike }: PostCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
+  const t =
+    lang === "en-US"
+      ? { emptyExcerpt: "No excerpt", minutes: "min", liked: "Liked", like: "Like", readMore: "Read More" }
+      : lang === "ja-JP"
+        ? { emptyExcerpt: "概要なし", minutes: "分", liked: "いいね済み", like: "いいね", readMore: "続きを読む" }
+        : { emptyExcerpt: "暂无摘要", minutes: "分钟", liked: "已点赞", like: "点赞", readMore: "阅读更多" };
 
   return (
     <div className="group relative animate-fade-in-up blog-card-container">
@@ -102,7 +109,7 @@ export function PostCard({ post, onView, onLike }: PostCardProps) {
             </h3>
 
             {/* 摘要 - 固定行数 */}
-            <p className="text-small text-default-600 line-clamp-3 min-h-[4.5rem]">{post.excerpt || "暂无摘要"}</p>
+            <p className="text-small text-default-600 line-clamp-3 min-h-[4.5rem]">{post.excerpt || t.emptyExcerpt}</p>
           </div>
         </CardHeader>
 
@@ -172,7 +179,9 @@ export function PostCard({ post, onView, onLike }: PostCardProps) {
                 </div>
                 <div className="flex items-center gap-1">
                   <Clock className="w-3 h-3" />
-                  <span className="text-xs">{post.readTime || 5} 分钟</span>
+                  <span className="text-xs">
+                    {post.readTime || 5} {t.minutes}
+                  </span>
                 </div>
               </div>
             </div>
@@ -193,7 +202,7 @@ export function PostCard({ post, onView, onLike }: PostCardProps) {
               }}
               className={`font-semibold tracking-wide button-hover-effect ${isLiked ? "bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 shadow-lg hover:shadow-xl animate-button-pulse" : "backdrop-blur-xl bg-white/10 dark:bg-black/10 hover:bg-danger/20 dark:hover:bg-danger/20"}`}
             >
-              {isLiked ? "已点赞" : "点赞"}
+              {isLiked ? t.liked : t.like}
             </Button>
 
             <Button
@@ -206,7 +215,7 @@ export function PostCard({ post, onView, onLike }: PostCardProps) {
               onPress={() => onView?.()}
               className="font-semibold tracking-wide border-2 border-primary/20 hover:border-primary/40 hover:bg-primary/10 hover:shadow-[0_0_20px_rgba(var(--primary),0.3)] button-hover-effect"
             >
-              阅读更多
+              {t.readMore}
             </Button>
           </div>
         </CardFooter>

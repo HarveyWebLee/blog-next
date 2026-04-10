@@ -23,6 +23,12 @@ interface ProfileSidebarProps {
 
 export default function ProfileSidebar({ items, isOpen, onClose, lang }: ProfileSidebarProps) {
   const pathname = usePathname();
+  const t =
+    lang === "en-US"
+      ? { title: "Profile Center", footer: "© 2024 Wilderness Blog", username: "User" }
+      : lang === "ja-JP"
+        ? { title: "プロフィール", footer: "© 2024 荒野ブログ", username: "ユーザー名" }
+        : { title: "个人中心", footer: "© 2024 荒野博客", username: "用户名" };
 
   return (
     <>
@@ -47,7 +53,7 @@ export default function ProfileSidebar({ items, isOpen, onClose, lang }: Profile
               <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
                 <User className="w-5 h-5 text-white" />
               </div>
-              <span className="text-lg font-semibold text-gray-900 dark:text-white">个人中心</span>
+              <span className="text-lg font-semibold text-gray-900 dark:text-white">{t.title}</span>
             </div>
             <Button isIconOnly variant="light" size="sm" className="lg:hidden" onClick={onClose}>
               <X className="w-5 h-5" />
@@ -63,7 +69,7 @@ export default function ProfileSidebar({ items, isOpen, onClose, lang }: Profile
                     <User className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">用户名</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{t.username}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 truncate">user@example.com</p>
                   </div>
                 </div>
@@ -98,7 +104,7 @@ export default function ProfileSidebar({ items, isOpen, onClose, lang }: Profile
 
           {/* 底部 */}
           <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-            <div className="text-xs text-gray-500 dark:text-gray-400 text-center">© 2024 荒野博客</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 text-center">{t.footer}</div>
           </div>
         </div>
       </div>

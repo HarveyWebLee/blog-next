@@ -29,6 +29,45 @@ interface UserProfile {
 }
 
 export default function ProfileOverview({ lang }: ProfileOverviewProps) {
+  const t =
+    lang === "en-US"
+      ? {
+          loadFailed: "Unable to load profile",
+          username: "Username",
+          website: "Website",
+          edit: "Edit Profile",
+          contact: "Contact",
+          preferences: "Preferences",
+          language: "Language",
+          timezone: "Timezone",
+          theme: "Theme",
+          social: "Social",
+        }
+      : lang === "ja-JP"
+        ? {
+            loadFailed: "プロフィールを読み込めません",
+            username: "ユーザー名",
+            website: "ウェブサイト",
+            edit: "プロフィール編集",
+            contact: "連絡先情報",
+            preferences: "環境設定",
+            language: "言語",
+            timezone: "タイムゾーン",
+            theme: "テーマ",
+            social: "ソーシャル",
+          }
+        : {
+            loadFailed: "无法加载个人资料",
+            username: "用户名",
+            website: "个人网站",
+            edit: "编辑资料",
+            contact: "联系信息",
+            preferences: "偏好设置",
+            language: "语言",
+            timezone: "时区",
+            theme: "主题",
+            social: "社交媒体",
+          };
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -104,7 +143,7 @@ export default function ProfileOverview({ lang }: ProfileOverviewProps) {
     return (
       <Card>
         <CardBody className="p-6 text-center">
-          <p className="text-gray-500">无法加载个人资料</p>
+          <p className="text-gray-500">{t.loadFailed}</p>
         </CardBody>
       </Card>
     );
@@ -125,7 +164,7 @@ export default function ProfileOverview({ lang }: ProfileOverviewProps) {
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                 {profile.firstName} {profile.lastName}
               </h2>
-              <p className="text-gray-500 dark:text-gray-400">用户名</p>
+              <p className="text-gray-500 dark:text-gray-400">{t.username}</p>
               <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500 dark:text-gray-400">
                 {profile.location && (
                   <div className="flex items-center space-x-1">
@@ -137,7 +176,7 @@ export default function ProfileOverview({ lang }: ProfileOverviewProps) {
                   <div className="flex items-center space-x-1">
                     <Globe className="w-4 h-4" />
                     <a href={profile.website} target="_blank" rel="noopener noreferrer" className="hover:text-blue-500">
-                      个人网站
+                      {t.website}
                     </a>
                   </div>
                 )}
@@ -145,14 +184,14 @@ export default function ProfileOverview({ lang }: ProfileOverviewProps) {
             </div>
           </div>
           <Button color="primary" variant="flat" startContent={<Edit className="w-4 h-4" />}>
-            编辑资料
+            {t.edit}
           </Button>
         </div>
 
         {/* 联系信息 */}
         <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-3">
-            <h3 className="text-sm font-medium text-gray-900 dark:text-white">联系信息</h3>
+            <h3 className="text-sm font-medium text-gray-900 dark:text-white">{t.contact}</h3>
             <div className="space-y-2">
               <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
                 <Mail className="w-4 h-4" />
@@ -168,18 +207,18 @@ export default function ProfileOverview({ lang }: ProfileOverviewProps) {
           </div>
 
           <div className="space-y-3">
-            <h3 className="text-sm font-medium text-gray-900 dark:text-white">偏好设置</h3>
+            <h3 className="text-sm font-medium text-gray-900 dark:text-white">{t.preferences}</h3>
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600 dark:text-gray-400">语言</span>
+                <span className="text-gray-600 dark:text-gray-400">{t.language}</span>
                 <span className="text-gray-900 dark:text-white">{profile.language}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600 dark:text-gray-400">时区</span>
+                <span className="text-gray-600 dark:text-gray-400">{t.timezone}</span>
                 <span className="text-gray-900 dark:text-white">{profile.timezone}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600 dark:text-gray-400">主题</span>
+                <span className="text-gray-600 dark:text-gray-400">{t.theme}</span>
                 <span className="text-gray-900 dark:text-white capitalize">{profile.theme}</span>
               </div>
             </div>
@@ -189,7 +228,7 @@ export default function ProfileOverview({ lang }: ProfileOverviewProps) {
         {/* 社交媒体链接 */}
         {profile.socialLinks && Object.keys(profile.socialLinks).length > 0 && (
           <div className="mt-6">
-            <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">社交媒体</h3>
+            <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">{t.social}</h3>
             <div className="flex space-x-4">
               {Object.entries(profile.socialLinks).map(([platform, url]) => (
                 <a

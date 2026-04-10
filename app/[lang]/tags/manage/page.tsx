@@ -6,7 +6,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   Badge,
   Button,
@@ -52,13 +52,121 @@ import {
 } from "lucide-react";
 
 import { message } from "@/lib/utils";
+import { Locale } from "@/types";
 import { ApiResponse, PaginatedResponseData, Tag, TagQueryParams } from "@/types/blog";
+
+const resolveLocale = (lang: string): Locale => {
+  if (lang === "en-US" || lang === "ja-JP") return lang;
+  return "zh-CN";
+};
+
+const T: Record<Locale, Record<string, string>> = {
+  "zh-CN": {
+    title: "标签管理",
+    subtitle: "管理博客标签，包括创建、编辑、删除和状态控制",
+    total: "总标签",
+    active: "激活",
+    inactive: "停用",
+    search: "搜索标签名称...",
+    all: "全部",
+    create: "创建标签",
+    list: "标签列表",
+    noData: "暂无标签",
+    noDataDesc: "开始创建你的第一个标签吧",
+    info: "标签信息",
+    desc: "描述",
+    posts: "文章数量",
+    status: "状态",
+    createdAt: "创建时间",
+    actions: "操作",
+    noDesc: "无描述",
+    edit: "编辑",
+    del: "删除",
+    deleteFailed: "删除标签失败",
+    updateFailed: "更新标签状态失败",
+    confirmTitle: "确认删除",
+    confirmBodyPrefix: "确定要删除标签",
+    confirmBodySuffix: "吗？",
+    confirmWarning: "注意：如果该标签下还有文章，将无法删除。",
+    cancel: "取消",
+    deleting: "删除中...",
+    totalCount: "个标签",
+    postUnit: "篇",
+  },
+  "en-US": {
+    title: "Tag Management",
+    subtitle: "Manage blog tags including create, edit, delete and status",
+    total: "Total",
+    active: "Active",
+    inactive: "Inactive",
+    search: "Search tags...",
+    all: "All",
+    create: "Create Tag",
+    list: "Tag List",
+    noData: "No tags",
+    noDataDesc: "Create your first tag",
+    info: "Tag",
+    desc: "Description",
+    posts: "Posts",
+    status: "Status",
+    createdAt: "Created At",
+    actions: "Actions",
+    noDesc: "No description",
+    edit: "Edit",
+    del: "Delete",
+    deleteFailed: "Failed to delete tag",
+    updateFailed: "Failed to update tag status",
+    confirmTitle: "Confirm Delete",
+    confirmBodyPrefix: "Are you sure to delete tag",
+    confirmBodySuffix: "?",
+    confirmWarning: "If this tag has posts, it cannot be deleted.",
+    cancel: "Cancel",
+    deleting: "Deleting...",
+    totalCount: "tags",
+    postUnit: "posts",
+  },
+  "ja-JP": {
+    title: "タグ管理",
+    subtitle: "タグの作成・編集・削除と状態管理",
+    total: "総数",
+    active: "有効",
+    inactive: "無効",
+    search: "タグ名を検索...",
+    all: "すべて",
+    create: "タグ作成",
+    list: "タグ一覧",
+    noData: "タグがありません",
+    noDataDesc: "最初のタグを作成しましょう",
+    info: "タグ情報",
+    desc: "説明",
+    posts: "記事数",
+    status: "状態",
+    createdAt: "作成日",
+    actions: "操作",
+    noDesc: "説明なし",
+    edit: "編集",
+    del: "削除",
+    deleteFailed: "タグの削除に失敗しました",
+    updateFailed: "タグ状態の更新に失敗しました",
+    confirmTitle: "削除確認",
+    confirmBodyPrefix: "タグ",
+    confirmBodySuffix: "を削除しますか？",
+    confirmWarning: "このタグに記事がある場合は削除できません。",
+    cancel: "キャンセル",
+    deleting: "削除中...",
+    totalCount: "件",
+    postUnit: "件",
+  },
+};
 
 /**
  * 标签管理页面组件
  */
 export default function TagsManagePage() {
   const router = useRouter();
+  const params = useParams<{ lang: string }>();
+  const locale = resolveLocale(params.lang);
+  const t = T[locale];
 
   // 状态管理
   const [tags, setTags] = useState<Tag[]>([]);
@@ -145,11 +253,11 @@ export default function TagsManagePage() {
         setSelectedTag(null);
         fetchTags();
       } else {
-        message.error(result.message || "删除标签失败");
+        message.error(result.message || t.deleteFailed);
       }
     } catch (error) {
       console.error("删除标签失败:", error);
-      message.error("删除标签失败");
+      message.error(t.deleteFailed);
     } finally {
       setDeleteLoading(false);
     }
@@ -177,11 +285,11 @@ export default function TagsManagePage() {
       if (result.success) {
         fetchTags();
       } else {
-        message.error(result.message || "更新标签状态失败");
+        message.error(result.message || t.updateFailed);
       }
     } catch (error) {
       console.error("更新标签状态失败:", error);
-      message.error("更新标签状态失败");
+      message.error(t.updateFailed);
     }
   };
 
@@ -199,9 +307,9 @@ export default function TagsManagePage() {
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
         <div>
           <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-            标签管理
+            {t.title}
           </h1>
-          <p className="text-default-600 mt-2 text-lg">管理博客标签，包括创建、编辑、删除和状态控制</p>
+          <p className="text-default-600 mt-2 text-lg">{t.subtitle}</p>
         </div>
 
         {/* 统计卡片 */}
@@ -211,7 +319,7 @@ export default function TagsManagePage() {
               <BarChart3 className="w-5 h-5 text-primary" />
               <div>
                 <p className="text-2xl font-bold text-foreground">{total}</p>
-                <p className="text-sm text-default-500">总标签</p>
+                <p className="text-sm text-default-500">{t.total}</p>
               </div>
             </div>
           </Card>
@@ -220,7 +328,7 @@ export default function TagsManagePage() {
               <Eye className="w-5 h-5 text-success" />
               <div>
                 <p className="text-2xl font-bold text-success">{activeTags}</p>
-                <p className="text-sm text-default-500">激活</p>
+                <p className="text-sm text-default-500">{t.active}</p>
               </div>
             </div>
           </Card>
@@ -229,7 +337,7 @@ export default function TagsManagePage() {
               <EyeOff className="w-5 h-5 text-warning" />
               <div>
                 <p className="text-2xl font-bold text-warning">{inactiveTags}</p>
-                <p className="text-sm text-default-500">停用</p>
+                <p className="text-sm text-default-500">{t.inactive}</p>
               </div>
             </div>
           </Card>
@@ -242,7 +350,7 @@ export default function TagsManagePage() {
           <div className="flex flex-col lg:flex-row gap-4">
             {/* 搜索框 */}
             <Input
-              placeholder="搜索标签名称..."
+              placeholder={t.search}
               value={searchQuery}
               onValueChange={handleSearch}
               startContent={<Search className="w-4 h-4 text-default-400" />}
@@ -257,7 +365,7 @@ export default function TagsManagePage() {
                 onPress={() => handleStatusFilter(undefined)}
                 startContent={<Filter className="w-4 h-4" />}
               >
-                全部
+                {t.all}
               </Button>
               <Button
                 variant={statusFilter === true ? "solid" : "bordered"}
@@ -265,7 +373,7 @@ export default function TagsManagePage() {
                 onPress={() => handleStatusFilter(true)}
                 startContent={<Eye className="w-4 h-4" />}
               >
-                激活
+                {t.active}
               </Button>
               <Button
                 variant={statusFilter === false ? "solid" : "bordered"}
@@ -273,7 +381,7 @@ export default function TagsManagePage() {
                 onPress={() => handleStatusFilter(false)}
                 startContent={<EyeOff className="w-4 h-4" />}
               >
-                停用
+                {t.inactive}
               </Button>
             </div>
 
@@ -281,10 +389,10 @@ export default function TagsManagePage() {
             <Button
               color="primary"
               startContent={<Plus className="w-4 h-4" />}
-              onPress={() => router.push("/tags/manage/create")}
+              onPress={() => router.push(`/${params.lang}/tags/manage/create`)}
               className="lg:ml-auto"
             >
-              创建标签
+              {t.create}
             </Button>
           </div>
         </CardBody>
@@ -295,10 +403,10 @@ export default function TagsManagePage() {
         <CardHeader>
           <div className="flex items-center gap-2">
             <TagIcon className="w-5 h-5" />
-            <span className="text-lg font-semibold">标签列表</span>
+            <span className="text-lg font-semibold">{t.list}</span>
             <Badge content={total} color="primary" variant="flat">
               <Chip size="sm" variant="flat">
-                共 {total} 个标签
+                {total} {t.totalCount}
               </Chip>
             </Badge>
           </div>
@@ -311,26 +419,26 @@ export default function TagsManagePage() {
           ) : tags.length === 0 ? (
             <div className="text-center py-12">
               <TagIcon className="w-16 h-16 text-default-300 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-default-600 mb-2">暂无标签</h3>
-              <p className="text-default-500 mb-4">开始创建你的第一个标签吧</p>
+              <h3 className="text-lg font-semibold text-default-600 mb-2">{t.noData}</h3>
+              <p className="text-default-500 mb-4">{t.noDataDesc}</p>
               <Button
                 color="primary"
                 startContent={<Plus className="w-4 h-4" />}
-                onPress={() => router.push("/tags/manage/create")}
+                onPress={() => router.push(`/${params.lang}/tags/manage/create`)}
               >
-                创建标签
+                {t.create}
               </Button>
             </div>
           ) : (
             <>
-              <Table aria-label="标签列表" className="min-h-[400px]">
+              <Table aria-label={t.list} className="min-h-[400px]">
                 <TableHeader>
-                  <TableColumn>标签信息</TableColumn>
-                  <TableColumn>描述</TableColumn>
-                  <TableColumn>文章数量</TableColumn>
-                  <TableColumn>状态</TableColumn>
-                  <TableColumn>创建时间</TableColumn>
-                  <TableColumn>操作</TableColumn>
+                  <TableColumn>{t.info}</TableColumn>
+                  <TableColumn>{t.desc}</TableColumn>
+                  <TableColumn>{t.posts}</TableColumn>
+                  <TableColumn>{t.status}</TableColumn>
+                  <TableColumn>{t.createdAt}</TableColumn>
+                  <TableColumn>{t.actions}</TableColumn>
                 </TableHeader>
                 <TableBody>
                   {tags.map((tag) => (
@@ -356,7 +464,7 @@ export default function TagsManagePage() {
                           {tag.description ? (
                             <p className="truncate text-default-700">{tag.description}</p>
                           ) : (
-                            <span className="text-default-400 italic">无描述</span>
+                            <span className="text-default-400 italic">{t.noDesc}</span>
                           )}
                         </div>
                       </TableCell>
@@ -366,7 +474,7 @@ export default function TagsManagePage() {
                           variant="flat"
                           color={tag.postCount && tag.postCount > 0 ? "primary" : "default"}
                         >
-                          {tag.postCount || 0} 篇
+                          {tag.postCount || 0} {t.postUnit}
                         </Chip>
                       </TableCell>
                       <TableCell>
@@ -377,13 +485,13 @@ export default function TagsManagePage() {
                             color="success"
                             size="sm"
                           />
-                          <span className="text-sm text-default-600">{tag.isActive ? "激活" : "停用"}</span>
+                          <span className="text-sm text-default-600">{tag.isActive ? t.active : t.inactive}</span>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2 text-sm text-default-600">
                           <Calendar className="w-4 h-4" />
-                          {new Date(tag.createdAt).toLocaleDateString("zh-CN")}
+                          {new Date(tag.createdAt).toLocaleDateString(locale)}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -397,9 +505,9 @@ export default function TagsManagePage() {
                             <DropdownItem
                               key="edit"
                               startContent={<Edit className="w-4 h-4" />}
-                              onPress={() => router.push(`/tags/manage/edit/${tag.id}`)}
+                              onPress={() => router.push(`/${params.lang}/tags/manage/edit/${tag.id}`)}
                             >
-                              编辑
+                              {t.edit}
                             </DropdownItem>
                             <DropdownItem
                               key="delete"
@@ -408,7 +516,7 @@ export default function TagsManagePage() {
                               startContent={<Trash2 className="w-4 h-4" />}
                               onPress={() => openDeleteModal(tag)}
                             >
-                              删除
+                              {t.del}
                             </DropdownItem>
                           </DropdownMenu>
                         </Dropdown>
@@ -442,25 +550,26 @@ export default function TagsManagePage() {
           <ModalHeader className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
               <Trash2 className="w-5 h-5 text-danger" />
-              确认删除
+              {t.confirmTitle}
             </div>
           </ModalHeader>
           <ModalBody>
             <div className="space-y-3">
               <p>
-                确定要删除标签 <strong className="text-foreground">{selectedTag?.name}</strong> 吗？
+                {t.confirmBodyPrefix} <strong className="text-foreground">{selectedTag?.name}</strong>{" "}
+                {t.confirmBodySuffix}
               </p>
               <div className="p-3 bg-warning-50 border border-warning-200 rounded-lg">
                 <p className="text-sm text-warning-700 flex items-center gap-2">
                   <EyeOff className="w-4 h-4" />
-                  注意：如果该标签下还有文章，将无法删除。
+                  {t.confirmWarning}
                 </p>
               </div>
             </div>
           </ModalBody>
           <ModalFooter>
             <Button variant="light" onPress={() => setIsDeleteModalOpen(false)}>
-              取消
+              {t.cancel}
             </Button>
             <Button
               color="danger"
@@ -468,7 +577,7 @@ export default function TagsManagePage() {
               isLoading={deleteLoading}
               startContent={!deleteLoading && <Trash2 className="w-4 h-4" />}
             >
-              {deleteLoading ? "删除中..." : "删除"}
+              {deleteLoading ? t.deleting : t.del}
             </Button>
           </ModalFooter>
         </ModalContent>

@@ -45,6 +45,54 @@ interface FavoritePost {
 }
 
 export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
+  const t =
+    lang === "en-US"
+      ? {
+          title: "My Favorites",
+          subtitle: "Posts you have favorited",
+          total: "posts",
+          search: "Search favorite posts...",
+          allCategories: "All Categories",
+          readPost: "Read",
+          remove: "Unfavorite",
+          favoritedAt: "Favorited at",
+          emptyMatch: "No matching favorites",
+          empty: "No favorites yet",
+          emptyMatchDesc: "Try adjusting filters",
+          emptyDesc: "Start saving posts you like",
+          browse: "Browse Posts",
+        }
+      : lang === "ja-JP"
+        ? {
+            title: "お気に入り",
+            subtitle: "お気に入りの記事一覧",
+            total: "件",
+            search: "お気に入り記事を検索...",
+            allCategories: "すべてのカテゴリー",
+            readPost: "記事を読む",
+            remove: "お気に入り解除",
+            favoritedAt: "お気に入り登録",
+            emptyMatch: "一致するお気に入りがありません",
+            empty: "お気に入りがありません",
+            emptyMatchDesc: "条件を調整してください",
+            emptyDesc: "気に入った記事を保存しましょう",
+            browse: "記事を見る",
+          }
+        : {
+            title: "我的收藏",
+            subtitle: "您收藏的文章列表",
+            total: "篇文章",
+            search: "搜索收藏的文章...",
+            allCategories: "全部分类",
+            readPost: "阅读文章",
+            remove: "取消收藏",
+            favoritedAt: "收藏于",
+            emptyMatch: "没有找到匹配的收藏",
+            empty: "还没有收藏任何文章",
+            emptyMatchDesc: "尝试调整搜索条件或筛选器",
+            emptyDesc: "开始收藏您喜欢的文章吧",
+            browse: "浏览文章",
+          };
   const [favorites, setFavorites] = useState<FavoritePost[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -177,7 +225,7 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
   });
 
   const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat("zh-CN", {
+    return new Intl.DateTimeFormat(lang, {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -226,10 +274,12 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
       {/* 页面头部 */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">我的收藏</h1>
-          <p className="text-gray-500 dark:text-gray-400">您收藏的文章列表</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t.title}</h1>
+          <p className="text-gray-500 dark:text-gray-400">{t.subtitle}</p>
         </div>
-        <div className="text-sm text-gray-500 dark:text-gray-400">共 {favorites.length} 篇文章</div>
+        <div className="text-sm text-gray-500 dark:text-gray-400">
+          {favorites.length} {t.total}
+        </div>
       </div>
 
       {/* 搜索和筛选 */}
@@ -240,7 +290,7 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="搜索收藏的文章..."
+                placeholder={t.search}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -253,7 +303,7 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
                 onChange={(e) => setCategoryFilter(e.target.value)}
                 className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="all">全部分类</option>
+                <option value="all">{t.allCategories}</option>
                 <option value="frontend">前端开发</option>
                 <option value="backend">后端开发</option>
                 <option value="design">设计</option>
@@ -360,14 +410,14 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
 
                       {/* 收藏时间 */}
                       <div className="text-xs text-gray-500 dark:text-gray-400">
-                        收藏于 {formatDate(favorite.createdAt)}
+                        {t.favoritedAt} {formatDate(favorite.createdAt)}
                       </div>
                     </div>
 
                     {/* 操作按钮 */}
                     <div className="flex items-center space-x-2 ml-4">
                       <Button variant="light" size="sm" className="text-blue-600 hover:text-blue-700">
-                        阅读文章
+                        {t.readPost}
                       </Button>
                       <Button
                         isIconOnly
@@ -377,7 +427,7 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
                         startContent={<Trash2 className="w-4 h-4" />}
                         onClick={() => handleRemoveFavorite(favorite.id)}
                       >
-                        取消收藏
+                        {t.remove}
                       </Button>
                     </div>
                   </div>
@@ -394,13 +444,13 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
           <CardBody className="p-12 text-center">
             <Heart className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-              {searchTerm || categoryFilter !== "all" ? "没有找到匹配的收藏" : "还没有收藏任何文章"}
+              {searchTerm || categoryFilter !== "all" ? t.emptyMatch : t.empty}
             </h3>
             <p className="text-gray-500 dark:text-gray-400 mb-6">
-              {searchTerm || categoryFilter !== "all" ? "尝试调整搜索条件或筛选器" : "开始收藏您喜欢的文章吧"}
+              {searchTerm || categoryFilter !== "all" ? t.emptyMatchDesc : t.emptyDesc}
             </p>
             <Button color="primary" variant="flat">
-              浏览文章
+              {t.browse}
             </Button>
           </CardBody>
         </Card>

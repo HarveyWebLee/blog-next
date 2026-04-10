@@ -48,6 +48,60 @@ const visibilityColors = {
 } as const;
 
 export default function ProfilePosts({ lang }: ProfilePostsProps) {
+  const t =
+    lang === "en-US"
+      ? {
+          pageTitle: "My Posts",
+          pageDesc: "Manage your posts",
+          write: "Write",
+          search: "Search posts...",
+          allStatus: "All Status",
+          published: "Published",
+          draft: "Draft",
+          archived: "Archived",
+          edit: "Edit",
+          del: "Delete",
+          more: "More",
+          noMatch: "No matching posts found",
+          noPosts: "No posts yet",
+          noMatchDesc: "Try adjusting search or filters",
+          noPostsDesc: "Create your first post",
+        }
+      : lang === "ja-JP"
+        ? {
+            pageTitle: "自分の記事",
+            pageDesc: "記事コンテンツを管理",
+            write: "記事を書く",
+            search: "記事を検索...",
+            allStatus: "すべての状態",
+            published: "公開済み",
+            draft: "下書き",
+            archived: "アーカイブ",
+            edit: "編集",
+            del: "削除",
+            more: "その他",
+            noMatch: "一致する記事がありません",
+            noPosts: "まだ記事がありません",
+            noMatchDesc: "検索条件を調整してください",
+            noPostsDesc: "最初の記事を作成しましょう",
+          }
+        : {
+            pageTitle: "我的文章",
+            pageDesc: "管理您的文章内容",
+            write: "写文章",
+            search: "搜索文章...",
+            allStatus: "全部状态",
+            published: "已发布",
+            draft: "草稿",
+            archived: "已归档",
+            edit: "编辑",
+            del: "删除",
+            more: "更多",
+            noMatch: "没有找到匹配的文章",
+            noPosts: "还没有文章",
+            noMatchDesc: "尝试调整搜索条件或筛选器",
+            noPostsDesc: "开始创建您的第一篇文章吧",
+          };
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -152,7 +206,7 @@ export default function ProfilePosts({ lang }: ProfilePostsProps) {
   });
 
   const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat("zh-CN", {
+    return new Intl.DateTimeFormat(lang, {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -190,11 +244,11 @@ export default function ProfilePosts({ lang }: ProfilePostsProps) {
       {/* 页面头部 */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">我的文章</h1>
-          <p className="text-gray-500 dark:text-gray-400">管理您的文章内容</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t.pageTitle}</h1>
+          <p className="text-gray-500 dark:text-gray-400">{t.pageDesc}</p>
         </div>
         <Button color="primary" startContent={<Plus className="w-4 h-4" />}>
-          写文章
+          {t.write}
         </Button>
       </div>
 
@@ -206,7 +260,7 @@ export default function ProfilePosts({ lang }: ProfilePostsProps) {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="搜索文章..."
+                placeholder={t.search}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -219,10 +273,10 @@ export default function ProfilePosts({ lang }: ProfilePostsProps) {
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="all">全部状态</option>
-                <option value="published">已发布</option>
-                <option value="draft">草稿</option>
-                <option value="archived">已归档</option>
+                <option value="all">{t.allStatus}</option>
+                <option value="published">{t.published}</option>
+                <option value="draft">{t.draft}</option>
+                <option value="archived">{t.archived}</option>
               </select>
             </div>
           </div>
@@ -308,7 +362,7 @@ export default function ProfilePosts({ lang }: ProfilePostsProps) {
                       {/* 状态标签 */}
                       <div className="flex items-center space-x-2">
                         <Badge color={statusColors[post.status]} variant="flat">
-                          {post.status}
+                          {post.status === "published" ? t.published : post.status === "draft" ? t.draft : t.archived}
                         </Badge>
                         <Badge color={visibilityColors[post.visibility]} variant="flat">
                           {post.visibility}
@@ -319,7 +373,7 @@ export default function ProfilePosts({ lang }: ProfilePostsProps) {
                     {/* 操作按钮 */}
                     <div className="flex items-center space-x-2 ml-4">
                       <Button isIconOnly variant="light" size="sm" startContent={<Edit className="w-4 h-4" />}>
-                        编辑
+                        {t.edit}
                       </Button>
                       <Button
                         isIconOnly
@@ -328,7 +382,7 @@ export default function ProfilePosts({ lang }: ProfilePostsProps) {
                         color="danger"
                         startContent={<Trash2 className="w-4 h-4" />}
                       >
-                        删除
+                        {t.del}
                       </Button>
                       <Button
                         isIconOnly
@@ -336,7 +390,7 @@ export default function ProfilePosts({ lang }: ProfilePostsProps) {
                         size="sm"
                         startContent={<MoreHorizontal className="w-4 h-4" />}
                       >
-                        更多
+                        {t.more}
                       </Button>
                     </div>
                   </div>
@@ -353,13 +407,13 @@ export default function ProfilePosts({ lang }: ProfilePostsProps) {
           <CardBody className="p-12 text-center">
             <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-              {searchTerm || statusFilter !== "all" ? "没有找到匹配的文章" : "还没有文章"}
+              {searchTerm || statusFilter !== "all" ? t.noMatch : t.noPosts}
             </h3>
             <p className="text-gray-500 dark:text-gray-400 mb-6">
-              {searchTerm || statusFilter !== "all" ? "尝试调整搜索条件或筛选器" : "开始创建您的第一篇文章吧"}
+              {searchTerm || statusFilter !== "all" ? t.noMatchDesc : t.noPostsDesc}
             </p>
             <Button color="primary" startContent={<Plus className="w-4 h-4" />}>
-              写文章
+              {t.write}
             </Button>
           </CardBody>
         </Card>

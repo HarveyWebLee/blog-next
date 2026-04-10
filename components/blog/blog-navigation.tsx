@@ -7,46 +7,46 @@ import { Card, CardBody } from "@heroui/card";
 import { Chip } from "@heroui/chip";
 import { BarChart3, BookOpen, FileText, Home, Plus, Settings } from "lucide-react";
 
-const navigationItems = [
-  {
-    title: "博客首页",
-    href: "/blog",
-    icon: Home,
-    description: "查看所有博客文章",
-    color: "primary" as const,
-  },
-  {
-    title: "博客管理",
-    href: "/blog/manage",
-    icon: FileText,
-    description: "管理您的博客文章",
-    color: "secondary" as const,
-  },
-  {
-    title: "创建博客",
-    href: "/blog/manage/create",
-    icon: Plus,
-    description: "创建新的博客文章",
-    color: "success" as const,
-  },
-  {
-    title: "统计分析",
-    href: "/blog/manage/stats",
-    icon: BarChart3,
-    description: "查看博客统计数据",
-    color: "warning" as const,
-  },
-  {
-    title: "系统设置",
-    href: "/blog/manage/settings",
-    icon: Settings,
-    description: "配置博客系统",
-    color: "default" as const,
-  },
-];
-
 export function BlogNavigation() {
   const pathname = usePathname();
+  const lang = pathname?.split("/")[1] || "zh-CN";
+  const t =
+    lang === "en-US"
+      ? {
+          centerTitle: "Blog Management Center",
+          centerDesc: "Manage and create your blog content",
+          home: "Blog Home",
+          manage: "Blog Management",
+          create: "Create Post",
+          stats: "Analytics",
+          settings: "Settings",
+        }
+      : lang === "ja-JP"
+        ? {
+            centerTitle: "ブログ管理センター",
+            centerDesc: "ブログコンテンツの管理と作成",
+            home: "ブログホーム",
+            manage: "ブログ管理",
+            create: "記事作成",
+            stats: "分析",
+            settings: "設定",
+          }
+        : {
+            centerTitle: "博客管理中心",
+            centerDesc: "管理和创建您的博客内容",
+            home: "博客首页",
+            manage: "博客管理",
+            create: "创建博客",
+            stats: "统计分析",
+            settings: "系统设置",
+          };
+  const navigationItems = [
+    { title: t.home, href: `/${lang}/blog`, icon: Home, color: "primary" as const },
+    { title: t.manage, href: `/${lang}/blog/manage`, icon: FileText, color: "secondary" as const },
+    { title: t.create, href: `/${lang}/blog/manage/create`, icon: Plus, color: "success" as const },
+    { title: t.stats, href: `/${lang}/blog/manage/stats`, icon: BarChart3, color: "warning" as const },
+    { title: t.settings, href: `/${lang}/blog/manage/settings`, icon: Settings, color: "default" as const },
+  ];
 
   return (
     <Card className="mb-6">
@@ -54,8 +54,8 @@ export function BlogNavigation() {
         <div className="flex items-center gap-3 mb-4">
           <BookOpen className="w-6 h-6 text-primary" />
           <div>
-            <h2 className="text-lg font-semibold">博客管理中心</h2>
-            <p className="text-sm text-default-500">管理和创建您的博客内容</p>
+            <h2 className="text-lg font-semibold">{t.centerTitle}</h2>
+            <p className="text-sm text-default-500">{t.centerDesc}</p>
           </div>
         </div>
 

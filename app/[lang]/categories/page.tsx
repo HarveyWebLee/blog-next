@@ -6,6 +6,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useParams } from "next/navigation";
 import { Button, Card, CardBody, Chip, Divider, Input, Spinner } from "@heroui/react";
 import {
   BookOpen,
@@ -23,16 +24,133 @@ import {
 } from "lucide-react";
 
 import { useCategories } from "@/lib/hooks/useCategories";
+import { Locale } from "@/types";
 import { Category } from "@/types/blog";
 import { shadowManager } from "./shadow-effects";
 // 导入样式
 import "./categories.scss";
 
+const CATEGORY_PAGE_TEXT: Record<
+  Locale,
+  {
+    manageTitle: string;
+    manageDesc: string;
+    enterManage: string;
+    totalCategories: string;
+    totalPosts: string;
+    activeCategories: string;
+    includeAllLevels: string;
+    allCategoryPosts: string;
+    activeInUse: string;
+    searchPlaceholder: string;
+    onlyActive: string;
+    loading: string;
+    loadFailed: string;
+    retry: string;
+    emptyTitle: string;
+    emptyNoData: string;
+    emptySearchPrefix: string;
+    levelPrefix: string;
+    metaActive: string;
+    metaInactive: string;
+    statPosts: string;
+    statChildren: string;
+  }
+> = {
+  "zh-CN": {
+    manageTitle: "分类管理",
+    manageDesc: "管理分类的创建、编辑、删除和状态控制",
+    enterManage: "进入管理",
+    totalCategories: "总分类数",
+    totalPosts: "总文章数",
+    activeCategories: "活跃分类",
+    includeAllLevels: "包含所有层级",
+    allCategoryPosts: "所有分类文章",
+    activeInUse: "正在使用中",
+    searchPlaceholder: "搜索分类名称、描述...",
+    onlyActive: "仅显示活跃",
+    loading: "加载分类中...",
+    loadFailed: "加载失败",
+    retry: "重试",
+    emptyTitle: "未找到分类",
+    emptyNoData: "暂无分类数据",
+    emptySearchPrefix: "没有找到包含",
+    levelPrefix: "L",
+    metaActive: "活跃",
+    metaInactive: "非活跃",
+    statPosts: "文章",
+    statChildren: "子分类",
+  },
+  "en-US": {
+    manageTitle: "Category Management",
+    manageDesc: "Manage category create, edit, delete, and status",
+    enterManage: "Manage",
+    totalCategories: "Total Categories",
+    totalPosts: "Total Posts",
+    activeCategories: "Active Categories",
+    includeAllLevels: "Including all levels",
+    allCategoryPosts: "Posts in all categories",
+    activeInUse: "Currently in use",
+    searchPlaceholder: "Search category name or description...",
+    onlyActive: "Only active",
+    loading: "Loading categories...",
+    loadFailed: "Load Failed",
+    retry: "Retry",
+    emptyTitle: "No Categories Found",
+    emptyNoData: "No category data yet",
+    emptySearchPrefix: "No category found for",
+    levelPrefix: "L",
+    metaActive: "Active",
+    metaInactive: "Inactive",
+    statPosts: "Posts",
+    statChildren: "Children",
+  },
+  "ja-JP": {
+    manageTitle: "カテゴリー管理",
+    manageDesc: "カテゴリーの作成・編集・削除と状態管理",
+    enterManage: "管理へ",
+    totalCategories: "カテゴリー総数",
+    totalPosts: "記事総数",
+    activeCategories: "有効カテゴリー",
+    includeAllLevels: "全階層を含む",
+    allCategoryPosts: "全カテゴリーの記事",
+    activeInUse: "現在利用中",
+    searchPlaceholder: "カテゴリー名・説明を検索...",
+    onlyActive: "有効のみ表示",
+    loading: "カテゴリーを読み込み中...",
+    loadFailed: "読み込み失敗",
+    retry: "再試行",
+    emptyTitle: "カテゴリーが見つかりません",
+    emptyNoData: "カテゴリーのデータがありません",
+    emptySearchPrefix: "次に一致するカテゴリーはありません：",
+    levelPrefix: "L",
+    metaActive: "有効",
+    metaInactive: "無効",
+    statPosts: "記事",
+    statChildren: "子カテゴリー",
+  },
+};
+
+const resolveLocale = (lang: string): Locale => {
+  if (lang === "en-US" || lang === "ja-JP") return lang;
+  return "zh-CN";
+};
+
 /**
  * 分类卡片组件 - 全新设计 + 动态阴影
  * 展示单个分类的信息和统计
  */
-function CategoryCard({ category, level = 0 }: { category: Category; level?: number }) {
+function CategoryCard({
+  category,
+  level = 0,
+  locale,
+  t,
+}: {
+  category: Category;
+  level?: number;
+  locale: Locale;
+  t: (typeof CATEGORY_PAGE_TEXT)[Locale];
+}) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isSelected, setIsSelected] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -91,7 +209,10 @@ function CategoryCard({ category, level = 0 }: { category: Category; level?: num
               )}
             </div>
             <div className="category-badge">
-              <span className="category-level">L{level + 1}</span>
+              <span className="category-level">
+                {t.levelPrefix}
+                {level + 1}
+              </span>
             </div>
           </div>
 
@@ -101,11 +222,11 @@ function CategoryCard({ category, level = 0 }: { category: Category; level?: num
             <div className="category-meta-info">
               <div className="meta-item">
                 <Calendar className="w-4 h-4" />
-                <span>{new Date(category.createdAt).toLocaleDateString("zh-CN")}</span>
+                <span>{new Date(category.createdAt).toLocaleDateString(locale)}</span>
               </div>
               <div className="meta-item">
                 <TrendingUp className="w-4 h-4" />
-                <span>{category.isActive ? "活跃" : "非活跃"}</span>
+                <span>{category.isActive ? t.metaActive : t.metaInactive}</span>
               </div>
             </div>
           </div>
@@ -134,12 +255,12 @@ function CategoryCard({ category, level = 0 }: { category: Category; level?: num
           <div className="category-stats-grid">
             <div className="stat-item">
               <BookOpen className="w-4 h-4" />
-              <span>文章</span>
+              <span>{t.statPosts}</span>
               <strong>{category.postCount || 0}</strong>
             </div>
             <div className="stat-item">
               <Users className="w-4 h-4" />
-              <span>子分类</span>
+              <span>{t.statChildren}</span>
               <strong>{category.children?.length || 0}</strong>
             </div>
           </div>
@@ -152,7 +273,7 @@ function CategoryCard({ category, level = 0 }: { category: Category; level?: num
           <div className="children-divider"></div>
           <div className="children-grid">
             {category.children?.map((child) => (
-              <CategoryCard key={child.id} category={child} level={level + 1} />
+              <CategoryCard key={child.id} category={child} level={level + 1} locale={locale} t={t} />
             ))}
           </div>
         </div>
@@ -165,7 +286,7 @@ function CategoryCard({ category, level = 0 }: { category: Category; level?: num
  * 分类统计组件
  * 展示分类的总体统计信息
  */
-function CategoryStats({ categories }: { categories: Category[] }) {
+function CategoryStats({ categories, t }: { categories: Category[]; t: (typeof CATEGORY_PAGE_TEXT)[Locale] }) {
   const totalCategories = categories.length;
   const totalPosts = categories.reduce((sum, cat) => sum + (cat.postCount || 0), 0);
   const activeCategories = categories.filter((cat) => cat.isActive).length;
@@ -179,9 +300,9 @@ function CategoryStats({ categories }: { categories: Category[] }) {
               <Folder className="w-8 h-8" />
             </div>
             <div className="stat-info">
-              <h3 className="stat-title">总分类数</h3>
+              <h3 className="stat-title">{t.totalCategories}</h3>
               <p className="stat-value">{totalCategories}</p>
-              <p className="stat-desc">包含所有层级</p>
+              <p className="stat-desc">{t.includeAllLevels}</p>
             </div>
           </div>
         </CardBody>
@@ -194,9 +315,9 @@ function CategoryStats({ categories }: { categories: Category[] }) {
               <FileText className="w-8 h-8" />
             </div>
             <div className="stat-info">
-              <h3 className="stat-title">总文章数</h3>
+              <h3 className="stat-title">{t.totalPosts}</h3>
               <p className="stat-value">{totalPosts}</p>
-              <p className="stat-desc">所有分类文章</p>
+              <p className="stat-desc">{t.allCategoryPosts}</p>
             </div>
           </div>
         </CardBody>
@@ -209,9 +330,9 @@ function CategoryStats({ categories }: { categories: Category[] }) {
               <Filter className="w-8 h-8" />
             </div>
             <div className="stat-info">
-              <h3 className="stat-title">活跃分类</h3>
+              <h3 className="stat-title">{t.activeCategories}</h3>
               <p className="stat-value">{activeCategories}</p>
-              <p className="stat-desc">正在使用中</p>
+              <p className="stat-desc">{t.activeInUse}</p>
             </div>
           </div>
         </CardBody>
@@ -228,11 +349,13 @@ function SearchAndFilter({
   onSearchChange,
   showOnlyActive,
   onToggleActive,
+  t,
 }: {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   showOnlyActive: boolean;
   onToggleActive: (show: boolean) => void;
+  t: (typeof CATEGORY_PAGE_TEXT)[Locale];
 }) {
   return (
     <Card className="search-filter-modern">
@@ -241,7 +364,7 @@ function SearchAndFilter({
           <div className="search-input-wrapper">
             <Search className="search-icon" />
             <Input
-              placeholder="搜索分类名称、描述..."
+              placeholder={t.searchPlaceholder}
               value={searchQuery}
               onValueChange={onSearchChange}
               className="search-input-field"
@@ -257,7 +380,7 @@ function SearchAndFilter({
               startContent={<Filter className="w-4 h-4" />}
               className="filter-btn"
             >
-              仅显示活跃
+              {t.onlyActive}
             </Button>
           </div>
         </div>
@@ -270,6 +393,9 @@ function SearchAndFilter({
  * 主分类页面组件
  */
 export default function CategoriesPage() {
+  const params = useParams<{ lang: string }>();
+  const locale = resolveLocale(params.lang);
+  const t = CATEGORY_PAGE_TEXT[locale];
   // 使用分类数据管理 Hook
   const {
     categories,
@@ -306,8 +432,8 @@ export default function CategoriesPage() {
                   <Settings className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-foreground">分类管理</h3>
-                  <p className="text-sm text-default-600">管理分类的创建、编辑、删除和状态控制</p>
+                  <h3 className="text-lg font-semibold text-foreground">{t.manageTitle}</h3>
+                  <p className="text-sm text-default-600">{t.manageDesc}</p>
                 </div>
               </div>
               <Button
@@ -317,7 +443,7 @@ export default function CategoriesPage() {
                 onPress={handleManageCategories}
                 className="ml-4"
               >
-                进入管理
+                {t.enterManage}
               </Button>
             </CardBody>
           </Card>
@@ -325,7 +451,7 @@ export default function CategoriesPage() {
       )}
 
       {/* 统计信息 */}
-      <CategoryStats categories={categories} />
+      <CategoryStats categories={categories} t={t} />
 
       {/* 搜索和筛选 */}
       <SearchAndFilter
@@ -333,6 +459,7 @@ export default function CategoriesPage() {
         onSearchChange={setSearchQuery}
         showOnlyActive={showOnlyActive}
         onToggleActive={setShowOnlyActive}
+        t={t}
       />
 
       {/* 分类列表 - 全新设计 + 动态阴影 */}
@@ -340,23 +467,23 @@ export default function CategoriesPage() {
         {loading ? (
           <div className="loading-state">
             <Spinner size="lg" color="primary" />
-            <p>加载分类中...</p>
+            <p>{t.loading}</p>
           </div>
         ) : error ? (
           <div className="error-state">
             <div className="empty-icon">
               <Folder className="w-16 h-16 text-danger" />
             </div>
-            <h3 className="empty-title">加载失败</h3>
+            <h3 className="empty-title">{t.loadFailed}</h3>
             <p className="empty-description">{error}</p>
             <Button color="primary" onPress={refetch} className="mt-4">
-              重试
+              {t.retry}
             </Button>
           </div>
         ) : filteredCategories.length > 0 ? (
           <div className="categories-grid">
             {filteredCategories.map((category) => (
-              <CategoryCard key={category.id} category={category} />
+              <CategoryCard key={category.id} category={category} locale={locale} t={t} />
             ))}
           </div>
         ) : (
@@ -364,8 +491,10 @@ export default function CategoriesPage() {
             <div className="empty-icon">
               <Folder className="w-16 h-16" />
             </div>
-            <h3 className="empty-title">未找到分类</h3>
-            <p className="empty-description">{searchQuery ? `没有找到包含 "${searchQuery}" 的分类` : "暂无分类数据"}</p>
+            <h3 className="empty-title">{t.emptyTitle}</h3>
+            <p className="empty-description">
+              {searchQuery ? `${t.emptySearchPrefix} "${searchQuery}"` : t.emptyNoData}
+            </p>
           </div>
         )}
       </div>
