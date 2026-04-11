@@ -1,7 +1,8 @@
 # 荒野博客：MySQL + Redis + Next.js（生产向编排）
 #
 # 准备：cp deploy/env.docker.example deploy/.env.docker 并修改密钥
-# 启动基础设施：docker compose --env-file deploy/.env.docker up -d mysql redis
+# 启动基础设施：docker compose --env-file deploy/.env.docker up -d mysql redis minio
+# MinIO 首次创建公开读 bucket（幂等）：docker compose --env-file deploy/.env.docker --profile minio-init run --rm minio-init
 # 执行迁移（建议加 --build，避免沿用旧镜像内 drizzle/）：docker compose --env-file deploy/.env.docker --profile migrate run --rm --build db-migrate
 # 启动应用：docker compose --env-file deploy/.env.docker up -d blog-web
 #
@@ -52,6 +53,60 @@ services:
       retries: 5
     networks:
       - blog-net
+
+  # S3 兼容对象存储：文章封面/插图等。
+  # 数据目录：通过 deploy/.env.docker 的 MINIO_HOST_DATA_DIR 绑定到宿主机（默认 ./data/minio，见模板注释）。
+  # 相对路径相对于本 compose 文件所在目录（仓库根），与执行 docker compose 时 shell 的 cd 无关。
+  # Linux 若无法写入，多为宿主机目录权限与容器内 MinIO 用户 UID 不一致。
+  minio:
+    image: minio/minio:latest
+    container_name: blog-minio
+    restart: unless-stopped
+    env_file:
+      - deploy/.env.docker
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?请在 deploy/.env.docker 中设置 MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?请在 deploy/.env.docker 中设置 MINIO_ROOT_PASSWORD}
+    command: server /data --console-address ":9001"
+    ports:
+      - "${MINIO_API_PUBLISH_PORT:-19000}:9000"
+      - "${MINIO_CONSOLE_PUBLISH_PORT:-19001}:9001"
+    volumes:
+      - type: bind
+        source: ${MINIO_HOST_DATA_DIR:-./data/minio}
+        target: /data
+    healthcheck:
+      # 官方镜像内含 curl；用于 blog-web 将来 depends_on 与 init 任务顺序。
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    networks:
+      - blog-net
+
+  # 使用 mc 创建 bucket 并设为匿名可下载（仅 GetObject，适合公开文章配图）。随部署重复执行亦幂等。
+  minio-init:
+    image: minio/mc:latest
+    container_name: blog-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    env_file:
+      - deploy/.env.docker
+    environment:
+      MINIO_BUCKET: ${MINIO_BUCKET:-blog-public}
+    networks:
+      - blog-net
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -euo pipefail
+        mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"
+        mc mb "local/$$MINIO_BUCKET" --ignore-existing
+        mc anonymous set download "local/$$MINIO_BUCKET"
+    profiles:
+      - minio-init
 
   # 一次性迁移任务（不随 up -d 默认启动，需 --profile migrate）
   db-migrate:
