@@ -123,6 +123,28 @@
     "builtWith": "使用 Next.js 构建",
     "poweredBy": "由 Vercel 提供支持"
   },
+  "home": {
+    "pill": "阅读 · 思考 · 记录",
+    "ctaRead": "浏览全部文章",
+    "ctaTopics": "分类",
+    "ctaTags": "标签",
+    "sectionTopics": "按主题逛逛",
+    "sectionTopicsDesc": "从分类切入，更快找到你想读的内容。",
+    "sectionLatest": "最新文章",
+    "sectionLatestDesc": "站内最近发布的公开内容。",
+    "seeAll": "查看全部",
+    "empty": "暂时没有公开文章，欢迎稍后再来或在后台发布第一篇作品。",
+    "valueTitle": "阅读体验",
+    "value1Title": "长文友好",
+    "value1Desc": "适合愿意花几分钟读完一篇内容的节奏，少打断、多留白。",
+    "value2Title": "随处可读",
+    "value2Desc": "版式针对手机与桌面优化，并支持明暗主题切换。",
+    "value3Title": "便于探索",
+    "value3Desc": "文章列表支持分类与搜索，方便建立你自己的阅读路径。",
+    "bottomTitle": "从这里开始",
+    "bottomDesc": "打开列表按时间浏览，或从上方分类入口进入。",
+    "bottomCta": "进入文章列表"
+  },
   "metadata": {
     "title": "荒野博客 | 在数字荒野中探索技术 - 在思考森林中寻找真理",
     "description": "在数字荒野中探索技术，在思考森林中寻找真理",

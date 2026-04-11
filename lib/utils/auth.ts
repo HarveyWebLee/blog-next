@@ -1,6 +1,8 @@
 import bcrypt from "bcryptjs";
 import * as jwt from "jsonwebtoken";
 
+import { isValidEmailFormat } from "./email-format";
+
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "your-refresh-secret-key";
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "1h";
@@ -86,13 +88,12 @@ export function generatePasswordResetToken(): string {
 }
 
 /**
- * 验证邮箱格式
+ * 验证邮箱格式（与 {@link isValidEmailFormat} 一致，含 trim）
  * @param email 邮箱地址
  * @returns 是否有效
  */
 export function isValidEmail(email: string): boolean {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
+  return isValidEmailFormat(email);
 }
 
 /**

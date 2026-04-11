@@ -659,3 +659,350 @@
 .button-hover-effect:hover::before {
   left: 100%;
 }
+
+/* -------------------------------------------------------------------------- */
+/* 首页背景氛围：极光光晕（1）+ 噪点（2）+ 光带（6），尊重 prefers-reduced-motion */
+/* -------------------------------------------------------------------------- */
+
+@keyframes home-ambient-blob-1 {
+  0%,
+  100% {
+    opacity: 0.38;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  35% {
+    opacity: 0.58;
+    transform: translate3d(4vw, 2.5vh, 0) scale(1.1);
+  }
+
+  70% {
+    opacity: 0.28;
+    transform: translate3d(-2.5vw, 4vh, 0) scale(0.94);
+  }
+}
+
+@keyframes home-ambient-blob-2 {
+  0%,
+  100% {
+    opacity: 0.32;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  40% {
+    opacity: 0.52;
+    transform: translate3d(-3.5vw, -2vh, 0) scale(1.08);
+  }
+
+  80% {
+    opacity: 0.22;
+    transform: translate3d(2vw, -4vh, 0) scale(0.92);
+  }
+}
+
+@keyframes home-ambient-blob-3 {
+  0%,
+  100% {
+    opacity: 0.22;
+    transform: translate3d(calc(-50% + 0vw), 0, 0) scale(1);
+  }
+
+  50% {
+    opacity: 0.42;
+    transform: translate3d(calc(-50% + 2vw), -3vh, 0) scale(1.15);
+  }
+}
+
+@keyframes home-ambient-sheen-pan {
+  0% {
+    background-position: 165% 50%;
+  }
+
+  100% {
+    background-position: -165% 50%;
+  }
+}
+
+@keyframes home-ambient-noise-pulse {
+  0%,
+  100% {
+    opacity: 0.1;
+  }
+
+  50% {
+    opacity: 0.16;
+  }
+}
+
+.home-ambient-root {
+  contain: layout style;
+}
+
+.home-ambient-blob-1 {
+  animation: home-ambient-blob-1 26s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.home-ambient-blob-2 {
+  animation: home-ambient-blob-2 32s ease-in-out infinite;
+  animation-delay: -6s;
+  will-change: transform, opacity;
+}
+
+.home-ambient-blob-3 {
+  animation: home-ambient-blob-3 20s ease-in-out infinite;
+  animation-delay: -3s;
+  will-change: transform, opacity;
+}
+
+.home-ambient-sheen-layer {
+  animation: home-ambient-sheen-pan 54s linear infinite;
+  background-image: linear-gradient(
+    100deg,
+    transparent 0%,
+    transparent 38%,
+    rgb(255 255 255 / 0.05) 48%,
+    rgb(255 255 255 / 0.14) 50%,
+    rgb(255 255 255 / 0.05) 52%,
+    transparent 62%,
+    transparent 100%
+  );
+  background-repeat: no-repeat;
+  background-size: 240% 100%;
+  opacity: 0.85;
+  will-change: background-position;
+}
+
+.dark .home-ambient-sheen-layer {
+  background-image: linear-gradient(
+    100deg,
+    transparent 0%,
+    transparent 38%,
+    rgb(255 255 255 / 0.03) 48%,
+    rgb(255 255 255 / 0.09) 50%,
+    rgb(255 255 255 / 0.03) 52%,
+    transparent 62%,
+    transparent 100%
+  );
+  opacity: 0.9;
+}
+
+.home-ambient-noise-layer {
+  animation: home-ambient-noise-pulse 14s ease-in-out infinite;
+  /* 略提高 SVG 内对比 + 更小平铺，颗粒更容易被感知 */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='a'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23a)' opacity='0.85'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 128px 128px;
+  mix-blend-mode: soft-light;
+  opacity: 0.11;
+  will-change: opacity;
+}
+
+.dark .home-ambient-noise-layer {
+  mix-blend-mode: overlay;
+  opacity: 0.14;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-ambient-blob-1,
+  .home-ambient-blob-2,
+  .home-ambient-blob-3 {
+    animation: none !important;
+    opacity: 0.4;
+    transform: none;
+  }
+
+  .home-ambient-blob-2 {
+    opacity: 0.34;
+  }
+
+  .home-ambient-blob-3 {
+    opacity: 0.28;
+    transform: translate3d(-50%, 0, 0);
+  }
+
+  .home-ambient-sheen-layer {
+    animation: none !important;
+    background-position: 50% 50%;
+    opacity: 0.35;
+  }
+
+  .home-ambient-noise-layer {
+    animation: none !important;
+    opacity: 0.12;
+  }
+
+  .dark .home-ambient-noise-layer {
+    opacity: 0.14;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* 浅色首页：雾气朦胧（无固定形体，仅渐变 + GPU 友好动效） */
+/* -------------------------------------------------------------------------- */
+
+@keyframes home-light-mist-drift-a {
+  0%,
+  100% {
+    opacity: 0.78;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  50% {
+    opacity: 1;
+    transform: translate3d(10vw, 6vh, 0) scale(1.1);
+  }
+}
+
+@keyframes home-light-mist-drift-b {
+  0%,
+  100% {
+    opacity: 0.68;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  45% {
+    opacity: 0.98;
+    transform: translate3d(-9vw, -5vh, 0) scale(1.12);
+  }
+}
+
+@keyframes home-light-mist-drift-c {
+  0%,
+  100% {
+    opacity: 0.58;
+    transform: translate3d(-50%, 0, 0) scale(1);
+  }
+
+  55% {
+    opacity: 0.92;
+    transform: translate3d(-50%, 0, 0) translate3d(5vw, -7vh, 0) scale(1.16);
+  }
+}
+
+@keyframes home-light-mist-haze-pan {
+  0% {
+    background-position: 170% 50%;
+  }
+
+  100% {
+    background-position: -170% 50%;
+  }
+}
+
+.home-light-mist-root {
+  contain: layout style paint;
+  /* 与页面浅色底分离叠层，避免与正文混色不可控 */
+  isolation: isolate;
+}
+
+/* 全屏均匀薄雾：不依赖 multiply，在 #fff / slate-50 底上也能看出一层冷色 */
+.home-light-mist-veil {
+  background: linear-gradient(
+    165deg,
+    rgb(148 163 184 / 0.16) 0%,
+    rgb(203 213 225 / 0.12) 45%,
+    rgb(148 163 184 / 0.14) 100%
+  );
+  mix-blend-mode: normal;
+  opacity: 1;
+}
+
+/* 方向性渐变：加深角落与中部对比（normal 叠在 veil 上） */
+.home-light-mist-base {
+  background: linear-gradient(
+    188deg,
+    rgb(148 163 184 / 0.32) 0%,
+    rgb(203 213 225 / 0.2) 28%,
+    rgb(241 245 249 / 0.12) 48%,
+    rgb(226 232 240 / 0.22) 72%,
+    rgb(203 213 225 / 0.26) 100%
+  );
+  mix-blend-mode: normal;
+  opacity: 0.92;
+}
+
+.home-light-mist-cloud {
+  /* normal：雾团中心用更高不透明度，肉眼可见 */
+  mix-blend-mode: normal;
+  pointer-events: none;
+}
+
+.home-light-mist-cloud-a {
+  animation: home-light-mist-drift-a 32s ease-in-out infinite;
+  background: radial-gradient(
+    ellipse 82% 78% at 44% 40%,
+    rgb(100 116 139 / 0.38),
+    rgb(148 163 184 / 0.22) 42%,
+    rgb(203 213 225 / 0.1) 58%,
+    transparent 76%
+  );
+  will-change: transform, opacity;
+}
+
+.home-light-mist-cloud-b {
+  animation: home-light-mist-drift-b 36s ease-in-out infinite;
+  animation-delay: -8s;
+  background: radial-gradient(
+    ellipse 75% 80% at 55% 55%,
+    rgb(100 116 139 / 0.32),
+    rgb(148 163 184 / 0.2) 48%,
+    transparent 76%
+  );
+  will-change: transform, opacity;
+}
+
+.home-light-mist-cloud-c {
+  animation: home-light-mist-drift-c 24s ease-in-out infinite;
+  animation-delay: -4s;
+  background: radial-gradient(
+    ellipse 70% 72% at 50% 45%,
+    rgb(148 163 184 / 0.28),
+    rgb(186 199 216 / 0.16) 55%,
+    transparent 72%
+  );
+  will-change: transform, opacity;
+}
+
+.home-light-mist-haze {
+  animation: home-light-mist-haze-pan 28s linear infinite;
+  background-image: linear-gradient(
+    102deg,
+    transparent 0%,
+    transparent 32%,
+    rgb(100 116 139 / 0.28) 46%,
+    rgb(148 163 184 / 0.2) 50%,
+    rgb(100 116 139 / 0.24) 54%,
+    transparent 68%,
+    transparent 100%
+  );
+  background-repeat: no-repeat;
+  background-size: 260% 100%;
+  mix-blend-mode: normal;
+  opacity: 0.88;
+  will-change: background-position;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-light-mist-cloud-a,
+  .home-light-mist-cloud-b,
+  .home-light-mist-cloud-c {
+    animation: none !important;
+    opacity: 0.88;
+  }
+
+  .home-light-mist-cloud-b {
+    opacity: 0.78;
+  }
+
+  .home-light-mist-cloud-c {
+    opacity: 0.68;
+    transform: translate3d(-50%, 0, 0);
+  }
+
+  .home-light-mist-haze {
+    animation: none !important;
+    background-position: 50% 50%;
+    opacity: 0.72;
+  }
+}

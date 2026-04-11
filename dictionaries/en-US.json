@@ -93,6 +93,28 @@
     "builtWith": "Built with Next.js",
     "poweredBy": "Powered by Vercel"
   },
+  "home": {
+    "pill": "Read · Think · Write",
+    "ctaRead": "Browse all posts",
+    "ctaTopics": "Categories",
+    "ctaTags": "Tags",
+    "sectionTopics": "Browse by topic",
+    "sectionTopicsDesc": "Jump in through a category to find what you want faster.",
+    "sectionLatest": "Latest posts",
+    "sectionLatestDesc": "Recently published public writing from this site.",
+    "seeAll": "See all",
+    "empty": "No public posts yet. Check back soon—or publish the first one from the dashboard.",
+    "valueTitle": "Reading experience",
+    "value1Title": "Made for long reads",
+    "value1Desc": "Calm layout and pacing for articles you actually finish, not endless feeds.",
+    "value2Title": "Comfortable everywhere",
+    "value2Desc": "Responsive typography and spacing on phone and desktop, with light and dark themes.",
+    "value3Title": "Easy to explore",
+    "value3Desc": "Filter and search in the archive to build your own reading path.",
+    "bottomTitle": "Start reading",
+    "bottomDesc": "Open the archive or pick a topic above.",
+    "bottomCta": "Open post list"
+  },
   "metadata": {
     "title": "Wilderness Blog | Exploring Technology in Digital Wilderness - Seeking Truth in Forest of Thought",
     "description": "Exploring technology in the digital wilderness, seeking truth in the forest of thought",
