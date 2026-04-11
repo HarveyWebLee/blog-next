@@ -2,7 +2,7 @@
 #
 # 准备：cp deploy/env.docker.example deploy/.env.docker 并修改密钥
 # 启动基础设施：docker compose --env-file deploy/.env.docker up -d mysql redis
-# 执行迁移：docker compose --env-file deploy/.env.docker --profile migrate run --rm db-migrate
+# 执行迁移（建议加 --build，避免沿用旧镜像内 drizzle/）：docker compose --env-file deploy/.env.docker --profile migrate run --rm --build db-migrate
 # 启动应用：docker compose --env-file deploy/.env.docker up -d blog-web
 #
 # 流水线建议顺序：build 镜像 → up mysql/redis → migrate → up blog-web

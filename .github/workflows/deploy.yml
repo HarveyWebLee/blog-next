@@ -11,6 +11,7 @@ on:
 # 1) 远程构建期间 SSH 链路偶发中断（Broken pipe）-> 增加 keepalive 参数。
 # 2) db-migrate 在 SSH heredoc 场景可能“看似完成但不返回”-> run 时断开 stdin（< /dev/null）。
 # 3) 仅看“迁移成功”无法判断整体部署完成 -> 增加阶段标记、容器运行态校验与日志输出。
+# 4) db-migrate 若不加 --build，会沿用旧镜像内 COPY 的 drizzle/，新增 0001 等迁移不会进库 -> run 前必须 --build。
 concurrency:
   group: deploy-main
   cancel-in-progress: false
@@ -76,7 +77,7 @@ jobs:
 
             # 2) 运行数据库迁移（幂等）
             echo "[DEPLOY] step2: run db migrations"
-            if timeout 300 docker compose -f "${COMPOSE_FILE}" --env-file "${COMPOSE_ENV}" --profile migrate run --rm -T --no-deps db-migrate < /dev/null; then
+            if timeout 300 docker compose -f "${COMPOSE_FILE}" --env-file "${COMPOSE_ENV}" --profile migrate run --rm -T --no-deps --build db-migrate < /dev/null; then
               echo "[DEPLOY] step2 migrate exit code: 0"
             else
               migrate_exit_code=$?

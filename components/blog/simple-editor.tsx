@@ -159,27 +159,64 @@ const SimpleEditor = ({
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, [height]);
 
-  // 初始化编辑器
+  /**
+   * 将受控 value 同步进 Toast UI：动态 import 的 Editor 常在首帧尚无 ref，
+   * 编辑页又会在请求完成后才传入正文，因此用 rAF 重试直到 getInstance 可用。
+   */
   useEffect(() => {
-    if (isMounted && editorRef.current) {
-      const editorInstance = editorRef.current.getInstance();
+    if (!isMounted) return;
+    let cancelled = false;
+    let rafId = 0;
 
-      // 设置初始内容
-      if (value && value !== editorInstance.getMarkdown()) {
-        editorInstance.setMarkdown(value);
+    const syncMarkdown = () => {
+      if (cancelled) return;
+      const inst = editorRef.current?.getInstance?.();
+      if (!inst) {
+        rafId = requestAnimationFrame(syncMarkdown);
+        return;
       }
+      const next = value ?? "";
+      if (inst.getMarkdown() !== next) {
+        inst.setMarkdown(next);
+      }
+    };
 
-      // 应用当前主题
-      updateEditorTheme(currentTheme);
+    rafId = requestAnimationFrame(syncMarkdown);
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(rafId);
+    };
+  }, [isMounted, value, currentTheme]);
 
-      // 监听内容变化
-      editorInstance.on("change", handleContentChange);
+  /** 主题切换会 key 掉内部 Editor，需重新绑定 change */
+  useEffect(() => {
+    if (!isMounted) return;
+    let cancelled = false;
+    let rafId = 0;
+    let bound: { off: (e: string, fn: () => void) => void } | null = null;
 
-      return () => {
-        editorInstance.off("change", handleContentChange);
-      };
-    }
-  }, [isMounted, value, handleContentChange, currentTheme, updateEditorTheme]);
+    const attach = () => {
+      if (cancelled) return;
+      const inst = editorRef.current?.getInstance?.();
+      if (!inst) {
+        rafId = requestAnimationFrame(attach);
+        return;
+      }
+      bound = inst;
+      inst.on("change", handleContentChange);
+    };
+
+    rafId = requestAnimationFrame(attach);
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(rafId);
+      try {
+        bound?.off("change", handleContentChange);
+      } catch {
+        /* 实例可能已销毁 */
+      }
+    };
+  }, [isMounted, handleContentChange, currentTheme]);
 
   // 如果组件未挂载，显示加载状态
   if (!isMounted) {
@@ -306,6 +343,7 @@ const SimpleEditor = ({
               ref={editorRef}
               height={isFullscreen ? "calc(100vh - 200px)" : height}
               initialEditType="markdown"
+              initialValue={value ?? ""}
               previewStyle="vertical"
               usageStatistics={false}
               placeholder={placeholder}

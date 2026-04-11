@@ -33,7 +33,7 @@
     "precommit": "pnpm format:check && lint-staged",
     "release:dry-run": "semantic-release --dry-run",
     "docker:up:deps": "docker compose --env-file deploy/.env.docker up -d mysql redis",
-    "docker:migrate": "docker compose --env-file deploy/.env.docker --profile migrate run --rm db-migrate",
+    "docker:migrate": "docker compose --env-file deploy/.env.docker --profile migrate run --rm --build db-migrate",
     "docker:up:app": "docker compose --env-file deploy/.env.docker up -d --build blog-web",
     "docker:down": "docker compose --env-file deploy/.env.docker down"
   },

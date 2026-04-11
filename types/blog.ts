@@ -57,6 +57,8 @@ export interface ApiResponse<T = any> {
   message: string; // 响应消息
   data?: T; // 响应数据
   error?: string; // 错误信息
+  /** 机器可读错误码，便于前端或运维区分场景（如数据库未迁移） */
+  code?: string;
   timestamp: string; // 响应时间戳
 }
 

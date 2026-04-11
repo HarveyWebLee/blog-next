@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db/config";
 import { emailSubscriptions } from "@/lib/db/schema";
 import { isValidEmail } from "@/lib/utils/auth";
+import { isMysqlTableMissingError } from "@/lib/utils/mysql-error";
 import { ApiResponse, CreateSubscriptionRequest, EmailSubscription } from "@/types/blog";
 
 /**
@@ -43,6 +44,18 @@ export async function GET(request: NextRequest) {
     } as ApiResponse<{ email: string; isSubscribed: boolean }>);
   } catch (error) {
     console.error("查询订阅状态失败:", error);
+    // 线上常见：未执行 Drizzle 迁移，缺少 email_subscriptions 表
+    if (isMysqlTableMissingError(error)) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "订阅服务暂时不可用，请稍后再试",
+          code: "DB_SCHEMA_OUTDATED",
+          timestamp: new Date().toISOString(),
+        } as ApiResponse<null>,
+        { status: 503 }
+      );
+    }
     return NextResponse.json(
       {
         success: false,
@@ -123,6 +136,17 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error("订阅失败:", error);
+    if (isMysqlTableMissingError(error)) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "订阅服务暂时不可用，请稍后再试",
+          code: "DB_SCHEMA_OUTDATED",
+          timestamp: new Date().toISOString(),
+        } as ApiResponse<null>,
+        { status: 503 }
+      );
+    }
     return NextResponse.json(
       {
         success: false,
@@ -185,6 +209,17 @@ export async function DELETE(request: NextRequest) {
     } as ApiResponse<null>);
   } catch (error) {
     console.error("取消订阅失败:", error);
+    if (isMysqlTableMissingError(error)) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "订阅服务暂时不可用，请稍后再试",
+          code: "DB_SCHEMA_OUTDATED",
+          timestamp: new Date().toISOString(),
+        } as ApiResponse<null>,
+        { status: 503 }
+      );
+    }
     return NextResponse.json(
       {
         success: false,

@@ -27,6 +27,28 @@ export function generateSlug(title: string): string {
     .trim();
 }
 
+/** 用于文章 URL 别名的字符集：大小写字母 + 数字 */
+const URL_ALIAS_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+/**
+ * 生成随机 URL 别名（默认 8 位），供新建文章时作为默认 slug；用户可在表单中手动修改。
+ * 使用 crypto.getRandomValues，避免 Math.random 在敏感场景下可预测。
+ */
+export function generateRandomUrlAlias(length = 8): string {
+  const n = Math.max(4, Math.min(32, Math.floor(length)));
+  const bytes = new Uint8Array(n);
+  if (typeof globalThis.crypto !== "undefined" && globalThis.crypto.getRandomValues) {
+    globalThis.crypto.getRandomValues(bytes);
+  } else {
+    for (let i = 0; i < n; i++) bytes[i] = Math.floor(Math.random() * 256);
+  }
+  let out = "";
+  for (let i = 0; i < n; i++) {
+    out += URL_ALIAS_ALPHABET[bytes[i]! % URL_ALIAS_ALPHABET.length];
+  }
+  return out;
+}
+
 /**
  * 截断文本
  * @param text 原始文本

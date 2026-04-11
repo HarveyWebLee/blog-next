@@ -304,7 +304,7 @@ export default async function HomePage({ params }: { params: Promise<{ lang: Loc
             </div>
 
             {latest.length === 0 ? (
-              <div className="flex flex-col items-center justify-center rounded-2xl border-0 bg-white/10 px-6 py-16 text-center backdrop-blur-xl dark:bg-black/10">
+              <div className="flex flex-col items-center justify-center rounded-2xl border-0 bg-white/[0.03] px-6 py-16 text-center backdrop-blur-sm dark:bg-black/[0.04]">
                 <Newspaper className="mb-4 h-12 w-12 text-foreground/40" strokeWidth={1.25} />
                 <p className="max-w-md text-sm leading-relaxed text-foreground/70 sm:text-base">{h.empty}</p>
                 <Button className="mt-6" asChild>
@@ -336,21 +336,21 @@ export default async function HomePage({ params }: { params: Promise<{ lang: Loc
               {h.valueTitle}
             </h2>
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-8 lg:grid-cols-3">
-              <div className="rounded-2xl border-0 bg-white/10 p-6 text-center shadow-none backdrop-blur-xl transition-all duration-300 hover:bg-white/15 hover:shadow-lg hover:shadow-primary/10 dark:bg-black/10 dark:hover:bg-black/20">
+              <div className="rounded-2xl border-0 bg-white/[0.03] p-6 text-center shadow-none backdrop-blur-sm transition-all duration-300 hover:bg-white/[0.06] hover:shadow-lg hover:shadow-primary/10 dark:bg-black/[0.04] dark:hover:bg-black/[0.08]">
                 <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/15 text-primary">
                   <BookOpen className="h-6 w-6" aria-hidden />
                 </div>
                 <h3 className="mb-2 font-semibold text-foreground">{h.value1Title}</h3>
                 <p className="text-sm leading-relaxed text-foreground/70">{h.value1Desc}</p>
               </div>
-              <div className="rounded-2xl border-0 bg-white/10 p-6 text-center shadow-none backdrop-blur-xl transition-all duration-300 hover:bg-white/15 hover:shadow-lg hover:shadow-primary/10 dark:bg-black/10 dark:hover:bg-black/20">
+              <div className="rounded-2xl border-0 bg-white/[0.03] p-6 text-center shadow-none backdrop-blur-sm transition-all duration-300 hover:bg-white/[0.06] hover:shadow-lg hover:shadow-primary/10 dark:bg-black/[0.04] dark:hover:bg-black/[0.08]">
                 <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/15 text-primary">
                   <LayoutGrid className="h-6 w-6" aria-hidden />
                 </div>
                 <h3 className="mb-2 font-semibold text-foreground">{h.value2Title}</h3>
                 <p className="text-sm leading-relaxed text-foreground/70">{h.value2Desc}</p>
               </div>
-              <div className="rounded-2xl border-0 bg-white/10 p-6 text-center shadow-none backdrop-blur-xl transition-all duration-300 hover:bg-white/15 hover:shadow-lg hover:shadow-primary/10 dark:bg-black/10 dark:hover:bg-black/20">
+              <div className="rounded-2xl border-0 bg-white/[0.03] p-6 text-center shadow-none backdrop-blur-sm transition-all duration-300 hover:bg-white/[0.06] hover:shadow-lg hover:shadow-primary/10 dark:bg-black/[0.04] dark:hover:bg-black/[0.08]">
                 <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/15 text-primary">
                   <Compass className="h-6 w-6" aria-hidden />
                 </div>

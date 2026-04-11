@@ -64,8 +64,8 @@ cp deploy/env.docker.example deploy/.env.docker
 # 1）基础设施
 docker compose --env-file deploy/.env.docker up -d mysql redis
 
-# 2）等待 mysql healthy 后执行迁移（一次性）
-docker compose --env-file deploy/.env.docker --profile migrate run --rm db-migrate
+# 2）等待 mysql healthy 后执行迁移（一次性；**必须 --build**，否则会沿用旧镜像里的 drizzle/）
+docker compose --env-file deploy/.env.docker --profile migrate run --rm --build db-migrate
 
 # 3）构建并启动应用
 docker compose --env-file deploy/.env.docker up -d --build blog-web
@@ -88,7 +88,7 @@ docker compose --env-file deploy/.env.docker up -d --build blog-web
 
 1. `git fetch/checkout/pull` 拉取最新 `main`
 2. `docker compose up -d mysql redis`
-3. `docker compose --profile migrate run --rm db-migrate`
+3. `docker compose --profile migrate run --rm --build db-migrate`（`--build` 确保新迁移文件打进镜像）
 4. `docker compose up -d --build blog-web`
 
 为确保该流程稳定，需同时完成「服务器配置」与「GitHub 配置」两部分。
@@ -282,14 +282,15 @@ chown -R deployer:deployer /home/deployer/.ssh
 
 ## 9. 常见问题
 
-| 现象                                   | 处理                                                                                                                                                                               |
-| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `db-migrate` 报找不到迁移              | 若日志含 `COPY drizzle ./drizzle ... "/drizzle": not found`：先 `pnpm db:generate` 生成并提交 `drizzle/*.sql`，再重跑 `docker compose ... --profile migrate run --rm db-migrate`   |
-| 应用连不上数据库                       | 检查 `depends_on` 与 MySQL **healthy**；确认 `DB_*` 与 MySQL 一致                                                                                                                  |
-| Compose 提示缺少 `MYSQL_ROOT_PASSWORD` | 使用 `docker compose --env-file deploy/.env.docker`，且文件内已赋值                                                                                                                |
-| 宿主机连 MySQL                         | `127.0.0.1:13307`（默认），用户/库见 `.env.docker`                                                                                                                                 |
-| `fatal: detected dubious ownership`    | 服务器仓库目录 owner 与部署用户不一致。执行 `sudo chown -R <SERVER_USER>:<SERVER_USER> /opt/blog-next`，并在工作流中保留 `git config --global --add safe.directory /opt/blog-next` |
-| `Host key verification failed`         | 服务器无法校验 `github.com` 主机指纹。执行 `ssh-keyscan github.com >> ~/.ssh/known_hosts`，并确认服务器已配置可访问仓库的 SSH key（Deploy Key）                                    |
+| 现象                                   | 处理                                                                                                                                                                                     |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `db-migrate` 报找不到迁移              | 若日志含 `COPY drizzle ./drizzle ... "/drizzle": not found`：先 `pnpm db:generate` 生成并提交 `drizzle/*.sql`，再重跑 `docker compose ... --profile migrate run --rm --build db-migrate` |
+| 迁移显示成功但库里没有新表             | 多为 **未重建 db-migrate 镜像**：`run` 时务必加 **`--build`**，否则容器内仍是旧版 `drizzle/*.sql`；流水线见 `.github/workflows/deploy.yml`。                                             |
+| 应用连不上数据库                       | 检查 `depends_on` 与 MySQL **healthy**；确认 `DB_*` 与 MySQL 一致                                                                                                                        |
+| Compose 提示缺少 `MYSQL_ROOT_PASSWORD` | 使用 `docker compose --env-file deploy/.env.docker`，且文件内已赋值                                                                                                                      |
+| 宿主机连 MySQL                         | `127.0.0.1:13307`（默认），用户/库见 `.env.docker`                                                                                                                                       |
+| `fatal: detected dubious ownership`    | 服务器仓库目录 owner 与部署用户不一致。执行 `sudo chown -R <SERVER_USER>:<SERVER_USER> /opt/blog-next`，并在工作流中保留 `git config --global --add safe.directory /opt/blog-next`       |
+| `Host key verification failed`         | 服务器无法校验 `github.com` 主机指纹。执行 `ssh-keyscan github.com >> ~/.ssh/known_hosts`，并确认服务器已配置可访问仓库的 SSH key（Deploy Key）                                          |
 
 ---
 
