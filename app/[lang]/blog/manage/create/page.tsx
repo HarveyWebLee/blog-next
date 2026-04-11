@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@heroui/button";
 import { Card, CardBody, CardHeader } from "@heroui/card";
@@ -30,7 +30,7 @@ import {
 import SimpleEditor from "@/components/blog/simple-editor";
 import { useCategories } from "@/lib/hooks/useCategories";
 import { useTags } from "@/lib/hooks/useTags";
-import { message } from "@/lib/utils";
+import { generateRandomUrlAlias, message } from "@/lib/utils";
 import { Category, CreatePostRequest, PostStatus, PostVisibility, Tag } from "@/types/blog";
 
 export default function CreateBlogPage() {
@@ -54,10 +54,10 @@ export default function CreateBlogPage() {
           basicInfoDesc: "Fill in the basic information of the post",
           title: "Title",
           titlePlaceholder: "Enter an engaging post title",
-          titleHint: "The title will auto-generate a URL slug",
+          titleHint: "Title is separate from the URL slug; you can edit the slug anytime",
           slug: "URL Slug",
-          slugPlaceholder: "Auto-generate or enter manually",
-          slugHint: "Used to build post links",
+          slugPlaceholder: "8-char code by default; edit as you like",
+          slugHint: "Random A–Z / a–z / 0–9 code by default; used in post URLs",
           excerpt: "Excerpt",
           excerptPlaceholder: "Write an engaging excerpt to introduce your content...",
           excerptHint: "Shown in post list and search results",
@@ -110,10 +110,10 @@ export default function CreateBlogPage() {
             basicInfoDesc: "記事の基本情報を入力してください",
             title: "タイトル",
             titlePlaceholder: "魅力的な記事タイトルを入力",
-            titleHint: "タイトルからURLスラッグを自動生成します",
+            titleHint: "タイトルとURLスラッグは独立しています。スラッグはいつでも編集できます",
             slug: "URLスラッグ",
-            slugPlaceholder: "自動生成または手動入力",
-            slugHint: "記事リンクの生成に使用します",
+            slugPlaceholder: "既定は8文字のランダムコード（編集可）",
+            slugHint: "既定は英大文字・小文字・数字のランダム8文字。記事URLに使われます",
             excerpt: "概要",
             excerptPlaceholder: "読者に内容を伝える魅力的な概要を書いてください...",
             excerptHint: "記事一覧と検索結果に表示されます",
@@ -165,10 +165,10 @@ export default function CreateBlogPage() {
             basicInfoDesc: "填写博客的基本信息",
             title: "标题",
             titlePlaceholder: "输入吸引人的博客标题",
-            titleHint: "标题将自动生成URL别名",
+            titleHint: "标题与 URL 别名独立，可随时修改别名",
             slug: "URL别名",
-            slugPlaceholder: "自动生成或手动输入",
-            slugHint: "用于生成博客链接",
+            slugPlaceholder: "默认 8 位随机码，可手动修改",
+            slugHint: "默认随机生成 8 位英文大小写与数字，用于文章链接",
             excerpt: "摘要",
             excerptPlaceholder: "写一段吸引人的摘要，让读者了解文章内容...",
             excerptHint: "摘要将显示在博客列表和搜索结果中",
@@ -212,9 +212,10 @@ export default function CreateBlogPage() {
   const { categories, loading: categoriesLoading } = useCategories({ autoFetch: true });
   const { tags, loading: tagsLoading, fetchTags } = useTags({ autoFetch: true });
 
-  const [formData, setFormData] = useState<CreatePostRequest>({
+  /** 新建文章：默认生成 8 位随机 URL 别名（英大小写+数字），用户可在输入框中修改 */
+  const [formData, setFormData] = useState<CreatePostRequest>(() => ({
     title: "",
-    slug: "",
+    slug: generateRandomUrlAlias(8),
     excerpt: "",
     content: "",
     featuredImage: "",
@@ -224,7 +225,7 @@ export default function CreateBlogPage() {
     password: "",
     allowComments: true,
     tagIds: [],
-  });
+  }));
 
   // 处理表单输入变化
   const handleInputChange = (field: keyof CreatePostRequest, value: any) => {
@@ -232,24 +233,6 @@ export default function CreateBlogPage() {
       ...prev,
       [field]: value,
     }));
-  };
-
-  // 自动生成slug
-  const generateSlug = (title: string) => {
-    return title
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, "")
-      .replace(/\s+/g, "-")
-      .replace(/-+/g, "-")
-      .trim();
-  };
-
-  // 处理标题变化时自动生成slug
-  const handleTitleChange = (title: string) => {
-    handleInputChange("title", title);
-    if (!formData.slug) {
-      handleInputChange("slug", generateSlug(title));
-    }
   };
 
   // 处理标签选择
@@ -349,7 +332,7 @@ export default function CreateBlogPage() {
                   label={t.title}
                   placeholder={t.titlePlaceholder}
                   value={formData.title}
-                  onValueChange={handleTitleChange}
+                  onValueChange={(title: string) => handleInputChange("title", title)}
                   variant="bordered"
                   size="lg"
                   isRequired
