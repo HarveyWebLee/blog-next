@@ -9,14 +9,65 @@ import { ApiResponse } from "@/types/blog";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { username, email, password, displayName, verificationCode, useEmailVerification = false } = body;
+    const { useEmailVerification = false } = body;
 
-    // 验证输入
-    if (!username || !email || !password || !displayName) {
+    // 统一 trim 文本字段，避免仅空白字符通过必填校验
+    const username = typeof body.username === "string" ? body.username.trim() : "";
+    const email = typeof body.email === "string" ? body.email.trim() : "";
+    const displayName = typeof body.displayName === "string" ? body.displayName.trim() : "";
+    const password = typeof body.password === "string" ? body.password : "";
+    const verificationCode = typeof body.verificationCode === "string" ? body.verificationCode.trim() : "";
+
+    // 分项校验，便于前端将提示展示在对应字段旁（尤其邮箱：必填与格式分开说明）
+    if (!username) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "所有字段都是必填的",
+          message: "用户名为必填项",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 400 }
+      );
+    }
+
+    if (!displayName) {
+      return NextResponse.json<ApiResponse>(
+        {
+          success: false,
+          message: "显示名称为必填项",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 400 }
+      );
+    }
+
+    if (!email) {
+      return NextResponse.json<ApiResponse>(
+        {
+          success: false,
+          message: "邮箱为必填项",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 400 }
+      );
+    }
+
+    if (!isValidEmail(email)) {
+      return NextResponse.json<ApiResponse>(
+        {
+          success: false,
+          message: "邮箱格式不符合规范，请填写有效的邮箱地址",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 400 }
+      );
+    }
+
+    if (!password) {
+      return NextResponse.json<ApiResponse>(
+        {
+          success: false,
+          message: "密码为必填项",
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -64,18 +115,6 @@ export async function POST(request: NextRequest) {
 
       // 标记验证码为已使用
       await db.update(emailVerifications).set({ isUsed: true }).where(eq(emailVerifications.id, verification[0].id));
-    }
-
-    // 验证邮箱格式
-    if (!isValidEmail(email)) {
-      return NextResponse.json<ApiResponse>(
-        {
-          success: false,
-          message: "邮箱格式不正确",
-          timestamp: new Date().toISOString(),
-        },
-        { status: 400 }
-      );
     }
 
     // 验证密码强度

@@ -9,6 +9,8 @@ import { Input } from "@heroui/input";
 import { Form } from "@heroui/react";
 import { AlertCircle, ArrowLeftIcon, CheckCircle, Clock, Eye, EyeOff, Lock, Mail, Shield, User } from "lucide-react";
 
+import { isValidEmailFormat } from "@/lib/utils/email-format";
+
 export default function RegisterPage() {
   const router = useRouter();
   const params = useParams<{ lang: string }>();
@@ -16,7 +18,7 @@ export default function RegisterPage() {
   const t =
     lang === "en-US"
       ? {
-          validEmail: "Please enter a valid email",
+          validEmail: "Email format is invalid. Use an address like name@example.com",
           codeSent: "Verification code sent to your email",
           sendCodeFailed: "Failed to send verification code",
           sendCodeRetry: "Failed to send code, please retry",
@@ -38,7 +40,7 @@ export default function RegisterPage() {
           displayNameMax: "Display name must be at most 12 chars",
           email: "Email",
           emailPlaceholder: "Enter email",
-          emailRequired: "Email is required",
+          emailRequired: "Email is required to create an account",
           codeTitle: "Email Verification Code",
           sent: "Sent",
           codePlaceholder: "Enter 6-digit code",
@@ -74,7 +76,7 @@ export default function RegisterPage() {
         }
       : lang === "ja-JP"
         ? {
-            validEmail: "有効なメールアドレスを入力してください",
+            validEmail: "メール形式が正しくありません（例：name@example.com）",
             codeSent: "認証コードを送信しました",
             sendCodeFailed: "認証コード送信に失敗しました",
             sendCodeRetry: "送信に失敗しました。再試行してください",
@@ -96,7 +98,7 @@ export default function RegisterPage() {
             displayNameMax: "表示名は12文字以内です",
             email: "メールアドレス",
             emailPlaceholder: "メールアドレスを入力",
-            emailRequired: "メールアドレスは必須です",
+            emailRequired: "メールアドレスは必須項目です",
             codeTitle: "メール認証コード",
             sent: "送信済み",
             codePlaceholder: "6桁コードを入力",
@@ -131,7 +133,7 @@ export default function RegisterPage() {
             privacy: "プライバシーポリシー",
           }
         : {
-            validEmail: "请输入有效的邮箱地址",
+            validEmail: "邮箱格式不符合规范，请填写类似 name@example.com 的有效地址",
             codeSent: "验证码已发送到您的邮箱",
             sendCodeFailed: "发送验证码失败",
             sendCodeRetry: "发送验证码失败，请稍后重试",
@@ -153,7 +155,7 @@ export default function RegisterPage() {
             displayNameMax: "显示名称长度最多12位",
             email: "邮箱地址",
             emailPlaceholder: "请输入邮箱地址",
-            emailRequired: "邮箱地址不能为空",
+            emailRequired: "邮箱为必填项",
             codeTitle: "邮箱验证码",
             sent: "已发送",
             codePlaceholder: "请输入6位验证码",
@@ -197,6 +199,8 @@ export default function RegisterPage() {
   const [countdown, setCountdown] = useState(0);
   const [emailError, setEmailError] = useState("");
   const [codeError, setCodeError] = useState("");
+  /** 非邮箱、非验证码类的服务端错误（如用户名已存在、密码强度不足），避免误显示在邮箱下方 */
+  const [submitError, setSubmitError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
   const [password, setPassword] = useState("");
@@ -208,9 +212,16 @@ export default function RegisterPage() {
   const handleSendCode = async (emailValue: string) => {
     setEmailError("");
     setCodeError("");
+    setSubmitError("");
 
-    // 验证邮箱地址是否为空或格式不正确
-    if (!emailValue?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue.trim())) {
+    const trimmed = emailValue?.trim() ?? "";
+    // 与后端文案一致：先提示「必填」，再提示「格式」
+    if (!trimmed) {
+      setEmailError(t.emailRequired);
+      return;
+    }
+
+    if (!isValidEmailFormat(trimmed)) {
       setEmailError(t.validEmail);
       return;
     }
@@ -222,7 +233,7 @@ export default function RegisterPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email: emailValue, type: "register" }),
+        body: JSON.stringify({ email: trimmed, type: "register" }),
       });
 
       const data = await response.json();
@@ -255,8 +266,25 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    setIsSubmitting(true);
+    setEmailError("");
+    setCodeError("");
+    setSubmitError("");
+
     const formData = Object.fromEntries(new FormData(e.currentTarget as HTMLFormElement));
+    const emailTrimmed = typeof formData.email === "string" ? formData.email.trim() : "";
+
+    // 提交前再次校验邮箱，避免仅依赖服务端或绕过表单项校验
+    if (!emailTrimmed) {
+      setEmailError(t.emailRequired);
+      return;
+    }
+
+    if (!isValidEmailFormat(emailTrimmed)) {
+      setEmailError(t.validEmail);
+      return;
+    }
+
+    setIsSubmitting(true);
 
     try {
       const response = await fetch("/api/auth/register", {
@@ -266,6 +294,7 @@ export default function RegisterPage() {
         },
         body: JSON.stringify({
           ...formData,
+          email: emailTrimmed,
           useEmailVerification: true,
           verificationCode,
         }),
@@ -277,14 +306,18 @@ export default function RegisterPage() {
         // 注册成功，跳转到登录页面
         router.push(`/${lang}/auth/login?message=${encodeURIComponent(t.loginMessage)}`);
       } else {
-        if (data.message?.includes("验证码")) {
-          setCodeError(data.message);
+        const msg: string = data.message || t.registerFailed;
+        // 含「验证码」的归验证码区；其余含「邮箱」的归邮箱区；其它归通用提交错误
+        if (msg.includes("验证码")) {
+          setCodeError(msg);
+        } else if (msg.includes("邮箱")) {
+          setEmailError(msg);
         } else {
-          setEmailError(data.message || t.registerFailed);
+          setSubmitError(msg);
         }
       }
     } catch (error) {
-      setEmailError(t.registerRetry);
+      setSubmitError(t.registerRetry);
     } finally {
       setIsSubmitting(false);
     }
@@ -311,6 +344,16 @@ export default function RegisterPage() {
             <div className="flex items-center space-x-2 text-green-600 dark:text-green-400">
               <CheckCircle className="w-4 h-4" />
               <span className="text-sm font-medium">{successMessage}</span>
+            </div>
+          </div>
+        )}
+
+        {/* 注册接口返回的通用错误（用户名冲突、密码强度等），与邮箱/验证码分区展示 */}
+        {submitError && (
+          <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <div className="flex items-center space-x-2 text-red-600 dark:text-red-400">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <span className="text-sm font-medium">{submitError}</span>
             </div>
           </div>
         )}
@@ -401,6 +444,7 @@ export default function RegisterPage() {
                 onChange={(e) => {
                   setEmail(e.target.value);
                   setEmailError("");
+                  setSubmitError("");
                 }}
                 classNames={{
                   input: "text-sm",
@@ -413,7 +457,7 @@ export default function RegisterPage() {
                     return t.emailRequired;
                   }
 
-                  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value?.trim())) {
+                  if (!isValidEmailFormat(value)) {
                     return t.validEmail;
                   }
 
@@ -511,12 +555,7 @@ export default function RegisterPage() {
                     variant={codeSent ? "bordered" : "solid"}
                     size="lg"
                     isLoading={isSendingCode}
-                    disabled={
-                      isSendingCode ||
-                      countdown > 0 ||
-                      !email?.trim() ||
-                      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email?.trim())
-                    }
+                    disabled={isSendingCode || countdown > 0 || !email?.trim() || !isValidEmailFormat(email)}
                     onPress={() => handleSendCode(email)}
                     className={`flex-[0.3] h-12 rounded-xl font-medium transition-all duration-200 ${
                       codeSent

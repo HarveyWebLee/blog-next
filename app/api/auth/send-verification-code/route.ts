@@ -14,26 +14,26 @@ import { ApiResponse } from "@/types/blog";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, type = "register" } = body;
+    const { type = "register" } = body;
+    const email = typeof body.email === "string" ? body.email.trim() : "";
 
-    // 验证输入
+    // 与注册接口文案对齐：先区分「未填」与「格式不符」
     if (!email) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "邮箱地址不能为空",
+          message: "邮箱为必填项",
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
       );
     }
 
-    // 验证邮箱格式
     if (!isValidEmail(email)) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "邮箱格式不正确",
+          message: "邮箱格式不符合规范，请填写有效的邮箱地址",
           timestamp: new Date().toISOString(),
         },
         { status: 400 }

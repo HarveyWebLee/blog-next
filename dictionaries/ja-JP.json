@@ -93,6 +93,28 @@
     "builtWith": "Next.jsで構築",
     "poweredBy": "Vercelで提供"
   },
+  "home": {
+    "pill": "読む · 考える · 書く",
+    "ctaRead": "すべての記事を見る",
+    "ctaTopics": "カテゴリー",
+    "ctaTags": "タグ",
+    "sectionTopics": "テーマから探す",
+    "sectionTopicsDesc": "カテゴリーから入ると、読みたい記事に早く辿り着けます。",
+    "sectionLatest": "最新の記事",
+    "sectionLatestDesc": "このサイトで最近公開された記事です。",
+    "seeAll": "すべて表示",
+    "empty": "公開中の記事はまだありません。しばらくしてから再度お試しください。",
+    "valueTitle": "読書体験",
+    "value1Title": "長文に寄り添う",
+    "value1Desc": "最後まで読みやすい余白と情報の密度を意識したレイアウトです。",
+    "value2Title": "どこでも快適に",
+    "value2Desc": "スマホとデスクトップの両方で読みやすく、ライト／ダークテーマに対応します。",
+    "value3Title": "探索しやすい",
+    "value3Desc": "一覧ではカテゴリーやキーワードで絞り込み、自分の読書ルートを作れます。",
+    "bottomTitle": "さあ、読み始めましょう",
+    "bottomDesc": "一覧から時系列で読むか、上のカテゴリーから入ってください。",
+    "bottomCta": "記事一覧を開く"
+  },
   "metadata": {
     "title": "荒野ブログ | デジタル荒野で技術を探求 - 思考の森で真実を求める",
     "description": "デジタル荒野で技術を探求し、思考の森で真実を求める",
