@@ -4,17 +4,17 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { Button } from "@heroui/button";
 import { Card, CardBody, CardHeader } from "@heroui/card";
-import { Maximize2, Minimize2, Save, Settings, Sparkles, Type } from "lucide-react";
+import { ChevronDown, Maximize2, Minimize2, Settings, Sparkles, Type } from "lucide-react";
 import { useTheme } from "next-themes";
 
 // 动态导入Toast UI Editor，禁用SSR
 const Editor = dynamic(() => import("@toast-ui/react-editor").then((mod) => mod.Editor), {
   ssr: false,
   loading: () => (
-    <div className="flex items-center justify-center h-96 bg-gray-50 dark:bg-gray-800 rounded-lg">
+    <div className="flex h-72 items-center justify-center rounded-lg bg-default-100 dark:bg-default-50/10">
       <div className="text-center">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-        <p className="text-gray-600 dark:text-gray-400">编辑器加载中...</p>
+        <div className="mx-auto mb-2 h-7 w-7 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        <p className="text-default-500 text-xs">编辑器加载中...</p>
       </div>
     </div>
   ),
@@ -26,6 +26,7 @@ interface SimpleEditorProps {
   placeholder?: string;
   height?: string;
   className?: string;
+  /** 保留兼容：若需定时回调（如对接草稿接口）可传入；管理页表单保存请使用页面底部主按钮 */
   onSave?: () => void;
   autoSave?: boolean;
   autoSaveInterval?: number;
@@ -34,7 +35,7 @@ interface SimpleEditorProps {
 const SimpleEditor = ({
   value = "",
   onChange,
-  placeholder = "开始编写您的博客内容...",
+  placeholder = "",
   height = "500px",
   className = "",
   onSave,
@@ -43,47 +44,39 @@ const SimpleEditor = ({
 }: SimpleEditorProps) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
+  const [tipsOpen, setTipsOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [currentTheme, setCurrentTheme] = useState<string>("light");
   const editorRef = useRef<typeof Editor>(null);
   const { theme, resolvedTheme } = useTheme();
 
-  // 确保组件只在客户端挂载后渲染
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  // 更新编辑器主题的函数
-  const updateEditorTheme = useCallback((theme: string) => {
+  const updateEditorTheme = useCallback((themeName: string) => {
     if (editorRef.current) {
       try {
-        // 获取编辑器根元素
         const editorContainer = editorRef.current.getRootElement();
         if (editorContainer) {
-          // 更新根容器的主题属性
-          editorContainer.setAttribute("data-theme", theme);
+          editorContainer.setAttribute("data-theme", themeName);
           editorContainer.classList.add("theme-transitioning");
-
-          // 查找并更新所有相关的编辑器元素
           const editorElements = editorContainer.querySelectorAll(
             ".tui-editor-defaultUI, .te-toolbar, .te-editor, .te-preview, .ProseMirror"
           );
           editorElements.forEach((element: Element) => {
-            element.setAttribute("data-theme", theme);
+            element.setAttribute("data-theme", themeName);
           });
-
-          // 移除过渡效果类
           setTimeout(() => {
             editorContainer.classList.remove("theme-transitioning");
           }, 300);
         }
       } catch (error) {
         console.warn("Failed to update editor theme:", error);
-        // 如果更新失败，至少通过CSS类名更新主题
         try {
           const editorContainer = editorRef.current.getRootElement();
           if (editorContainer) {
-            editorContainer.setAttribute("data-theme", theme);
+            editorContainer.setAttribute("data-theme", themeName);
           }
         } catch (fallbackError) {
           console.warn("Fallback theme update also failed:", fallbackError);
@@ -92,17 +85,13 @@ const SimpleEditor = ({
     }
   }, []);
 
-  // 监听主题变化
   useEffect(() => {
     if (isMounted) {
       const actualTheme = resolvedTheme || theme || "light";
       setCurrentTheme(actualTheme);
-
-      // 延迟更新编辑器的主题，确保编辑器已完全加载
       const timer = setTimeout(() => {
         updateEditorTheme(actualTheme);
       }, 100);
-
       return () => clearTimeout(timer);
     }
   }, [isMounted, theme, resolvedTheme, updateEditorTheme]);
@@ -119,23 +108,18 @@ const SimpleEditor = ({
       if (editorRef.current) {
         editorRef.current.getInstance().setHeight("100vh");
       }
-    } else {
-      if (editorRef.current) {
-        editorRef.current.getInstance().setHeight(height);
-      }
+    } else if (editorRef.current) {
+      editorRef.current.getInstance().setHeight(height);
     }
     setIsFullscreen(!isFullscreen);
   }, [isFullscreen, height]);
 
   const handleSave = useCallback(() => {
-    if (onSave) {
-      onSave();
-    }
+    onSave?.();
   }, [onSave]);
 
-  // 自动保存
   useEffect(() => {
-    if (autoSave) {
+    if (autoSave && onSave) {
       const intervalId = setInterval(() => {
         setIsAutoSaving(true);
         handleSave();
@@ -143,9 +127,8 @@ const SimpleEditor = ({
       }, autoSaveInterval);
       return () => clearInterval(intervalId);
     }
-  }, [autoSave, autoSaveInterval, handleSave]);
+  }, [autoSave, autoSaveInterval, handleSave, onSave]);
 
-  // 全屏状态监听
   useEffect(() => {
     const handleFullscreenChange = () => {
       if (!document.fullscreenElement) {
@@ -159,10 +142,6 @@ const SimpleEditor = ({
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, [height]);
 
-  /**
-   * 将受控 value 同步进 Toast UI：动态 import 的 Editor 常在首帧尚无 ref，
-   * 编辑页又会在请求完成后才传入正文，因此用 rAF 重试直到 getInstance 可用。
-   */
   useEffect(() => {
     if (!isMounted) return;
     let cancelled = false;
@@ -188,7 +167,6 @@ const SimpleEditor = ({
     };
   }, [isMounted, value, currentTheme]);
 
-  /** 主题切换会 key 掉内部 Editor，需重新绑定 change */
   useEffect(() => {
     if (!isMounted) return;
     let cancelled = false;
@@ -218,34 +196,51 @@ const SimpleEditor = ({
     };
   }, [isMounted, handleContentChange, currentTheme]);
 
-  // 如果组件未挂载，显示加载状态
+  const headerBar = (
+    <div className="flex w-full items-center justify-between gap-2">
+      <div className="flex min-w-0 items-center gap-2">
+        <div className="shrink-0 rounded-lg bg-gradient-to-br from-primary to-secondary p-1.5 shadow-sm">
+          <Type className="h-4 w-4 text-white" />
+        </div>
+        <div className="min-w-0">
+          <h3 className="text-base font-semibold leading-tight text-foreground">正文编辑</h3>
+          <p className="text-default-500 flex items-center gap-1 text-xs">
+            <Sparkles className="h-3 w-3 shrink-0" />
+            <span className="truncate">Markdown / 所见即所得</span>
+          </p>
+        </div>
+      </div>
+      <div className="flex shrink-0 items-center gap-1.5">
+        <div className="hidden items-center gap-1.5 rounded-full border border-default-200 bg-default-100/80 px-2 py-0.5 sm:flex dark:border-default-100/20 dark:bg-default-50/10">
+          <div className={`h-1.5 w-1.5 rounded-full ${currentTheme === "dark" ? "bg-blue-500" : "bg-amber-500"}`} />
+          <span className="text-default-600 text-[10px] font-medium dark:text-default-400">
+            {currentTheme === "dark" ? "暗色" : "亮色"}
+          </span>
+        </div>
+        <Button
+          isIconOnly
+          size="sm"
+          variant="light"
+          className="text-default-500"
+          onPress={handleFullscreenToggle}
+          title={isFullscreen ? "退出全屏" : "全屏编辑"}
+        >
+          {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+        </Button>
+      </div>
+    </div>
+  );
+
   if (!isMounted) {
     return (
-      <div className={`${className}`}>
-        <Card className="shadow-xl border-0 bg-gradient-to-br from-background to-default-50 rounded-2xl">
-          <CardHeader className="pb-4 bg-gradient-to-r from-primary-50 to-secondary-50 dark:from-primary-900/20 dark:to-secondary-900/20">
-            <div className="flex items-center justify-between w-full">
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-xl bg-gradient-to-br from-primary to-secondary shadow-lg">
-                  <Type className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                    编辑器
-                  </h3>
-                  <p className="text-default-600 flex items-center gap-2">
-                    <Sparkles className="w-4 h-4" />
-                    支持 Markdown / WYSIWYG 双模式
-                  </p>
-                </div>
-              </div>
-            </div>
-          </CardHeader>
-          <CardBody className="pt-4 p-0">
-            <div className="flex items-center justify-center h-96 bg-gray-50 dark:bg-gray-800 rounded-lg">
+      <div className={className}>
+        <Card className="rounded-xl border border-default-200/70 bg-gradient-to-br from-background via-default-50/30 to-default-50/90 shadow-md backdrop-blur-sm dark:border-white/10 dark:from-white/[0.045] dark:via-background/90 dark:to-secondary-500/[0.06]">
+          <CardHeader className="gap-0 pb-2 pt-3">{headerBar}</CardHeader>
+          <CardBody className="px-3 pb-3 pt-0">
+            <div className="flex h-72 items-center justify-center rounded-lg bg-default-100 dark:bg-default-50/10">
               <div className="text-center">
-                <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                <p className="text-gray-600 dark:text-gray-400">编辑器加载中...</p>
+                <div className="mx-auto mb-2 h-7 w-7 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                <p className="text-default-500 text-xs">编辑器加载中...</p>
               </div>
             </div>
           </CardBody>
@@ -257,96 +252,34 @@ const SimpleEditor = ({
   return (
     <div className={`${isFullscreen ? "fixed inset-0 z-50 bg-background" : ""} ${className}`}>
       <Card
-        className={`shadow-xl border-0 bg-gradient-to-br from-background to-default-50 ${isFullscreen ? "h-full rounded-none" : "rounded-2xl"}`}
+        className={`rounded-xl border border-default-200/70 bg-gradient-to-br from-background via-default-50/30 to-default-50/90 shadow-md backdrop-blur-sm dark:border-white/10 dark:from-white/[0.045] dark:via-background/90 dark:to-secondary-500/[0.06] ${isFullscreen ? "h-full rounded-none" : ""}`}
       >
-        <CardHeader className="pb-4 bg-gradient-to-r from-primary-50 to-secondary-50 dark:from-primary-900/20 dark:to-secondary-900/20">
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-xl bg-gradient-to-br from-primary to-secondary shadow-lg">
-                <Type className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h3 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                  编辑器
-                </h3>
-                <p className="text-default-600 flex items-center gap-2">
-                  <Sparkles className="w-4 h-4" />
-                  支持 Markdown / WYSIWYG 双模式
-                </p>
-              </div>
-            </div>
+        <CardHeader className="gap-0 pb-2 pt-3">{headerBar}</CardHeader>
 
-            <div className="flex items-center gap-3">
-              {/* 主题指示器 */}
-              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200 dark:border-gray-700">
-                <div
-                  className={`w-2 h-2 rounded-full ${currentTheme === "dark" ? "bg-blue-500" : "bg-yellow-500"}`}
-                ></div>
-                <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
-                  {currentTheme === "dark" ? "暗色" : "亮色"}
-                </span>
-              </div>
-
-              <Button
-                isIconOnly
-                size="sm"
-                variant="ghost"
-                className="hover:bg-primary/10 hover:text-primary transition-all duration-200"
-                onPress={handleFullscreenToggle}
-                title={isFullscreen ? "退出全屏" : "全屏编辑"}
-              >
-                {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-
-        <CardBody className="pt-4 p-0 space-y-6">
-          {/* 状态栏 */}
-          <div className="flex items-center justify-between mt-4 p-4 bg-gradient-to-r from-success-50 to-info-50 dark:from-success-900/20 dark:to-info-900/20 border border-success-200 dark:border-success-800">
-            <div className="flex items-center gap-6 text-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-success rounded-full animate-pulse"></div>
-                <span className="font-medium text-success-700 dark:text-success-300">
-                  字数: {value.split(/\s+/).filter((word) => word.length > 0).length}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-info rounded-full"></div>
-                <span className="font-medium text-info-700 dark:text-info-300">字符: {value.length}</span>
-              </div>
-              {isAutoSaving && (
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 text-warning animate-spin">⚡</div>
-                  <span className="text-warning-600">自动保存中...</span>
-                </div>
-              )}
-            </div>
-
-            <Button
-              size="sm"
-              color="primary"
-              variant="shadow"
-              className="font-medium"
-              onPress={handleSave}
-              startContent={<Save className="w-4 h-4" />}
-            >
-              保存
-            </Button>
+        <CardBody className="space-y-2 px-3 pb-3 pt-0">
+          {/* 字数条：紧凑；保存由页面表单统一提交 */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-default-200/80 bg-default-100/50 px-2.5 py-1.5 text-[11px] dark:border-default-100/15 dark:bg-default-50/10">
+            <span className="text-default-600 dark:text-default-400">
+              词数 <strong className="text-foreground">{value.split(/\s+/).filter((w) => w.length > 0).length}</strong>
+            </span>
+            <span className="text-default-600 dark:text-default-400">
+              字符 <strong className="text-foreground">{value.length}</strong>
+            </span>
+            {autoSave && onSave && isAutoSaving && <span className="text-warning text-[11px]">自动保存…</span>}
           </div>
 
-          {/* Toast UI Editor */}
-          <div className="relative">
+          {/* 未传 placeholder 时不下发给 Toast，避免空文档仍出现长段默认提示 */}
+          <div className="relative overflow-hidden rounded-lg border border-default-200/60 dark:border-default-100/10">
             <Editor
               key={currentTheme}
               theme={currentTheme}
               ref={editorRef}
-              height={isFullscreen ? "calc(100vh - 200px)" : height}
+              height={isFullscreen ? "calc(100vh - 120px)" : height}
               initialEditType="markdown"
               initialValue={value ?? ""}
               previewStyle="vertical"
               usageStatistics={false}
-              placeholder={placeholder}
+              {...(placeholder?.trim() ? { placeholder: placeholder.trim() } : {})}
               toolbarItems={[
                 ["heading", "bold", "italic", "strike"],
                 ["hr", "quote"],
@@ -357,7 +290,6 @@ const SimpleEditor = ({
               ]}
               hooks={{
                 addImageBlobHook: (blob: Blob, callback: (dataUrl: string, type: string) => void) => {
-                  // 处理图片上传
                   const reader = new FileReader();
                   reader.onload = (e: ProgressEvent<FileReader>) => {
                     callback(e.target?.result as string, "image");
@@ -368,57 +300,51 @@ const SimpleEditor = ({
             />
           </div>
 
-          {/* 功能说明 */}
-          <div className="mt-6 p-4 bg-gradient-to-r from-info-50 to-primary-50 dark:from-info-900/20 dark:to-primary-900/20">
-            <div className="flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-info/20">
-                <Settings className="w-5 h-5 text-info" />
+          {/* 功能说明：默认折叠，减少占高 */}
+          <div className="rounded-lg border border-default-200/60 bg-default-100/30 dark:border-default-100/10 dark:bg-default-50/5">
+            <Button
+              type="button"
+              variant="light"
+              size="sm"
+              className="h-9 min-h-9 w-full justify-between gap-2 px-2.5 text-default-700 dark:text-default-300"
+              onPress={() => setTipsOpen((o) => !o)}
+              endContent={
+                <ChevronDown
+                  className={`h-4 w-4 shrink-0 text-default-400 transition-transform ${tipsOpen ? "rotate-180" : ""}`}
+                />
+              }
+            >
+              <span className="flex items-center gap-2 text-xs font-medium">
+                <Settings className="h-3.5 w-3.5" />
+                编辑器功能说明
+              </span>
+            </Button>
+            {tipsOpen && (
+              <div className="border-t border-default-200/50 px-2.5 pb-2.5 pt-1 dark:border-default-100/10">
+                <ul className="grid grid-cols-1 gap-1.5 text-[11px] leading-snug text-default-600 sm:grid-cols-2 dark:text-default-400">
+                  <li className="flex gap-1.5">
+                    <span className="text-primary">·</span>
+                    双模式：Markdown 与所见即所得
+                  </li>
+                  <li className="flex gap-1.5">
+                    <span className="text-primary">·</span>
+                    分栏预览与滚动同步
+                  </li>
+                  <li className="flex gap-1.5">
+                    <span className="text-primary">·</span>
+                    工具栏：标题、列表、表格、代码块等
+                  </li>
+                  <li className="flex gap-1.5">
+                    <span className="text-primary">·</span>
+                    代码高亮与图片粘贴
+                  </li>
+                  <li className="flex gap-1.5 sm:col-span-2">
+                    <span className="text-primary">·</span>
+                    全屏编辑见右上角按钮；保存请使用页面底部「保存」
+                  </li>
+                </ul>
               </div>
-              <div className="text-sm">
-                <p className="font-semibold mb-3 text-info-700 dark:text-info-300 flex items-center gap-2">
-                  <Sparkles className="w-4 h-4" />
-                  Editor 功能
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-info-600 dark:text-info-400">
-                  <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 bg-info rounded-full"></div>
-                    <span>
-                      <strong>双模式编辑：</strong>Markdown 源码 + WYSIWYG 所见即所得
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 bg-info rounded-full"></div>
-                    <span>
-                      <strong>实时预览：</strong>左侧编辑，右侧实时预览
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 bg-info rounded-full"></div>
-                    <span>
-                      <strong>丰富工具栏：</strong>标题、粗体、斜体、列表、表格等
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 bg-info rounded-full"></div>
-                    <span>
-                      <strong>代码高亮：</strong>支持多种编程语言语法高亮
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 bg-info rounded-full"></div>
-                    <span>
-                      <strong>图片支持：</strong>拖拽上传和粘贴图片
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 bg-info rounded-full"></div>
-                    <span>
-                      <strong>全屏编辑：</strong>专注写作体验
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
         </CardBody>
       </Card>
