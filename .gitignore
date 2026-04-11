@@ -44,3 +44,6 @@ bun.lockb
 
 # Docker Compose 本地密钥（从 deploy/env.docker.example 复制）
 deploy/.env.docker
+
+# 若将 MinIO 数据绑定到仓库下目录（如 ./data/minio:/data），勿提交对象文件
+/data/minio/

@@ -1,34 +1,36 @@
 # Docker Compose 编排与流水线部署（唯一部署说明）
 
-本文是「荒野博客」**唯一**的部署与编排说明：使用仓库根目录 **`docker-compose.yml`** 启动 **MySQL 8**、**Redis 7** 与 **Next.js 应用**，配合 **`deploy/env.docker.example`**（复制为 **`deploy/.env.docker`**）、**`Dockerfile`** / **`Dockerfile.migrate`**。
+本文是「荒野博客」**唯一**的部署与编排说明：使用仓库根目录 **`docker-compose.yml`** 启动 **MySQL 8**、**Redis 7**、**MinIO** 与 **Next.js 应用**，配合 **`deploy/env.docker.example`**（复制为 **`deploy/.env.docker`**）、**`Dockerfile`** / **`Dockerfile.migrate`**。
 
 本地纯 **`pnpm dev`** 开发仍可用根目录 **`env.example`**；**上线路径一律以本文与 Compose 为准**。
 
 ## 0. 默认宿主机端口（可按需改 `.env.docker`）
 
-| 服务     | 宿主机端口 | 容器内端口 | 环境变量（模板）     |
-| -------- | ---------- | ---------- | -------------------- |
-| MySQL    | **13307**  | 3306       | `MYSQL_PUBLISH_PORT` |
-| Redis    | **16380**  | 6379       | `REDIS_PUBLISH_PORT` |
-| blog-web | **13001**  | 3000       | `APP_PORT`           |
+| 服务         | 宿主机端口 | 容器内端口 | 环境变量（模板）             |
+| ------------ | ---------- | ---------- | ---------------------------- |
+| MySQL        | **13307**  | 3306       | `MYSQL_PUBLISH_PORT`         |
+| Redis        | **16380**  | 6379       | `REDIS_PUBLISH_PORT`         |
+| MinIO API    | **19000**  | 9000       | `MINIO_API_PUBLISH_PORT`     |
+| MinIO 控制台 | **19001**  | 9001       | `MINIO_CONSOLE_PUBLISH_PORT` |
+| blog-web     | **13001**  | 3000       | `APP_PORT`                   |
 
 应用在容器内始终监听 **3000**；浏览器访问 **`http://localhost:13001`**（前台路由带语言前缀，如 `/zh-CN`）。  
 **`NEXT_PUBLIC_APP_URL`**、**`CORS_ORIGIN`** 在模板中默认与 **13001** 对齐，部署到域名时请改为实际地址。
 
 ## 1. 架构与文件清单
 
-| 路径                        | 说明                                                                                                         |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `docker-compose.yml`        | 服务：`mysql`、`redis`、`blog-web`；一次性迁移：`db-migrate`（profile `migrate`）                            |
-| `Dockerfile`                | 多阶段构建生产镜像；构建阶段设置 **`NEXT_STANDALONE=true`** 生成 Next standalone                             |
-| `Dockerfile.migrate`        | 仅含 Drizzle 迁移依赖，用于 **`db-migrate`**                                                                 |
-| `deploy/env.docker.example` | Compose 与应用的**环境变量模板**（复制为 `deploy/.env.docker`）                                              |
-| `.dockerignore`             | 缩小构建上下文、避免把本地密钥打进镜像                                                                       |
-| `next.config.ts`            | 仅当 **`NEXT_STANDALONE=true`** 时启用 `output: "standalone"`；并为 `localhost:13001` 配置 `images` 远程模式 |
+| 路径                        | 说明                                                                                                                         |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `docker-compose.yml`        | 服务：`mysql`、`redis`、`minio`、`blog-web`；迁移：`db-migrate`（`migrate`）；MinIO 建桶：`minio-init`（`minio-init`，幂等） |
+| `Dockerfile`                | 多阶段构建生产镜像；构建阶段设置 **`NEXT_STANDALONE=true`** 生成 Next standalone                                             |
+| `Dockerfile.migrate`        | 仅含 Drizzle 迁移依赖，用于 **`db-migrate`**                                                                                 |
+| `deploy/env.docker.example` | Compose 与应用的**环境变量模板**（复制为 `deploy/.env.docker`）                                                              |
+| `.dockerignore`             | 缩小构建上下文、避免把本地密钥打进镜像                                                                                       |
+| `next.config.ts`            | 仅当 **`NEXT_STANDALONE=true`** 时启用 `output: "standalone"`；并为 `localhost:13001` 配置 `images` 远程模式                 |
 
 **网络**：各服务位于 Compose 网络 **`blog-net`**。应用容器内 **`DB_HOST=mysql`**、**`REDIS_URL=redis://:密码@redis:6379`** 由 compose 覆盖，勿在模板里把应用指向 `localhost` 访问库或缓存。
 
-**Redis**：业务可渐进接入；`env.example` 中已有 **`REDIS_URL`**，容器内已注入。
+**Redis**：业务可渐进接入；本地根目录 **`env.example`** 仅列当前 Next 代码实际读取的键，**`REDIS_URL`** 等在 **`deploy/env.docker.example`** 与容器 **`blog-web`** 环境注入。
 
 ## 2. 准备配置
 
@@ -41,6 +43,7 @@ cp deploy/env.docker.example deploy/.env.docker
 - **`MYSQL_ROOT_PASSWORD`**、**`JWT_SECRET`**、**`JWT_REFRESH_SECRET`**：生产必须改为强随机值。
 - **`NEXT_PUBLIC_APP_URL`**、**`CORS_ORIGIN`**：与对外访问 URL 一致（默认本地 **13001**）。
 - **`DB_USER`** / **`DB_PASSWORD`** / **`DB_NAME`**：需与 MySQL 初始化一致。
+- **`MINIO_ROOT_USER`** / **`MINIO_ROOT_PASSWORD`** / **`MINIO_BUCKET`**：MinIO 必填；合并本仓库 MinIO 相关改动后，若服务器上已有旧版 `.env.docker`，需**手工补全**上述键，否则 `compose up` 会报错。
 
 **勿将 `deploy/.env.docker` 提交到 Git**（已在 `.gitignore` 中）。
 
@@ -61,8 +64,11 @@ cp deploy/env.docker.example deploy/.env.docker
 在项目根目录执行：
 
 ```bash
-# 1）基础设施
-docker compose --env-file deploy/.env.docker up -d mysql redis
+# 1）基础设施（含 MinIO；对象数据在 **`MINIO_HOST_DATA_DIR`** 绑定目录，默认 **`./data/minio`**）
+docker compose --env-file deploy/.env.docker up -d mysql redis minio
+
+# 1b）创建默认公开读 bucket（幂等，可每次部署执行）
+docker compose --env-file deploy/.env.docker --profile minio-init run --rm minio-init
 
 # 2）等待 mysql healthy 后执行迁移（一次性；**必须 --build**，否则会沿用旧镜像里的 drizzle/）
 docker compose --env-file deploy/.env.docker --profile migrate run --rm --build db-migrate
@@ -75,7 +81,8 @@ docker compose --env-file deploy/.env.docker up -d --build blog-web
 
 ## 5. npm 脚本
 
-- **`pnpm run docker:up:deps`** — 仅启动 MySQL + Redis
+- **`pnpm run docker:up:deps`** — 启动 MySQL + Redis + MinIO
+- **`pnpm run docker:minio:init`** — 运行 `minio-init`（创建 `MINIO_BUCKET` 并设匿名下载策略，幂等）
 - **`pnpm run docker:migrate`** — 运行 `db-migrate`
 - **`pnpm run docker:up:app`** — 构建并启动 `blog-web`
 - **`pnpm run docker:down`** — `compose down`
@@ -87,13 +94,24 @@ docker compose --env-file deploy/.env.docker up -d --build blog-web
 本项目已提供工作流 **`.github/workflows/deploy.yml`**：当代码推送到 **`main`** 时，GitHub Actions 通过 SSH 登录服务器并执行：
 
 1. `git fetch/checkout/pull` 拉取最新 `main`
-2. `docker compose up -d mysql redis`
-3. `docker compose --profile migrate run --rm --build db-migrate`（`--build` 确保新迁移文件打进镜像）
-4. `docker compose up -d --build blog-web`
+2. `docker compose up -d mysql redis minio`
+3. `docker compose --profile minio-init run --rm minio-init`（幂等；与本地「1b」一致）
+4. `docker compose --profile migrate run --rm --build db-migrate`（`--build` 确保新迁移文件打进镜像）
+5. `docker compose up -d --build blog-web`
 
 为确保该流程稳定，需同时完成「服务器配置」与「GitHub 配置」两部分。
 
-### 6.0 通信与权限模型（重点）
+### 6.0 MinIO 与「每次推 main 会不会把对象存储清空？」
+
+- **GitHub Actions 不在 Runner 里长期跑 MinIO**：工作流只是 **SSH 到你的服务器**，在 **`/opt/blog-next`** 执行与本机相同的 `docker compose` 命令；MinIO 与 MySQL 一样跑在**你的机器**上。
+- **每次部署会执行 `up -d minio`**：若 Compose 未改镜像/配置，Docker 往往只是保持容器运行或**原地重建容器**；**二进制对象在 `MINIO_HOST_DATA_DIR` 指向的宿主机目录**（默认仓库下 **`data/minio`**），**不会因为代码推送而自动清空**。
+- **`minio-init` 每次都会跑**：只做「建 bucket（已存在则跳过）+ 匿名下载策略」，**幂等**，不删除已有对象。
+- **会丢数据的典型操作**：删除/清空宿主机上该数据目录、换服务器未拷贝该目录、误改 `MINIO_HOST_DATA_DIR` 指到新空路径等——与「推 main」无必然关系。
+- **曾使用旧版命名卷 `minio_data` 的部署**：合并本变更后需将对象迁到绑定目录，或自行用 `docker run --rm -v minio_data:/from -v "$PWD/data/minio:/to" ...` 类方式拷贝（按实际卷名调整）。
+
+生产若**不暴露** MinIO 到公网：可去掉 `minio` 的 `ports` 映射，仅让 `blog-net` 内应用通过 `http://minio:9000` 访问（见第 7 节思路）。
+
+### 6.1 通信与权限模型（重点）
 
 自动部署里有 **两条 SSH 通信链路**，二者不是同一把密钥：
 
@@ -112,7 +130,7 @@ docker compose --env-file deploy/.env.docker up -d --build blog-web
 > - 工作流连不上服务器：优先检查 **链路 A**。
 > - 能连服务器但 `git pull` 失败：优先检查 **链路 B**。
 
-### 6.1 服务器侧必须配置（111.229.191.217）
+### 6.2 服务器侧必须配置（111.229.191.217）
 
 #### A. 安装基础软件
 
@@ -166,7 +184,7 @@ CFG
 chmod 600 ~/.ssh/config
 ```
 
-然后复制公钥：`cat ~/.ssh/github_deploy_key.pub`，去 GitHub 仓库添加为 Deploy Key（见 6.2-D）。
+然后复制公钥：`cat ~/.ssh/github_deploy_key.pub`，去 GitHub 仓库添加为 Deploy Key（见 6.3-D）。
 
 > 权限原则：
 >
@@ -196,7 +214,7 @@ ssh -T git@github.com
 
 出现认证成功提示后，`git pull` 才能在工作流中稳定执行。
 
-### 6.2 GitHub 侧必须配置
+### 6.3 GitHub 侧必须配置
 
 #### A. Repository secrets（Actions）
 
@@ -249,13 +267,13 @@ chown -R deployer:deployer /home/deployer/.ssh
 - Key：服务器上的 `~/.ssh/github_deploy_key.pub`
 - 权限：建议勾选 **Allow write access**（涉及 release/tag 场景更稳妥）
 
-### 6.3 首次联调建议
+### 6.4 首次联调建议
 
 1. 先在服务器手工跑一遍部署命令（见第 4 节），确认环境无误。
 2. 推送一次 `main` 小改动，触发 `Actions -> Deploy`。
 3. 若失败，优先查看 deploy job 的 `Setup SSH` 与 `Deploy on server` 两步日志。
 
-### 6.4 通信与权限快速验收清单（建议逐项打勾）
+### 6.5 通信与权限快速验收清单（建议逐项打勾）
 
 - [ ] `SERVER_USER` 为专用部署用户（如 `deployer`），且在服务器存在。
 - [ ] `/opt/blog-next` 归属 `SERVER_USER`，并可读写。
@@ -271,7 +289,7 @@ chown -R deployer:deployer /home/deployer/.ssh
 
 ## 7. 安全与生产加固
 
-- **不暴露** MySQL/Redis 到公网时：去掉 **`mysql` / `redis` 的 `ports`** 映射，仅保留 **`blog-web`** 的宿主机端口（默认 **13001**）或由反向代理暴露 **443**。
+- **不暴露** MySQL/Redis/MinIO 到公网时：去掉 **`mysql` / `redis` / `minio` 的 `ports`** 映射，仅保留 **`blog-web`** 的宿主机端口（默认 **13001**）或由反向代理暴露 **443**；应用在 **`blog-net`** 内仍可用 **`http://minio:9000`** 访问对象存储 API。
 - **Redis 密码**：在 `redis` 服务使用 `requirepass`，并把 **`REDIS_URL`** 改为 `redis://:密码@redis:6379`。
 - **HTTPS**：在应用前放置 Nginx / Caddy / 云负载均衡。
 
@@ -282,15 +300,18 @@ chown -R deployer:deployer /home/deployer/.ssh
 
 ## 9. 常见问题
 
-| 现象                                   | 处理                                                                                                                                                                                     |
-| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `db-migrate` 报找不到迁移              | 若日志含 `COPY drizzle ./drizzle ... "/drizzle": not found`：先 `pnpm db:generate` 生成并提交 `drizzle/*.sql`，再重跑 `docker compose ... --profile migrate run --rm --build db-migrate` |
-| 迁移显示成功但库里没有新表             | 多为 **未重建 db-migrate 镜像**：`run` 时务必加 **`--build`**，否则容器内仍是旧版 `drizzle/*.sql`；流水线见 `.github/workflows/deploy.yml`。                                             |
-| 应用连不上数据库                       | 检查 `depends_on` 与 MySQL **healthy**；确认 `DB_*` 与 MySQL 一致                                                                                                                        |
-| Compose 提示缺少 `MYSQL_ROOT_PASSWORD` | 使用 `docker compose --env-file deploy/.env.docker`，且文件内已赋值                                                                                                                      |
-| 宿主机连 MySQL                         | `127.0.0.1:13307`（默认），用户/库见 `.env.docker`                                                                                                                                       |
-| `fatal: detected dubious ownership`    | 服务器仓库目录 owner 与部署用户不一致。执行 `sudo chown -R <SERVER_USER>:<SERVER_USER> /opt/blog-next`，并在工作流中保留 `git config --global --add safe.directory /opt/blog-next`       |
-| `Host key verification failed`         | 服务器无法校验 `github.com` 主机指纹。执行 `ssh-keyscan github.com >> ~/.ssh/known_hosts`，并确认服务器已配置可访问仓库的 SSH key（Deploy Key）                                          |
+| 现象                                   | 处理                                                                                                                                                                                                                |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `db-migrate` 报找不到迁移              | 若日志含 `COPY drizzle ./drizzle ... "/drizzle": not found`：先 `pnpm db:generate` 生成并提交 `drizzle/*.sql`，再重跑 `docker compose ... --profile migrate run --rm --build db-migrate`                            |
+| 迁移显示成功但库里没有新表             | 多为 **未重建 db-migrate 镜像**：`run` 时务必加 **`--build`**，否则容器内仍是旧版 `drizzle/*.sql`；流水线见 `.github/workflows/deploy.yml`。                                                                        |
+| 应用连不上数据库                       | 检查 `depends_on` 与 MySQL **healthy**；确认 `DB_*` 与 MySQL 一致                                                                                                                                                   |
+| Compose 提示缺少 `MYSQL_ROOT_PASSWORD` | 使用 `docker compose --env-file deploy/.env.docker`，且文件内已赋值                                                                                                                                                 |
+| 宿主机连 MySQL                         | `127.0.0.1:13307`（默认），用户/库见 `.env.docker`                                                                                                                                                                  |
+| `fatal: detected dubious ownership`    | 服务器仓库目录 owner 与部署用户不一致。执行 `sudo chown -R <SERVER_USER>:<SERVER_USER> /opt/blog-next`，并在工作流中保留 `git config --global --add safe.directory /opt/blog-next`                                  |
+| `Host key verification failed`         | 服务器无法校验 `github.com` 主机指纹。执行 `ssh-keyscan github.com >> ~/.ssh/known_hosts`，并确认服务器已配置可访问仓库的 SSH key（Deploy Key）                                                                     |
+| Compose 提示缺少 `MINIO_ROOT_*`        | 在 **`deploy/.env.docker`** 中补齐 **`MINIO_ROOT_USER`** / **`MINIO_ROOT_PASSWORD`**（及可选 **`MINIO_BUCKET`**），与 **`deploy/env.docker.example`** 对照。                                                        |
+| `minio-init` 失败                      | 核对 **`MINIO_ROOT_USER`/`PASSWORD`** 与 **`minio` 服务一致**；在服务器执行 `docker compose ... logs minio`；确认 **`minio` 已 healthy** 后再跑 **`--profile minio-init`**。                                        |
+| MinIO 数据目录                         | 在 **`deploy/.env.docker`** 设置 **`MINIO_HOST_DATA_DIR`**（默认 **`./data/minio`**，相对路径相对于 **`docker-compose.yml`** 所在目录即仓库根）。已 **`.gitignore` `/data/minio/`**。Linux 注意目录权限与容器 UID。 |
 
 ---
 

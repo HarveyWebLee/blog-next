@@ -70,10 +70,19 @@ jobs:
             git pull --ff-only origin main
             echo "[DEPLOY] git sync done"
 
-            # 1) 先确保依赖服务在线（若已在线会保持不变）
-            echo "[DEPLOY] step1: ensure mysql/redis running"
-            dc up -d mysql redis
+            # 1) 先确保依赖服务在线（若已在线会保持不变；MinIO 数据在 MINIO_HOST_DATA_DIR 绑定目录，默认仓库下 data/minio）
+            echo "[DEPLOY] step1: ensure mysql/redis/minio running"
+            dc up -d mysql redis minio
             echo "[DEPLOY] step1 done"
+
+            # 1b) MinIO：创建公开读 bucket（幂等；每次部署执行安全）
+            echo "[DEPLOY] step1b: minio-init (idempotent)"
+            if ! timeout 120 docker compose -f "${COMPOSE_FILE}" --env-file "${COMPOSE_ENV}" --profile minio-init run --rm -T minio-init < /dev/null; then
+              echo "部署失败：MinIO 初始化（minio-init）未成功" >&2
+              dc logs --tail=80 minio || true
+              exit 1
+            fi
+            echo "[DEPLOY] step1b done"
 
             # 2) 运行数据库迁移（幂等）
             echo "[DEPLOY] step2: run db migrations"
