@@ -48,6 +48,7 @@
     ]
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1029.0",
     "@formatjs/intl-localematcher": "^0.6.1",
     "@heroui/button": "2.2.25",
     "@heroui/input": "2.4.26",

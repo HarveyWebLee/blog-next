@@ -95,7 +95,8 @@ export const posts = mysqlTable(
     excerpt: text("excerpt"), // 文章摘要
     content: text("content").notNull(), // 文章内容（支持Markdown）
     contentHtml: text("content_html"), // 渲染后的HTML内容
-    featuredImage: varchar("featured_image", { length: 255 }), // 特色图片URL
+    // 特色图完整 URL（含 MinIO/CDN）；512 以容纳较长域名与路径
+    featuredImage: varchar("featured_image", { length: 512 }),
     authorId: int("author_id").notNull(), // 作者ID
     categoryId: int("category_id"), // 分类ID
     status: mysqlEnum("status", ["draft", "published", "archived"]).default("draft"), // 文章状态

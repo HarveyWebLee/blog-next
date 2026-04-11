@@ -133,6 +133,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_MINIO_BUCKET: ${MINIO_BUCKET:-blog-public}
+        NEXT_PUBLIC_MINIO_PUBLIC_BASE_URL: ${MINIO_PUBLIC_BASE_URL:-http://127.0.0.1:19000}
     image: blog-next-web:local
     container_name: blog-next-app
     restart: unless-stopped
@@ -145,6 +148,8 @@ services:
       # 支持从 deploy/.env.docker 自定义 REDIS_URL；
       # 若未显式提供，则按约定拼装为带密码的容器内地址。
       REDIS_URL: ${REDIS_URL:-redis://:${REDIS_PASSWORD:?请在 deploy/.env.docker 中设置 REDIS_PASSWORD}@redis:6379}
+      # MinIO：应用容器内走服务名；其余 MINIO_* / NEXT_PUBLIC_* 由 env_file 提供
+      MINIO_ENDPOINT: http://minio:9000
     ports:
       - "${APP_PORT:-13001}:3000"
     depends_on:

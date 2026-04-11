@@ -18,7 +18,6 @@ import {
   EyeOff,
   FileText,
   Folder,
-  Image as ImageIcon,
   Lock,
   MessageSquare,
   Save,
@@ -28,6 +27,7 @@ import {
   Type,
 } from "lucide-react";
 
+import { FeaturedImageUpload } from "@/components/blog/featured-image-upload";
 import SimpleEditor from "@/components/blog/simple-editor";
 import { useCategories } from "@/lib/hooks/useCategories";
 import { useTags } from "@/lib/hooks/useTags";
@@ -65,6 +65,12 @@ export default function CreateBlogPage() {
           featuredImage: "Featured Image",
           featuredImagePlaceholder: "Enter image URL",
           featuredImageHint: "Recommended size: 1200x630",
+          featuredImageBtnUpload: "Upload image",
+          featuredImageBtnRemove: "Remove",
+          featuredImageUploading: "Uploading...",
+          featuredImageNeedLogin: "Please sign in to upload images",
+          featuredImageUploadFailed: "Upload failed",
+          featuredImageOrUrl: "Or paste an image URL below",
           categoryTag: "Category & Tags",
           categoryTagDesc: "Choose suitable category and tags",
           selectCategory: "Select Category",
@@ -120,6 +126,12 @@ export default function CreateBlogPage() {
             featuredImage: "アイキャッチ画像",
             featuredImagePlaceholder: "画像URLを入力",
             featuredImageHint: "推奨サイズ: 1200x630",
+            featuredImageBtnUpload: "画像をアップロード",
+            featuredImageBtnRemove: "削除",
+            featuredImageUploading: "アップロード中...",
+            featuredImageNeedLogin: "アップロードするにはログインしてください",
+            featuredImageUploadFailed: "アップロードに失敗しました",
+            featuredImageOrUrl: "または下に画像URLを貼り付け",
             categoryTag: "カテゴリとタグ",
             categoryTagDesc: "適切なカテゴリとタグを選択",
             selectCategory: "カテゴリを選択",
@@ -174,6 +186,12 @@ export default function CreateBlogPage() {
             featuredImage: "特色图片",
             featuredImagePlaceholder: "输入图片链接地址",
             featuredImageHint: "建议尺寸：1200x630",
+            featuredImageBtnUpload: "上传图片",
+            featuredImageBtnRemove: "移除图片",
+            featuredImageUploading: "上传中...",
+            featuredImageNeedLogin: "请先登录后再上传图片",
+            featuredImageUploadFailed: "上传失败",
+            featuredImageOrUrl: "或在下方粘贴图片链接",
             categoryTag: "分类和标签",
             categoryTagDesc: "为您的博客选择合适的分类和标签",
             selectCategory: "选择分类",
@@ -368,20 +386,22 @@ export default function CreateBlogPage() {
               <p className="text-xs text-default-400">{t.excerptHint}</p>
             </div>
 
-            <div className="space-y-1">
-              <Input
-                label={t.featuredImage}
-                placeholder={t.featuredImagePlaceholder}
-                value={formData.featuredImage}
-                onValueChange={(value: string) => handleInputChange("featuredImage", value)}
-                variant="bordered"
-                size="md"
-                type="url"
-                startContent={<ImageIcon className="h-4 w-4 text-default-400" />}
-                className="w-full"
-              />
-              <p className="text-xs text-default-400">{t.featuredImageHint}</p>
-            </div>
+            <FeaturedImageUpload
+              scope="article"
+              value={formData.featuredImage}
+              onChange={(url) => handleInputChange("featuredImage", url)}
+              labels={{
+                title: t.featuredImage,
+                urlPlaceholder: t.featuredImagePlaceholder,
+                hint: t.featuredImageHint,
+                uploadButton: t.featuredImageBtnUpload,
+                removeButton: t.featuredImageBtnRemove,
+                uploading: t.featuredImageUploading,
+                needLogin: t.featuredImageNeedLogin,
+                uploadFailed: t.featuredImageUploadFailed,
+                orPasteUrl: t.featuredImageOrUrl,
+              }}
+            />
 
             <Divider className="my-1" />
 
