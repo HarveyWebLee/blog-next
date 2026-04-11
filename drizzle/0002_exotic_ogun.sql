@@ -1,0 +1,1 @@
+ALTER TABLE `posts` MODIFY COLUMN `featured_image` varchar(512);

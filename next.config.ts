@@ -19,6 +19,13 @@ const nextConfig: NextConfig = {
         port: "13001",
         pathname: "/**",
       },
+      // MinIO 默认映射（path-style 图片 URL；生产请按域名增配或改用 CDN）
+      {
+        protocol: "http",
+        hostname: "127.0.0.1",
+        port: "19000",
+        pathname: "/**",
+      },
       {
         protocol: "https",
         hostname: "images.unsplash.com",

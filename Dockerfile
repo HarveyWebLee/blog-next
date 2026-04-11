@@ -19,6 +19,12 @@ FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# 客户端需内联的 MinIO 公开信息（与 deploy/.env.docker 一致；docker compose build 时传入）
+ARG NEXT_PUBLIC_MINIO_BUCKET=
+ARG NEXT_PUBLIC_MINIO_PUBLIC_BASE_URL=
+ENV NEXT_PUBLIC_MINIO_BUCKET=$NEXT_PUBLIC_MINIO_BUCKET
+ENV NEXT_PUBLIC_MINIO_PUBLIC_BASE_URL=$NEXT_PUBLIC_MINIO_PUBLIC_BASE_URL
+
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 # 启用 Next standalone 输出（仅 Linux 构建镜像时需要）
