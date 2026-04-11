@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Button } from "@heroui/button";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Chip } from "@heroui/chip";
+import { Divider } from "@heroui/divider";
 import { Input } from "@heroui/input";
 import { Textarea } from "@heroui/react";
 import { Select, SelectItem } from "@heroui/select";
@@ -441,163 +442,154 @@ export default function EditBlogPage() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
-        {/* 基本信息 */}
-        <Card className="shadow-lg border-0 bg-gradient-to-r from-primary-50 to-secondary-50 dark:from-primary-900/20 dark:to-secondary-900/20">
-          <CardHeader className="pb-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <FileText className="w-6 h-6 text-primary" />
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* 基本信息（含分类、标签，单卡片更紧凑） */}
+        <Card className="shadow-md border border-default-200/70 bg-gradient-to-r from-primary-50/95 to-secondary-50/95 backdrop-blur-sm dark:border-white/10 dark:bg-gradient-to-br dark:from-white/[0.05] dark:via-white/[0.02] dark:to-primary-500/[0.07]">
+          <CardHeader className="gap-0 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="rounded-lg bg-primary/10 p-1.5">
+                <FileText className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <h3 className="text-xl font-semibold">{t.basicInfo}</h3>
-                <p className="text-default-500">{t.basicInfoDesc}</p>
+                <h3 className="text-lg font-semibold leading-tight">{t.basicInfo}</h3>
+                <p className="text-default-500 text-xs">{t.basicInfoDesc}</p>
               </div>
             </div>
           </CardHeader>
-          <CardBody className="pt-0 space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="space-y-2">
+          <CardBody className="gap-0 space-y-4 pt-0">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <div className="space-y-1">
                 <Input
                   label={t.title}
                   placeholder={t.titlePlaceholder}
                   value={formData.title}
                   onValueChange={handleTitleChange}
                   variant="bordered"
-                  size="lg"
+                  size="md"
                   isRequired
-                  startContent={<Type className="w-4 h-4 text-default-400" />}
+                  startContent={<Type className="h-4 w-4 text-default-400" />}
                   className="w-full"
                 />
                 <p className="text-xs text-default-400">{t.titleHint}</p>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Input
                   label={t.slug}
                   placeholder={t.slugPlaceholder}
                   value={formData.slug}
                   onValueChange={(value: string) => handleInputChange("slug", value)}
                   variant="bordered"
-                  size="lg"
+                  size="md"
                   className="w-full"
                 />
                 <p className="text-xs text-default-400">{t.slugHint}</p>
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1">
               <Textarea
                 label={t.excerpt}
                 placeholder={t.excerptPlaceholder}
                 value={formData.excerpt}
                 onValueChange={(value: string) => handleInputChange("excerpt", value)}
                 variant="bordered"
-                size="lg"
-                minRows={4}
+                size="md"
+                minRows={3}
                 className="w-full"
               />
               <p className="text-xs text-default-400">{t.excerptHint}</p>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1">
               <Input
                 label={t.featuredImage}
                 placeholder={t.featuredImagePlaceholder}
                 value={formData.featuredImage}
                 onValueChange={(value: string) => handleInputChange("featuredImage", value)}
                 variant="bordered"
-                size="lg"
+                size="md"
                 type="url"
-                startContent={<ImageIcon className="w-4 h-4 text-default-400" />}
+                startContent={<ImageIcon className="h-4 w-4 text-default-400" />}
                 className="w-full"
               />
               <p className="text-xs text-default-400">{t.featuredImageHint}</p>
             </div>
-          </CardBody>
-        </Card>
 
-        {/* 分类和标签 */}
-        <Card className="shadow-lg border-0 bg-gradient-to-r from-success-50 to-info-50 dark:from-success-900/20 dark:to-info-900/20">
-          <CardHeader className="pb-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-success/10">
-                <Folder className="w-6 h-6 text-success" />
-              </div>
-              <div>
-                <h3 className="text-xl font-semibold">{t.categoryTag}</h3>
-                <p className="text-default-500">{t.categoryTagDesc}</p>
-              </div>
-            </div>
-          </CardHeader>
-          <CardBody className="pt-0 space-y-6">
-            <div className="space-y-2">
-              <Select
-                label={t.selectCategory}
-                placeholder={t.selectCategoryPlaceholder}
-                selectedKeys={formData.categoryId ? new Set([formData.categoryId.toString()]) : new Set()}
-                onSelectionChange={(keys) => {
-                  const selectedKey = Array.from(keys)[0] as string;
-                  handleInputChange("categoryId", selectedKey ? parseInt(selectedKey) : undefined);
-                }}
-                variant="bordered"
-                size="lg"
-                startContent={<Folder className="w-4 h-4 text-default-400" />}
-                className="w-full"
-                isLoading={categoriesLoading}
-              >
-                {categories.map((category) => (
-                  <SelectItem key={category.id.toString()}>{category.name}</SelectItem>
-                ))}
-              </Select>
-              <p className="text-xs text-default-400">{t.selectCategoryHint}</p>
-            </div>
+            <Divider className="my-1" />
 
+            {/* 分类 + 标签：窄屏上下；md+ 同行且两列等宽（grid 1fr 1fr） */}
             <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <TagIcon className="w-4 h-4 text-default-400" />
-                <span className="text-sm font-medium">{t.selectTags}</span>
-                {tagsLoading && <Spinner size="sm" />}
+              <div className="flex flex-wrap items-center gap-2">
+                <Folder className="h-4 w-4 shrink-0 text-success" />
+                <span className="text-sm font-medium text-foreground">{t.categoryTag}</span>
+                <span className="text-xs text-default-400">{t.categoryTagDesc}</span>
               </div>
 
-              {tags.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {tags.map((tag) => (
-                    <Chip
-                      key={tag.id}
-                      color={formData.tagIds?.includes(tag.id) ? "primary" : "default"}
-                      variant={formData.tagIds?.includes(tag.id) ? "solid" : "bordered"}
-                      className="cursor-pointer hover:scale-105 transition-transform"
-                      onClick={() => handleTagToggle(tag.id)}
-                    >
-                      {tag.name}
-                    </Chip>
-                  ))}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start md:gap-x-0">
+                <div className="min-w-0 space-y-1 md:border-r md:border-default-200 md:pr-5 lg:pr-6 dark:md:border-default-100/15">
+                  <Select
+                    label={t.selectCategory}
+                    placeholder={t.selectCategoryPlaceholder}
+                    selectedKeys={formData.categoryId ? new Set([formData.categoryId.toString()]) : new Set()}
+                    onSelectionChange={(keys) => {
+                      const selectedKey = Array.from(keys)[0] as string;
+                      handleInputChange("categoryId", selectedKey ? parseInt(selectedKey) : undefined);
+                    }}
+                    variant="bordered"
+                    size="md"
+                    startContent={<Folder className="h-4 w-4 text-default-400" />}
+                    className="w-full"
+                    isLoading={categoriesLoading}
+                  >
+                    {categories.map((category) => (
+                      <SelectItem key={category.id.toString()}>{category.name}</SelectItem>
+                    ))}
+                  </Select>
+                  <p className="text-xs text-default-400">{t.selectCategoryHint}</p>
                 </div>
-              ) : (
-                <p className="text-sm text-default-400">{t.noTags}</p>
-              )}
-              <p className="text-xs text-default-400">{t.tagsHint}</p>
+
+                <div className="min-w-0 space-y-2 border-t border-default-200 pt-3 md:border-t-0 md:pl-5 md:pt-0 lg:pl-6 dark:border-default-100/15">
+                  <div className="flex items-center gap-2">
+                    <TagIcon className="h-4 w-4 shrink-0 text-default-400" />
+                    <span className="text-sm font-medium">{t.selectTags}</span>
+                    {tagsLoading && <Spinner size="sm" />}
+                  </div>
+
+                  {tags.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {tags.map((tag) => (
+                        <Chip
+                          key={tag.id}
+                          size="sm"
+                          color={formData.tagIds?.includes(tag.id) ? "primary" : "default"}
+                          variant={formData.tagIds?.includes(tag.id) ? "solid" : "bordered"}
+                          className="cursor-pointer transition-transform hover:scale-[1.02]"
+                          onClick={() => handleTagToggle(tag.id)}
+                        >
+                          {tag.name}
+                        </Chip>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-default-400">{t.noTags}</p>
+                  )}
+                  <p className="text-xs text-default-400">{t.tagsHint}</p>
+                </div>
+              </div>
             </div>
           </CardBody>
         </Card>
 
-        {/* 内容编辑 - 使用高级编辑器 */}
         <SimpleEditor
           value={formData.content}
           onChange={(content: string) => handleInputChange("content", content)}
           placeholder={t.editorPlaceholder}
-          height="600px"
-          onSave={() => {
-            // 自动保存逻辑
-            console.log("自动保存内容");
-          }}
-          autoSave={true}
-          autoSaveInterval={30000}
+          height="520px"
         />
 
         {/* 发布设置 */}
-        <Card className="shadow-lg border-0 bg-gradient-to-r from-warning-50 to-success-50 dark:from-warning-900/20 dark:to-success-900/20">
+        <Card className="shadow-md border border-default-200/70 bg-gradient-to-r from-warning-50/95 to-success-50/95 backdrop-blur-sm dark:border-white/10 dark:bg-gradient-to-br dark:from-white/[0.045] dark:via-amber-500/[0.035] dark:to-emerald-500/[0.06]">
           <CardHeader className="pb-4">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-warning/10">
@@ -688,7 +680,7 @@ export default function EditBlogPage() {
               </div>
             )}
 
-            <div className="flex items-center justify-between p-4 bg-default-50 rounded-lg">
+            <div className="flex items-center justify-between rounded-lg bg-default-50 p-4 dark:bg-white/[0.04]">
               <div className="flex items-center gap-3">
                 <MessageSquare className="w-5 h-5 text-default-500" />
                 <div>

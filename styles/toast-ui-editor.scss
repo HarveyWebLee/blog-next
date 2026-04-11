@@ -2,6 +2,18 @@
 @import "@toast-ui/editor/dist/toastui-editor.css";
 @import "@toast-ui/editor/dist/theme/toastui-editor-dark.css";
 
+/*
+ * Markdown 模式：官方样式里 .ProseMirror 使用 height: calc(100% - 36px)，与上下 padding 18px 凑满父级，
+ * 但外层 .toastui-editor.md-mode 仍是 100% 高，导致可视区域短一截、滚动条与底边不齐。
+ * 改为 height:100% + border-box，让 padding 算在高度内，与 md-mode 容器同高。
+ */
+.toastui-editor-defaultUI .ProseMirror,
+.tui-editor-defaultUI .ProseMirror {
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 0;
+}
+
 /* 编辑器容器样式 */
 .tui-editor {
   border: 1px solid var(--heroui-default-200);
@@ -216,14 +228,15 @@
 }
 
 /* 暗色主题适配 */
+/* 暗色画布略提亮，与博客管理页玻璃卡片协调（避免整块 default-950 过重） */
 [data-theme="dark"] .tui-editor-defaultUI {
-  background: var(--heroui-default-950);
-  border-color: var(--heroui-default-700);
+  background: var(--heroui-default-900);
+  border-color: var(--heroui-default-600);
 }
 
 [data-theme="dark"] .tui-editor-defaultUI .te-toolbar {
-  background: var(--heroui-default-900);
-  border-bottom-color: var(--heroui-default-700);
+  background: var(--heroui-default-800);
+  border-bottom-color: var(--heroui-default-600);
 }
 
 [data-theme="dark"] .tui-editor-defaultUI .te-toolbar .te-toolbar-button {
@@ -242,12 +255,12 @@
 
 /* 编辑器内容区域暗色主题 */
 [data-theme="dark"] .tui-editor-defaultUI .te-editor {
-  background: var(--heroui-default-950);
+  background: var(--heroui-default-900);
   color: var(--heroui-default-100);
 }
 
 [data-theme="dark"] .tui-editor-defaultUI .te-editor .ProseMirror {
-  background: var(--heroui-default-950);
+  background: var(--heroui-default-900);
   color: var(--heroui-default-100);
 }
 
@@ -282,8 +295,8 @@
 
 /* 预览区域暗色主题 */
 [data-theme="dark"] .tui-editor-defaultUI .te-preview {
-  background: var(--heroui-default-950);
-  border-left-color: var(--heroui-default-700);
+  background: var(--heroui-default-900);
+  border-left-color: var(--heroui-default-600);
   color: var(--heroui-default-100);
 }
 
@@ -347,7 +360,7 @@
 
 /* 全屏模式暗色主题 */
 [data-theme="dark"] .tui-editor-fullscreen {
-  background: var(--heroui-default-950) !important;
+  background: var(--heroui-default-900) !important;
 }
 
 /* 滚动条暗色主题 */
