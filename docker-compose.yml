@@ -95,6 +95,8 @@ services:
     env_file:
       - deploy/.env.docker
     environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?请在 Compose 环境文件中设置 MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?请在 Compose 环境文件中设置 MINIO_ROOT_PASSWORD}
       MINIO_BUCKET: ${MINIO_BUCKET:-blog-public}
     networks:
       - blog-net
