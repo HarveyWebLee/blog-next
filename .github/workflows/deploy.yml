@@ -13,6 +13,7 @@ on:
 # 3) 仅看“迁移成功”无法判断整体部署完成 -> 增加阶段标记、容器运行态校验与日志输出。
 # 4) db-migrate 若未重新 build 镜像，会沿用旧 COPY 的 drizzle/ -> 流水线先 compose build db-migrate，再 compose run（无 --build）。
 # 5) timeout 直接 exec 子进程，不解析 shell 函数：`timeout … dc …` 会找可执行文件 dc 而失败；须 `timeout … bash -c 'docker compose …'`。
+# 6) `bash -c` 子进程只继承已 export 的变量；COMPOSE_FILE/COMPOSE_ENV 必须 export，否则 -f/--env-file 为空并报错。
 concurrency:
   group: deploy-main
   cancel-in-progress: false
@@ -59,8 +60,9 @@ jobs:
             git config --global --add safe.directory "${APP_DIR}"
 
             cd "${APP_DIR}"
-            COMPOSE_FILE="${APP_DIR}/docker-compose.yml"
-            COMPOSE_ENV="${APP_DIR}/deploy/.env.docker"
+            # timeout … bash -c '…' 为子进程，未 export 的变量在子 shell 中为空，会导致 -f 异常（如报「xxx is a directory」）
+            export COMPOSE_FILE="${APP_DIR}/docker-compose.yml"
+            export COMPOSE_ENV="${APP_DIR}/deploy/.env.docker"
             APP_HEALTH_URL="http://127.0.0.1:13001/"
             dc() { docker compose -f "${COMPOSE_FILE}" --env-file "${COMPOSE_ENV}" "$@"; }
             echo "[DEPLOY] init: cwd=${APP_DIR}"
