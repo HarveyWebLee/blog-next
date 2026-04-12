@@ -1,112 +1,140 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Button, Card, CardBody } from "@heroui/react";
-import { User, X } from "lucide-react";
+import { Avatar, Button, Card, CardBody } from "@heroui/react";
+import { X } from "lucide-react";
 
+import { PROFILE_GLASS_CARD } from "@/components/profile/profile-ui-presets";
+import { useAuth } from "@/lib/contexts/auth-context";
 import { cn } from "@/lib/utils";
+
+const DEFAULT_AVATAR = "/images/avatar.jpeg";
+const FALLBACK_AVATAR = "/images/fallback.svg";
 
 interface NavigationItem {
   key: string;
   label: string;
-  icon: any;
+  icon: React.ComponentType<{ className?: string }>;
   href: string;
 }
 
 interface ProfileSidebarProps {
   items: NavigationItem[];
-  isOpen: boolean;
-  onClose: () => void;
   lang: string;
+  /** 大屏：嵌入栅格侧栏；小屏：抽屉覆盖层 */
+  variant: "inline" | "drawer";
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
-export default function ProfileSidebar({ items, isOpen, onClose, lang }: ProfileSidebarProps) {
+/**
+ * 个人中心侧栏：玻璃卡片 + 主题色激活态，与博客筛选侧栏气质一致。
+ */
+export default function ProfileSidebar({ items, isOpen = false, onClose, lang, variant }: ProfileSidebarProps) {
   const pathname = usePathname();
+  const { user, isAuthenticated } = useAuth();
+
   const t =
     lang === "en-US"
-      ? { title: "Profile Center", footer: "© 2024 Wilderness Blog", username: "User" }
+      ? { navTitle: "Shortcuts", fallbackName: "Guest" }
       : lang === "ja-JP"
-        ? { title: "プロフィール", footer: "© 2024 荒野ブログ", username: "ユーザー名" }
-        : { title: "个人中心", footer: "© 2024 荒野博客", username: "用户名" };
+        ? { navTitle: "ショートカット", fallbackName: "ゲスト" }
+        : { navTitle: "快捷入口", fallbackName: "访客" };
 
-  return (
-    <>
-      {/* 移动端遮罩 */}
-      {isOpen && (
-        <div className="fixed inset-0 z-40 lg:hidden" onClick={onClose}>
-          <div className="fixed inset-0 bg-black bg-opacity-25" />
-        </div>
-      )}
+  const displayName =
+    isAuthenticated && user
+      ? (user.displayName?.trim() || user.username || "").trim() || t.fallbackName
+      : t.fallbackName;
+  const emailLine = isAuthenticated && user?.email ? user.email : "";
 
-      {/* 侧边栏 */}
-      <div
-        className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0",
-          isOpen ? "translate-x-0" : "-translate-x-full"
-        )}
-      >
-        <div className="flex h-full flex-col bg-white dark:bg-gray-800 shadow-lg">
-          {/* 头部 */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                <User className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-lg font-semibold text-gray-900 dark:text-white">{t.title}</span>
-            </div>
-            <Button isIconOnly variant="light" size="sm" className="lg:hidden" onClick={onClose}>
-              <X className="w-5 h-5" />
+  const NavCard = (
+    <Card className={cn(PROFILE_GLASS_CARD, "shadow-none")}>
+      <CardBody className="gap-4 p-4">
+        <div className="flex items-center gap-3 border-b border-white/10 pb-4 dark:border-white/10">
+          <Avatar
+            isBordered
+            radius="sm"
+            className="shrink-0"
+            src={isAuthenticated && user?.avatar ? user.avatar : DEFAULT_AVATAR}
+            fallback={<Image src={FALLBACK_AVATAR} alt="" width={40} height={40} />}
+            showFallback
+          />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-foreground">{displayName}</p>
+            {emailLine ? <p className="truncate text-xs text-default-500">{emailLine}</p> : null}
+          </div>
+          {variant === "drawer" ? (
+            <Button isIconOnly variant="light" size="sm" className="shrink-0 lg:hidden" onPress={() => onClose?.()}>
+              <X className="h-5 w-5" />
             </Button>
-          </div>
+          ) : null}
+        </div>
 
-          {/* 用户信息卡片 */}
-          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-            <Card className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20">
-              <CardBody className="p-4">
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                    <User className="w-6 h-6 text-white" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{t.username}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">user@example.com</p>
-                  </div>
-                </div>
-              </CardBody>
-            </Card>
-          </div>
-
-          {/* 导航菜单 */}
-          <nav className="flex-1 p-4 space-y-1">
+        <div>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-default-500">{t.navTitle}</p>
+          <nav className="flex flex-col gap-1">
             {items.map((item) => {
               const Icon = item.icon;
-              const isActive = pathname === `/${lang}${item.href}`;
+              const fullPath = `/${lang}${item.href}`;
+              const active =
+                item.href === "/profile"
+                  ? pathname === fullPath
+                  : pathname === fullPath || pathname.startsWith(`${fullPath}/`);
 
               return (
                 <Link
                   key={item.key}
-                  href={`/${lang}${item.href}`}
+                  href={fullPath}
                   className={cn(
-                    "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200",
-                    isActive
-                      ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
-                      : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+                    "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+                    active
+                      ? "bg-primary/15 text-primary"
+                      : "text-default-600 hover:bg-white/10 hover:text-foreground dark:hover:bg-white/5"
                   )}
-                  onClick={onClose}
+                  onClick={() => onClose?.()}
                 >
-                  <Icon className={cn("w-5 h-5 mr-3", isActive ? "text-blue-500" : "text-gray-400")} />
-                  {item.label}
+                  <span
+                    className={cn(
+                      "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary/20 to-secondary/15 text-primary",
+                      active && "from-primary/30 to-secondary/25"
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                  </span>
+                  <span className="min-w-0 truncate">{item.label}</span>
                 </Link>
               );
             })}
           </nav>
-
-          {/* 底部 */}
-          <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-            <div className="text-xs text-gray-500 dark:text-gray-400 text-center">{t.footer}</div>
-          </div>
         </div>
+      </CardBody>
+    </Card>
+  );
+
+  if (variant === "inline") {
+    return NavCard;
+  }
+
+  return (
+    <>
+      {isOpen ? (
+        <button
+          type="button"
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden"
+          aria-label="Close menu"
+          onClick={() => onClose?.()}
+        />
+      ) : null}
+
+      <div
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 w-[min(100vw-2rem,20rem)] max-w-sm transform border-r border-white/10 bg-background/95 shadow-xl backdrop-blur-xl transition-transform duration-300 ease-out dark:border-white/10 dark:bg-background/90 lg:hidden",
+          isOpen ? "translate-x-0" : "-translate-x-full pointer-events-none"
+        )}
+      >
+        <div className="h-full overflow-y-auto p-4">{NavCard}</div>
       </div>
     </>
   );

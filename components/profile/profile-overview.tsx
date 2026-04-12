@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { Avatar, Button, Card, CardBody } from "@heroui/react";
-import { Calendar, Edit, Globe, Mail, MapPin, Phone } from "lucide-react";
+import { Edit, Globe, Mail, MapPin, Phone } from "lucide-react";
+
+import { PROFILE_GLASS_CARD } from "@/components/profile/profile-ui-presets";
 
 interface ProfileOverviewProps {
   lang: string;
@@ -123,14 +125,14 @@ export default function ProfileOverview({ lang }: ProfileOverviewProps) {
 
   if (loading) {
     return (
-      <Card>
+      <Card className={PROFILE_GLASS_CARD}>
         <CardBody className="p-6">
           <div className="animate-pulse">
             <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 bg-gray-200 rounded-full"></div>
+              <div className="h-16 w-16 rounded-full bg-default-200" />
               <div className="flex-1 space-y-2">
-                <div className="h-4 bg-gray-200 rounded w-1/3"></div>
-                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                <div className="h-4 w-1/3 rounded-lg bg-default-200" />
+                <div className="h-3 w-1/2 rounded-lg bg-default-200" />
               </div>
             </div>
           </div>
@@ -141,41 +143,46 @@ export default function ProfileOverview({ lang }: ProfileOverviewProps) {
 
   if (!profile) {
     return (
-      <Card>
+      <Card className={PROFILE_GLASS_CARD}>
         <CardBody className="p-6 text-center">
-          <p className="text-gray-500">{t.loadFailed}</p>
+          <p className="text-default-500">{t.loadFailed}</p>
         </CardBody>
       </Card>
     );
   }
 
   return (
-    <Card>
+    <Card className={PROFILE_GLASS_CARD}>
       <CardBody className="p-6">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center space-x-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-center gap-4">
             <Avatar
               src="/images/avatar.jpeg"
               name={`${profile.firstName}${profile.lastName}`}
               size="lg"
-              className="w-16 h-16"
+              className="h-16 w-16"
             />
             <div>
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+              <h2 className="text-xl font-semibold text-foreground">
                 {profile.firstName} {profile.lastName}
               </h2>
-              <p className="text-gray-500 dark:text-gray-400">{t.username}</p>
-              <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-default-500">{t.username}</p>
+              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-default-500">
                 {profile.location && (
-                  <div className="flex items-center space-x-1">
-                    <MapPin className="w-4 h-4" />
+                  <div className="flex items-center gap-1">
+                    <MapPin className="h-4 w-4" />
                     <span>{profile.location}</span>
                   </div>
                 )}
                 {profile.website && (
-                  <div className="flex items-center space-x-1">
-                    <Globe className="w-4 h-4" />
-                    <a href={profile.website} target="_blank" rel="noopener noreferrer" className="hover:text-blue-500">
+                  <div className="flex items-center gap-1">
+                    <Globe className="h-4 w-4" />
+                    <a
+                      href={profile.website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                    >
                       {t.website}
                     </a>
                   </div>
@@ -183,23 +190,28 @@ export default function ProfileOverview({ lang }: ProfileOverviewProps) {
               </div>
             </div>
           </div>
-          <Button color="primary" variant="flat" startContent={<Edit className="w-4 h-4" />}>
+          <Button
+            color="primary"
+            variant="flat"
+            className="shrink-0 border border-primary/20 bg-primary/10 text-primary backdrop-blur-xl"
+            startContent={<Edit className="h-4 w-4" />}
+          >
             {t.edit}
           </Button>
         </div>
 
         {/* 联系信息 */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="space-y-3">
-            <h3 className="text-sm font-medium text-gray-900 dark:text-white">{t.contact}</h3>
+            <h3 className="text-sm font-medium text-foreground">{t.contact}</h3>
             <div className="space-y-2">
-              <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
-                <Mail className="w-4 h-4" />
+              <div className="flex items-center gap-2 text-sm text-default-600">
+                <Mail className="h-4 w-4 shrink-0 text-default-400" />
                 <span>user@example.com</span>
               </div>
               {profile.phone && (
-                <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
-                  <Phone className="w-4 h-4" />
+                <div className="flex items-center gap-2 text-sm text-default-600">
+                  <Phone className="h-4 w-4 shrink-0 text-default-400" />
                   <span>{profile.phone}</span>
                 </div>
               )}
@@ -207,19 +219,19 @@ export default function ProfileOverview({ lang }: ProfileOverviewProps) {
           </div>
 
           <div className="space-y-3">
-            <h3 className="text-sm font-medium text-gray-900 dark:text-white">{t.preferences}</h3>
+            <h3 className="text-sm font-medium text-foreground">{t.preferences}</h3>
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600 dark:text-gray-400">{t.language}</span>
-                <span className="text-gray-900 dark:text-white">{profile.language}</span>
+                <span className="text-default-500">{t.language}</span>
+                <span className="text-foreground">{profile.language}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600 dark:text-gray-400">{t.timezone}</span>
-                <span className="text-gray-900 dark:text-white">{profile.timezone}</span>
+                <span className="text-default-500">{t.timezone}</span>
+                <span className="text-foreground">{profile.timezone}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600 dark:text-gray-400">{t.theme}</span>
-                <span className="text-gray-900 dark:text-white capitalize">{profile.theme}</span>
+                <span className="text-default-500">{t.theme}</span>
+                <span className="text-foreground capitalize">{profile.theme}</span>
               </div>
             </div>
           </div>
@@ -228,15 +240,15 @@ export default function ProfileOverview({ lang }: ProfileOverviewProps) {
         {/* 社交媒体链接 */}
         {profile.socialLinks && Object.keys(profile.socialLinks).length > 0 && (
           <div className="mt-6">
-            <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">{t.social}</h3>
-            <div className="flex space-x-4">
+            <h3 className="mb-3 text-sm font-medium text-foreground">{t.social}</h3>
+            <div className="flex flex-wrap gap-3">
               {Object.entries(profile.socialLinks).map(([platform, url]) => (
                 <a
                   key={platform}
                   href={url as string}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-500 hover:text-blue-600 text-sm"
+                  className="text-sm text-primary hover:underline"
                 >
                   {platform}
                 </a>

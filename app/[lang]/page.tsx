@@ -67,9 +67,9 @@ function HomePostCard({
 
   return (
     <div className="blog-card-container">
-      {/* 与 PostCard 一致的玻璃拟态与顶栏渐变，避免实体描边框 */}
+      {/* 玻璃拟态：底色与模糊刻意偏轻，让首页雪花/雨景能透过来；悬停时略加深以保证可读性 */}
       <article
-        className={`group relative flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border-0 bg-white/10 shadow-none backdrop-blur-xl transition-all duration-500 hover:bg-white/20 hover:shadow-2xl hover:shadow-primary/20 dark:bg-black/10 dark:hover:bg-black/20 dark:hover:shadow-primary/25 ${
+        className={`group relative flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border-0 bg-white/[0.05] shadow-none backdrop-blur-md transition-all duration-500 hover:bg-white/[0.12] hover:shadow-2xl hover:shadow-primary/20 dark:bg-black/[0.05] dark:hover:bg-black/[0.12] dark:hover:shadow-primary/25 ${
           isHero ? "lg:min-h-[17rem] lg:flex-row" : ""
         }`}
       >

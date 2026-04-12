@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { Badge, Button, Card, CardBody } from "@heroui/react";
 import { BookOpen, Clock, Eye, Heart, MessageSquare, MoreHorizontal, UserPlus } from "lucide-react";
 
+import { PROFILE_GLASS_CARD } from "@/components/profile/profile-ui-presets";
+
 interface ProfileActivitiesProps {
   lang: string;
 }
@@ -31,13 +33,13 @@ const activityIcons = {
 };
 
 const activityColors = {
-  post_created: "text-blue-500 bg-blue-50 dark:bg-blue-900/20",
-  post_updated: "text-blue-500 bg-blue-50 dark:bg-blue-900/20",
-  comment_created: "text-green-500 bg-green-50 dark:bg-green-900/20",
-  post_liked: "text-red-500 bg-red-50 dark:bg-red-900/20",
-  user_followed: "text-purple-500 bg-purple-50 dark:bg-purple-900/20",
-  post_viewed: "text-gray-500 bg-gray-50 dark:bg-gray-900/20",
-  profile_updated: "text-indigo-500 bg-indigo-50 dark:bg-indigo-900/20",
+  post_created: "bg-primary/15 text-primary",
+  post_updated: "bg-primary/15 text-primary",
+  comment_created: "bg-success/15 text-success",
+  post_liked: "bg-danger/15 text-danger",
+  user_followed: "bg-secondary/15 text-secondary",
+  post_viewed: "bg-default-200/80 text-default-600",
+  profile_updated: "bg-warning/15 text-warning",
 };
 
 export default function ProfileActivities({ lang }: ProfileActivitiesProps) {
@@ -208,17 +210,17 @@ export default function ProfileActivities({ lang }: ProfileActivitiesProps) {
 
   if (loading && activities.length === 0) {
     return (
-      <Card>
+      <Card className={PROFILE_GLASS_CARD}>
         <CardBody className="p-6">
           <div className="animate-pulse">
-            <div className="h-6 bg-gray-200 rounded w-1/4 mb-4"></div>
+            <div className="mb-4 h-6 w-1/4 rounded-lg bg-default-200" />
             <div className="space-y-4">
               {[...Array(5)].map((_, i) => (
-                <div key={i} className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+                <div key={i} className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-default-200" />
                   <div className="flex-1 space-y-2">
-                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                    <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                    <div className="h-4 w-3/4 rounded-lg bg-default-200" />
+                    <div className="h-3 w-1/2 rounded-lg bg-default-200" />
                   </div>
                 </div>
               ))}
@@ -230,43 +232,45 @@ export default function ProfileActivities({ lang }: ProfileActivitiesProps) {
   }
 
   return (
-    <Card>
+    <Card className={PROFILE_GLASS_CARD}>
       <CardBody className="p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{t.title}</h3>
-          <Button variant="light" size="sm" endContent={<MoreHorizontal className="w-4 h-4" />}>
+        <div className="mb-6 flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-foreground">{t.title}</h3>
+          <Button
+            variant="light"
+            size="sm"
+            className="text-default-600"
+            endContent={<MoreHorizontal className="h-4 w-4" />}
+          >
             {t.viewAll}
           </Button>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-2">
           {activities.map((activity) => {
             const Icon = activityIcons[activity.action as keyof typeof activityIcons] || Clock;
             const colorClass =
-              activityColors[activity.action as keyof typeof activityColors] ||
-              "text-gray-500 bg-gray-50 dark:bg-gray-900/20";
+              activityColors[activity.action as keyof typeof activityColors] || "bg-default-200/80 text-default-600";
             const label = t.labels[activity.action as keyof typeof t.labels] || activity.action;
 
             return (
               <div
                 key={activity.id}
-                className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                className="flex items-start gap-3 rounded-xl border border-white/5 p-3 transition-colors hover:bg-white/10 dark:border-white/5 dark:hover:bg-white/5"
               >
-                <div className={`p-2 rounded-full ${colorClass}`}>
-                  <Icon className="w-4 h-4" />
+                <div className={`rounded-full p-2 ${colorClass}`}>
+                  <Icon className="h-4 w-4" />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center space-x-2">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">{label}</p>
-                    <Badge size="sm" variant="flat" color="default">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-medium text-foreground">{label}</p>
+                    <Badge size="sm" variant="flat" color="default" className="bg-white/10 dark:bg-black/20">
                       {formatTimeAgo(activity.createdAt)}
                     </Badge>
                   </div>
-                  {activity.description && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{activity.description}</p>
-                  )}
+                  {activity.description && <p className="mt-1 text-sm text-default-600">{activity.description}</p>}
                   {activity.metadata && (
-                    <div className="mt-2 text-xs text-gray-500 dark:text-gray-500">
+                    <div className="mt-2 text-xs text-default-500">
                       {Object.entries(activity.metadata).map(([key, value]) => (
                         <span key={key} className="mr-2">
                           {key}: {String(value)}
@@ -282,16 +286,16 @@ export default function ProfileActivities({ lang }: ProfileActivitiesProps) {
 
         {hasMore && (
           <div className="mt-6 text-center">
-            <Button variant="flat" onClick={loadMore} disabled={loading}>
+            <Button variant="flat" color="primary" onPress={loadMore} isDisabled={loading}>
               {loading ? t.loading : t.loadMore}
             </Button>
           </div>
         )}
 
         {activities.length === 0 && !loading && (
-          <div className="text-center py-8">
-            <Clock className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500 dark:text-gray-400">{t.empty}</p>
+          <div className="py-8 text-center">
+            <Clock className="mx-auto mb-4 h-12 w-12 text-default-300" />
+            <p className="text-default-500">{t.empty}</p>
           </div>
         )}
       </CardBody>

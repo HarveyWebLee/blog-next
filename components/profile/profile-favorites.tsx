@@ -2,9 +2,16 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
+import { useParams } from "next/navigation";
 import { Avatar, Button, Card, CardBody, Chip } from "@heroui/react";
-import { BookOpen, Calendar, Eye, Filter, Heart, MessageSquare, Search, Tag, Trash2, User } from "lucide-react";
+import { BookOpen, Calendar, Eye, Filter, Heart, MessageSquare, Search, Trash2 } from "lucide-react";
 
+import {
+  PROFILE_GLASS_CARD,
+  PROFILE_GLASS_CARD_INTERACTIVE,
+  PROFILE_NATIVE_CONTROL,
+} from "@/components/profile/profile-ui-presets";
 import { stripMarkdownForExcerpt } from "@/lib/utils/markdown-plain";
 
 interface ProfileFavoritesProps {
@@ -47,6 +54,9 @@ interface FavoritePost {
 }
 
 export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
+  const params = useParams();
+  const routeLang = typeof params?.lang === "string" ? params.lang : "zh-CN";
+
   const t =
     lang === "en-US"
       ? {
@@ -247,19 +257,19 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
 
   if (loading) {
     return (
-      <Card>
+      <Card className={PROFILE_GLASS_CARD}>
         <CardBody className="p-6">
           <div className="animate-pulse">
-            <div className="h-6 bg-gray-200 rounded w-1/4 mb-4"></div>
+            <div className="mb-4 h-6 w-1/4 rounded-lg bg-default-200" />
             <div className="space-y-4">
               {[...Array(3)].map((_, i) => (
-                <div key={i} className="border rounded-lg p-4">
-                  <div className="flex items-start space-x-4">
-                    <div className="w-20 h-20 bg-gray-200 rounded"></div>
+                <div key={i} className="rounded-xl border border-white/10 p-4 dark:border-white/10">
+                  <div className="flex items-start gap-4">
+                    <div className="h-20 w-20 rounded-lg bg-default-200" />
                     <div className="flex-1 space-y-2">
-                      <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                      <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                      <div className="h-3 bg-gray-200 rounded w-1/4"></div>
+                      <div className="h-4 w-3/4 rounded-lg bg-default-200" />
+                      <div className="h-3 w-1/2 rounded-lg bg-default-200" />
+                      <div className="h-3 w-1/4 rounded-lg bg-default-200" />
                     </div>
                   </div>
                 </div>
@@ -274,36 +284,36 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
   return (
     <div className="space-y-6">
       {/* 页面头部 */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t.title}</h1>
-          <p className="text-gray-500 dark:text-gray-400">{t.subtitle}</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t.title}</h1>
+          <p className="text-default-500">{t.subtitle}</p>
         </div>
-        <div className="text-sm text-gray-500 dark:text-gray-400">
+        <div className="text-sm text-default-500">
           {favorites.length} {t.total}
         </div>
       </div>
 
       {/* 搜索和筛选 */}
-      <Card>
+      <Card className={PROFILE_GLASS_CARD}>
         <CardBody className="p-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <div className="flex flex-col gap-4 sm:flex-row">
+            <div className="relative flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-default-400" />
               <input
                 type="text"
                 placeholder={t.search}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={`${PROFILE_NATIVE_CONTROL} w-full pl-10`}
               />
             </div>
-            <div className="flex items-center space-x-2">
-              <Filter className="w-4 h-4 text-gray-400" />
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 shrink-0 text-default-400" />
               <select
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={`${PROFILE_NATIVE_CONTROL} min-w-[10rem]`}
               >
                 <option value="all">{t.allCategories}</option>
                 <option value="frontend">前端开发</option>
@@ -318,11 +328,11 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
       {/* 收藏列表 */}
       <div className="space-y-4">
         {filteredFavorites.map((favorite) => (
-          <Card key={favorite.id} className="hover:shadow-lg transition-shadow">
+          <Card key={favorite.id} className={PROFILE_GLASS_CARD_INTERACTIVE}>
             <CardBody className="p-6">
-              <div className="flex items-start space-x-4">
+              <div className="flex items-start gap-4">
                 {/* 文章封面 */}
-                <div className="w-24 h-24 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
+                <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-default-100">
                   {favorite.post.featuredImage ? (
                     <Image
                       src={favorite.post.featuredImage}
@@ -330,42 +340,40 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
                       width={96}
                       height={96}
                       unoptimized
-                      className="w-full h-full object-cover"
+                      className="h-full w-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-pink-400 to-red-500 flex items-center justify-center">
-                      <BookOpen className="w-8 h-8 text-white" />
+                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-secondary/40 to-primary/35">
+                      <BookOpen className="h-8 w-8 text-white" />
                     </div>
                   )}
                 </div>
 
                 {/* 文章信息 */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2">
-                        {favorite.post.title}
-                      </h3>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="mb-2 line-clamp-2 text-lg font-semibold text-foreground">{favorite.post.title}</h3>
                       {favorite.post.excerpt && (
-                        <p className="text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
+                        <p className="mb-3 line-clamp-2 text-default-600">
                           {stripMarkdownForExcerpt(favorite.post.excerpt)}
                         </p>
                       )}
 
                       {/* 作者信息 */}
-                      <div className="flex items-center space-x-2 mb-3">
+                      <div className="mb-3 flex items-center gap-2">
                         <Avatar
                           src={favorite.post.author.avatar}
                           name={favorite.post.author.displayName || favorite.post.author.username}
                           size="sm"
                         />
-                        <span className="text-sm text-gray-600 dark:text-gray-400">
+                        <span className="text-sm text-default-600">
                           {favorite.post.author.displayName || favorite.post.author.username}
                         </span>
                       </div>
 
                       {/* 文章元信息 */}
-                      <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400 mb-3">
+                      <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-default-500">
                         <div className="flex items-center space-x-1">
                           <Eye className="w-4 h-4" />
                           <span>{favorite.post.viewCount}</span>
@@ -413,14 +421,21 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
                       </div>
 
                       {/* 收藏时间 */}
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                      <div className="text-xs text-default-500">
                         {t.favoritedAt} {formatDate(favorite.createdAt)}
                       </div>
                     </div>
 
                     {/* 操作按钮 */}
-                    <div className="flex items-center space-x-2 ml-4">
-                      <Button variant="light" size="sm" className="text-blue-600 hover:text-blue-700">
+                    <div className="ml-0 flex shrink-0 flex-col gap-2 sm:ml-4">
+                      <Button
+                        as={Link}
+                        href={`/${routeLang}/blog/${favorite.post.slug}`}
+                        variant="flat"
+                        size="sm"
+                        color="primary"
+                        className="border border-primary/20 bg-primary/10 text-primary backdrop-blur-xl"
+                      >
                         {t.readPost}
                       </Button>
                       <Button
@@ -428,10 +443,10 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
                         variant="light"
                         size="sm"
                         color="danger"
-                        startContent={<Trash2 className="w-4 h-4" />}
-                        onClick={() => handleRemoveFavorite(favorite.id)}
+                        aria-label={t.remove}
+                        onPress={() => handleRemoveFavorite(favorite.id)}
                       >
-                        {t.remove}
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
@@ -444,16 +459,22 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
 
       {/* 空状态 */}
       {filteredFavorites.length === 0 && !loading && (
-        <Card>
+        <Card className={PROFILE_GLASS_CARD}>
           <CardBody className="p-12 text-center">
-            <Heart className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+            <Heart className="mx-auto mb-4 h-16 w-16 text-default-300" />
+            <h3 className="mb-2 text-lg font-medium text-foreground">
               {searchTerm || categoryFilter !== "all" ? t.emptyMatch : t.empty}
             </h3>
-            <p className="text-gray-500 dark:text-gray-400 mb-6">
+            <p className="mb-6 text-default-500">
               {searchTerm || categoryFilter !== "all" ? t.emptyMatchDesc : t.emptyDesc}
             </p>
-            <Button color="primary" variant="flat">
+            <Button
+              as={Link}
+              href={`/${routeLang}/blog`}
+              color="primary"
+              variant="flat"
+              className="border border-primary/20 bg-primary/10 text-primary backdrop-blur-xl"
+            >
               {t.browse}
             </Button>
           </CardBody>

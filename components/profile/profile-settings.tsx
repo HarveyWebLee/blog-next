@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { Button, Card, CardBody, Input, Select, SelectItem, Switch, Textarea } from "@heroui/react";
 import { Bell, Clock, Eye, EyeOff, Globe, Mail, MapPin, Palette, Phone, Save, Shield, User } from "lucide-react";
 
+import { PROFILE_GLASS_CARD } from "@/components/profile/profile-ui-presets";
+
 interface ProfileSettingsProps {
   lang: string;
 }
@@ -437,13 +439,13 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
 
   if (loading) {
     return (
-      <Card>
+      <Card className={PROFILE_GLASS_CARD}>
         <CardBody className="p-6">
           <div className="animate-pulse">
-            <div className="h-6 bg-gray-200 rounded w-1/4 mb-4"></div>
+            <div className="mb-4 h-6 w-1/4 rounded-lg bg-default-200" />
             <div className="space-y-4">
               {[...Array(5)].map((_, i) => (
-                <div key={i} className="h-4 bg-gray-200 rounded"></div>
+                <div key={i} className="h-4 rounded-lg bg-default-200" />
               ))}
             </div>
           </div>
@@ -455,20 +457,27 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
   return (
     <div className="space-y-6">
       {/* 页面头部 */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t.title}</h1>
-          <p className="text-gray-500 dark:text-gray-400">{t.subtitle}</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t.title}</h1>
+          <p className="text-default-500">{t.subtitle}</p>
         </div>
-        <Button color="primary" startContent={<Save className="w-4 h-4" />} onClick={handleSave} disabled={saving}>
+        <Button
+          color="primary"
+          variant="flat"
+          className="shrink-0 border border-primary/20 bg-primary/10 text-primary backdrop-blur-xl"
+          startContent={<Save className="h-4 w-4" />}
+          onPress={handleSave}
+          isDisabled={saving}
+        >
           {saving ? t.saving : t.save}
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
         {/* 侧边栏导航 */}
         <div className="lg:col-span-1">
-          <Card>
+          <Card className={PROFILE_GLASS_CARD}>
             <CardBody className="p-4">
               <nav className="space-y-1">
                 {tabs.map((tab) => {
@@ -476,15 +485,16 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
                   return (
                     <button
                       key={tab.id}
+                      type="button"
                       onClick={() => setActiveTab(tab.id)}
-                      className={`w-full flex items-center space-x-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                      className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
                         activeTab === tab.id
-                          ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
-                          : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+                          ? "bg-primary/15 text-primary"
+                          : "text-default-600 hover:bg-white/10 hover:text-foreground dark:hover:bg-white/5"
                       }`}
                     >
-                      <Icon className="w-5 h-5" />
-                      <span>{tab.label}</span>
+                      <Icon className="h-5 w-5 shrink-0" />
+                      <span className="truncate text-left">{tab.label}</span>
                     </button>
                   );
                 })}
@@ -497,44 +507,44 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
         <div className="lg:col-span-3">
           {/* 基本信息 */}
           {activeTab === "profile" && (
-            <Card>
+            <Card className={PROFILE_GLASS_CARD}>
               <CardBody className="p-6">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">{t.profile.title}</h3>
+                <h3 className="mb-6 text-lg font-semibold text-foreground">{t.profile.title}</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <Input
                     label={t.profile.firstName}
                     placeholder={t.profile.firstNamePlaceholder}
                     value={formData.firstName}
                     onChange={(e) => handleInputChange("firstName", e.target.value)}
-                    startContent={<User className="w-4 h-4 text-gray-400" />}
+                    startContent={<User className="h-4 w-4 text-default-400" />}
                   />
                   <Input
                     label={t.profile.lastName}
                     placeholder={t.profile.lastNamePlaceholder}
                     value={formData.lastName}
                     onChange={(e) => handleInputChange("lastName", e.target.value)}
-                    startContent={<User className="w-4 h-4 text-gray-400" />}
+                    startContent={<User className="h-4 w-4 text-default-400" />}
                   />
                   <Input
                     label={t.profile.phone}
                     placeholder={t.profile.phonePlaceholder}
                     value={formData.phone}
                     onChange={(e) => handleInputChange("phone", e.target.value)}
-                    startContent={<Phone className="w-4 h-4 text-gray-400" />}
+                    startContent={<Phone className="h-4 w-4 text-default-400" />}
                   />
                   <Input
                     label={t.profile.website}
                     placeholder={t.profile.websitePlaceholder}
                     value={formData.website}
                     onChange={(e) => handleInputChange("website", e.target.value)}
-                    startContent={<Globe className="w-4 h-4 text-gray-400" />}
+                    startContent={<Globe className="h-4 w-4 text-default-400" />}
                   />
                   <Input
                     label={t.profile.location}
                     placeholder={t.profile.locationPlaceholder}
                     value={formData.location}
                     onChange={(e) => handleInputChange("location", e.target.value)}
-                    startContent={<MapPin className="w-4 h-4 text-gray-400" />}
+                    startContent={<MapPin className="h-4 w-4 text-default-400" />}
                     className="md:col-span-2"
                   />
                 </div>
@@ -544,16 +554,16 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
 
           {/* 偏好设置 */}
           {activeTab === "preferences" && (
-            <Card>
+            <Card className={PROFILE_GLASS_CARD}>
               <CardBody className="p-6">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">{t.preferences.title}</h3>
+                <h3 className="mb-6 text-lg font-semibold text-foreground">{t.preferences.title}</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <Select
                     label={t.preferences.timezone}
                     placeholder={t.preferences.timezonePlaceholder}
                     selectedKeys={[formData.timezone]}
                     onChange={(e) => handleInputChange("timezone", e.target.value)}
-                    startContent={<Clock className="w-4 h-4 text-gray-400" />}
+                    startContent={<Clock className="h-4 w-4 text-default-400" />}
                   >
                     <SelectItem key="Asia/Shanghai">{t.preferences.tzBeijing}</SelectItem>
                     <SelectItem key="America/New_York">{t.preferences.tzNewYork}</SelectItem>
@@ -594,7 +604,7 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
                     placeholder={t.preferences.themePlaceholder}
                     selectedKeys={[formData.theme]}
                     onChange={(e) => handleInputChange("theme", e.target.value)}
-                    startContent={<Palette className="w-4 h-4 text-gray-400" />}
+                    startContent={<Palette className="h-4 w-4 text-default-400" />}
                     className="md:col-span-2"
                   >
                     <SelectItem key="light">{t.preferences.themeLight}</SelectItem>
@@ -608,19 +618,17 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
 
           {/* 通知设置 */}
           {activeTab === "notifications" && (
-            <Card>
+            <Card className={PROFILE_GLASS_CARD}>
               <CardBody className="p-6">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">{t.notifications.title}</h3>
+                <h3 className="mb-6 text-lg font-semibold text-foreground">{t.notifications.title}</h3>
                 <div className="space-y-6">
                   <div>
-                    <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-4">
-                      {t.notifications.methods}
-                    </h4>
+                    <h4 className="text-sm font-medium text-foreground mb-4">{t.notifications.methods}</h4>
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-gray-900 dark:text-white">{t.notifications.email}</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">{t.notifications.emailDesc}</p>
+                          <p className="text-sm font-medium text-foreground">{t.notifications.email}</p>
+                          <p className="text-xs text-default-500">{t.notifications.emailDesc}</p>
                         </div>
                         <Switch
                           isSelected={formData.emailNotifications}
@@ -629,8 +637,8 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
                       </div>
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-gray-900 dark:text-white">{t.notifications.push}</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">{t.notifications.pushDesc}</p>
+                          <p className="text-sm font-medium text-foreground">{t.notifications.push}</p>
+                          <p className="text-xs text-default-500">{t.notifications.pushDesc}</p>
                         </div>
                         <Switch
                           isSelected={formData.pushNotifications}
@@ -639,8 +647,8 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
                       </div>
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-gray-900 dark:text-white">{t.notifications.sms}</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">{t.notifications.smsDesc}</p>
+                          <p className="text-sm font-medium text-foreground">{t.notifications.sms}</p>
+                          <p className="text-xs text-default-500">{t.notifications.smsDesc}</p>
                         </div>
                         <Switch
                           isSelected={formData.smsNotifications}
@@ -651,12 +659,12 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
                   </div>
 
                   <div>
-                    <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-4">{t.notifications.types}</h4>
+                    <h4 className="text-sm font-medium text-foreground mb-4">{t.notifications.types}</h4>
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-gray-900 dark:text-white">{t.notifications.comment}</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">{t.notifications.commentDesc}</p>
+                          <p className="text-sm font-medium text-foreground">{t.notifications.comment}</p>
+                          <p className="text-xs text-default-500">{t.notifications.commentDesc}</p>
                         </div>
                         <Switch
                           isSelected={formData.commentNotifications}
@@ -665,8 +673,8 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
                       </div>
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-gray-900 dark:text-white">{t.notifications.like}</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">{t.notifications.likeDesc}</p>
+                          <p className="text-sm font-medium text-foreground">{t.notifications.like}</p>
+                          <p className="text-xs text-default-500">{t.notifications.likeDesc}</p>
                         </div>
                         <Switch
                           isSelected={formData.likeNotifications}
@@ -675,8 +683,8 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
                       </div>
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-gray-900 dark:text-white">{t.notifications.follow}</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">{t.notifications.followDesc}</p>
+                          <p className="text-sm font-medium text-foreground">{t.notifications.follow}</p>
+                          <p className="text-xs text-default-500">{t.notifications.followDesc}</p>
                         </div>
                         <Switch
                           isSelected={formData.followNotifications}
@@ -692,12 +700,12 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
 
           {/* 隐私设置 */}
           {activeTab === "privacy" && (
-            <Card>
+            <Card className={PROFILE_GLASS_CARD}>
               <CardBody className="p-6">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">{t.privacy.title}</h3>
+                <h3 className="mb-6 text-lg font-semibold text-foreground">{t.privacy.title}</h3>
                 <div className="space-y-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                    <label className="block text-sm font-medium text-foreground mb-2">
                       {t.privacy.profileVisibility}
                     </label>
                     <Select
@@ -711,7 +719,7 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
                     </Select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                    <label className="block text-sm font-medium text-foreground mb-2">
                       {t.privacy.emailVisibility}
                     </label>
                     <Select
@@ -725,7 +733,7 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
                     </Select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                    <label className="block text-sm font-medium text-foreground mb-2">
                       {t.privacy.activityVisibility}
                     </label>
                     <Select
@@ -745,37 +753,37 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
 
           {/* 社交媒体 */}
           {activeTab === "social" && (
-            <Card>
+            <Card className={PROFILE_GLASS_CARD}>
               <CardBody className="p-6">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">{t.social.title}</h3>
+                <h3 className="mb-6 text-lg font-semibold text-foreground">{t.social.title}</h3>
                 <div className="space-y-6">
                   <Input
                     label="GitHub"
                     placeholder="https://github.com/username"
                     value={formData.github}
                     onChange={(e) => handleInputChange("github", e.target.value)}
-                    startContent={<Globe className="w-4 h-4 text-gray-400" />}
+                    startContent={<Globe className="h-4 w-4 text-default-400" />}
                   />
                   <Input
                     label="Twitter"
                     placeholder="https://twitter.com/username"
                     value={formData.twitter}
                     onChange={(e) => handleInputChange("twitter", e.target.value)}
-                    startContent={<Globe className="w-4 h-4 text-gray-400" />}
+                    startContent={<Globe className="h-4 w-4 text-default-400" />}
                   />
                   <Input
                     label="LinkedIn"
                     placeholder="https://linkedin.com/in/username"
                     value={formData.linkedin}
                     onChange={(e) => handleInputChange("linkedin", e.target.value)}
-                    startContent={<Globe className="w-4 h-4 text-gray-400" />}
+                    startContent={<Globe className="h-4 w-4 text-default-400" />}
                   />
                   <Input
                     label={t.social.weibo}
                     placeholder="https://weibo.com/username"
                     value={formData.weibo}
                     onChange={(e) => handleInputChange("weibo", e.target.value)}
-                    startContent={<Globe className="w-4 h-4 text-gray-400" />}
+                    startContent={<Globe className="h-4 w-4 text-default-400" />}
                   />
                 </div>
               </CardBody>

@@ -1,8 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardBody } from "@heroui/react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { Button, Card, CardBody } from "@heroui/react";
 import { Bell, BookOpen, Eye, Heart, MessageSquare, Star, UserPlus, Users } from "lucide-react";
+
+import { PROFILE_GLASS_CARD } from "@/components/profile/profile-ui-presets";
 
 interface ProfileStatsProps {
   lang: string;
@@ -20,66 +24,31 @@ interface StatsData {
   lastActivityAt?: Date;
 }
 
+/** 统计块配色：与博客 Chip 的 primary/secondary 系协调，避免彩虹色块 */
 const statsItems = [
-  {
-    key: "totalPosts",
-    label: "我的文章",
-    icon: BookOpen,
-    color: "text-blue-500",
-    bgColor: "bg-blue-50 dark:bg-blue-900/20",
-  },
-  {
-    key: "totalComments",
-    label: "我的评论",
-    icon: MessageSquare,
-    color: "text-green-500",
-    bgColor: "bg-green-50 dark:bg-green-900/20",
-  },
-  {
-    key: "totalViews",
-    label: "总浏览量",
-    icon: Eye,
-    color: "text-purple-500",
-    bgColor: "bg-purple-50 dark:bg-purple-900/20",
-  },
-  {
-    key: "totalLikes",
-    label: "总点赞数",
-    icon: Heart,
-    color: "text-red-500",
-    bgColor: "bg-red-50 dark:bg-red-900/20",
-  },
-  {
-    key: "totalFavorites",
-    label: "我的收藏",
-    icon: Star,
-    color: "text-yellow-500",
-    bgColor: "bg-yellow-50 dark:bg-yellow-900/20",
-  },
-  {
-    key: "totalFollowers",
-    label: "粉丝数",
-    icon: Users,
-    color: "text-indigo-500",
-    bgColor: "bg-indigo-50 dark:bg-indigo-900/20",
-  },
-  {
-    key: "totalFollowing",
-    label: "关注数",
-    icon: UserPlus,
-    color: "text-pink-500",
-    bgColor: "bg-pink-50 dark:bg-pink-900/20",
-  },
-  {
-    key: "unreadNotifications",
-    label: "未读通知",
-    icon: Bell,
-    color: "text-orange-500",
-    bgColor: "bg-orange-50 dark:bg-orange-900/20",
-  },
+  { key: "totalPosts", icon: BookOpen, tone: "primary" as const },
+  { key: "totalComments", icon: MessageSquare, tone: "secondary" as const },
+  { key: "totalViews", icon: Eye, tone: "success" as const },
+  { key: "totalLikes", icon: Heart, tone: "danger" as const },
+  { key: "totalFavorites", icon: Star, tone: "warning" as const },
+  { key: "totalFollowers", icon: Users, tone: "primary" as const },
+  { key: "totalFollowing", icon: UserPlus, tone: "secondary" as const },
+  { key: "unreadNotifications", icon: Bell, tone: "default" as const },
 ];
 
+const toneIconWrap: Record<(typeof statsItems)[number]["tone"], string> = {
+  primary: "bg-primary/15 text-primary",
+  secondary: "bg-secondary/15 text-secondary",
+  success: "bg-success/15 text-success",
+  danger: "bg-danger/15 text-danger",
+  warning: "bg-warning/15 text-warning",
+  default: "bg-default-200/80 text-default-600",
+};
+
 export default function ProfileStats({ lang }: ProfileStatsProps) {
+  const params = useParams();
+  const routeLang = typeof params?.lang === "string" ? params.lang : "zh-CN";
+
   const t =
     lang === "en-US"
       ? {
@@ -167,15 +136,15 @@ export default function ProfileStats({ lang }: ProfileStatsProps) {
 
   if (loading) {
     return (
-      <Card>
+      <Card className={PROFILE_GLASS_CARD}>
         <CardBody className="p-6">
           <div className="animate-pulse">
-            <div className="h-6 bg-gray-200 rounded w-1/4 mb-4"></div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="mb-4 h-6 w-1/4 rounded-lg bg-default-200" />
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
               {[...Array(8)].map((_, i) => (
                 <div key={i} className="space-y-2">
-                  <div className="h-4 bg-gray-200 rounded"></div>
-                  <div className="h-6 bg-gray-200 rounded"></div>
+                  <div className="h-4 rounded-lg bg-default-200" />
+                  <div className="h-6 rounded-lg bg-default-200" />
                 </div>
               ))}
             </div>
@@ -187,45 +156,53 @@ export default function ProfileStats({ lang }: ProfileStatsProps) {
 
   if (!stats) {
     return (
-      <Card>
+      <Card className={PROFILE_GLASS_CARD}>
         <CardBody className="p-6 text-center">
-          <p className="text-gray-500">{t.loadFailed}</p>
+          <p className="text-default-500">{t.loadFailed}</p>
         </CardBody>
       </Card>
     );
   }
 
+  const quickLinks = [
+    `/${routeLang}/profile/posts`,
+    `/${routeLang}/profile/favorites`,
+    `/${routeLang}/profile/notifications`,
+    `/${routeLang}/profile`,
+  ] as const;
+
   return (
-    <Card>
+    <Card className={PROFILE_GLASS_CARD}>
       <CardBody className="p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{t.title}</h3>
+        <div className="mb-6 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <h3 className="text-lg font-semibold text-foreground">{t.title}</h3>
           {stats.lastActivityAt && (
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-sm text-default-500">
               {t.lastActivity}: {stats.lastActivityAt.toLocaleString(lang)}
             </p>
           )}
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
           {statsItems.map((item) => {
             const Icon = item.icon;
             const value = stats[item.key as keyof StatsData] as number;
+            const wrap = toneIconWrap[item.tone];
 
             return (
               <div
                 key={item.key}
-                className={`p-4 rounded-lg ${item.bgColor} transition-all duration-200 hover:scale-105`}
+                className="rounded-xl border border-white/10 bg-white/5 p-4 dark:border-white/10 dark:bg-black/20"
               >
-                <div className="flex items-center space-x-3">
-                  <div className={`p-2 rounded-lg ${item.bgColor}`}>
-                    <Icon className={`w-5 h-5 ${item.color}`} />
+                <div className="flex items-center gap-3">
+                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${wrap}`}>
+                    <Icon className="h-5 w-5" />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium text-default-500">
                       {t.labels[item.key as keyof typeof t.labels]}
                     </p>
-                    <p className={`text-2xl font-bold ${item.color}`}>{value.toLocaleString()}</p>
+                    <p className="text-xl font-bold tracking-tight text-foreground">{value.toLocaleString()}</p>
                   </div>
                 </div>
               </div>
@@ -233,21 +210,26 @@ export default function ProfileStats({ lang }: ProfileStatsProps) {
           })}
         </div>
 
-        {/* 快速操作 */}
-        <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+        {/* 快速操作：与博客筛选区按钮风格一致 */}
+        <div className="mt-6 border-t border-white/10 pt-6 dark:border-white/10">
           <div className="flex flex-wrap gap-2">
-            <button className="px-4 py-2 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors">
-              {t.quickActions[0]}
-            </button>
-            <button className="px-4 py-2 text-sm bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors">
-              {t.quickActions[1]}
-            </button>
-            <button className="px-4 py-2 text-sm bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors">
-              {t.quickActions[2]}
-            </button>
-            <button className="px-4 py-2 text-sm bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-colors">
-              {t.quickActions[3]}
-            </button>
+            {t.quickActions.map((label, idx) => (
+              <Button
+                key={label}
+                as={Link}
+                href={quickLinks[idx]}
+                size="sm"
+                variant="flat"
+                color={idx === 0 ? "primary" : idx === 1 ? "secondary" : idx === 2 ? "warning" : "default"}
+                className={
+                  idx === 0
+                    ? "border border-primary/20 bg-primary/10 text-primary backdrop-blur-xl"
+                    : "border border-white/15 bg-white/10 backdrop-blur-xl dark:border-white/10 dark:bg-black/10"
+                }
+              >
+                {label}
+              </Button>
+            ))}
           </div>
         </div>
       </CardBody>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Avatar, Badge, Button, Card, CardBody, Chip } from "@heroui/react";
+import { Badge, Button, Card, CardBody, Chip } from "@heroui/react";
 import {
   AtSign,
   Bell,
@@ -10,11 +10,16 @@ import {
   Heart,
   MessageSquare,
   MoreHorizontal,
-  Search,
   Settings,
   Trash2,
   UserPlus,
 } from "lucide-react";
+
+import {
+  PROFILE_GLASS_CARD,
+  PROFILE_GLASS_CARD_INTERACTIVE,
+  PROFILE_NATIVE_CONTROL,
+} from "@/components/profile/profile-ui-presets";
 
 interface ProfileNotificationsProps {
   lang: string;
@@ -41,11 +46,11 @@ const notificationIcons = {
 };
 
 const notificationColors = {
-  comment: "text-blue-500 bg-blue-50 dark:bg-blue-900/20",
-  like: "text-red-500 bg-red-50 dark:bg-red-900/20",
-  follow: "text-green-500 bg-green-50 dark:bg-green-900/20",
-  mention: "text-purple-500 bg-purple-50 dark:bg-purple-900/20",
-  system: "text-gray-500 bg-gray-50 dark:bg-gray-900/20",
+  comment: "bg-primary/15 text-primary",
+  like: "bg-danger/15 text-danger",
+  follow: "bg-success/15 text-success",
+  mention: "bg-secondary/15 text-secondary",
+  system: "bg-default-200/80 text-default-600",
 };
 
 export default function ProfileNotifications({ lang }: ProfileNotificationsProps) {
@@ -276,18 +281,18 @@ export default function ProfileNotifications({ lang }: ProfileNotificationsProps
 
   if (loading) {
     return (
-      <Card>
+      <Card className={PROFILE_GLASS_CARD}>
         <CardBody className="p-6">
           <div className="animate-pulse">
-            <div className="h-6 bg-gray-200 rounded w-1/4 mb-4"></div>
+            <div className="mb-4 h-6 w-1/4 rounded-lg bg-default-200" />
             <div className="space-y-4">
               {[...Array(5)].map((_, i) => (
-                <div key={i} className="border rounded-lg p-4">
-                  <div className="flex items-start space-x-3">
-                    <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+                <div key={i} className="rounded-xl border border-white/10 p-4 dark:border-white/10">
+                  <div className="flex items-start gap-3">
+                    <div className="h-10 w-10 rounded-full bg-default-200" />
                     <div className="flex-1 space-y-2">
-                      <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                      <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                      <div className="h-4 w-3/4 rounded-lg bg-default-200" />
+                      <div className="h-3 w-1/2 rounded-lg bg-default-200" />
                     </div>
                   </div>
                 </div>
@@ -302,33 +307,40 @@ export default function ProfileNotifications({ lang }: ProfileNotificationsProps
   return (
     <div className="space-y-6">
       {/* 页面头部 */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t.title}</h1>
-          <p className="text-gray-500 dark:text-gray-400">{t.subtitle}</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t.title}</h1>
+          <p className="text-default-500">{t.subtitle}</p>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center gap-2">
           {unreadCount > 0 && (
             <Badge content={unreadCount} color="danger" variant="solid">
-              <Bell className="w-5 h-5" />
+              <Bell className="h-5 w-5" />
             </Badge>
           )}
-          <Button color="primary" variant="flat" size="sm" onClick={handleMarkAllAsRead} disabled={unreadCount === 0}>
+          <Button
+            color="primary"
+            variant="flat"
+            size="sm"
+            className="border border-primary/20 bg-primary/10 text-primary backdrop-blur-xl"
+            onPress={handleMarkAllAsRead}
+            isDisabled={unreadCount === 0}
+          >
             {t.markAll}
           </Button>
         </div>
       </div>
 
       {/* 筛选器 */}
-      <Card>
+      <Card className={PROFILE_GLASS_CARD}>
         <CardBody className="p-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex items-center space-x-2">
-              <Filter className="w-4 h-4 text-gray-400" />
+          <div className="flex flex-col gap-4 sm:flex-row">
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 shrink-0 text-default-400" />
               <select
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={`${PROFILE_NATIVE_CONTROL} min-w-[10rem]`}
               >
                 <option value="all">{t.allTypes}</option>
                 <option value="comment">{t.labels.comment}</option>
@@ -338,11 +350,11 @@ export default function ProfileNotifications({ lang }: ProfileNotificationsProps
                 <option value="system">{t.labels.system}</option>
               </select>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-2">
               <select
                 value={readFilter}
                 onChange={(e) => setReadFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={`${PROFILE_NATIVE_CONTROL} min-w-[10rem]`}
               >
                 <option value="all">{t.allStatus}</option>
                 <option value="unread">{t.unread}</option>
@@ -363,23 +375,21 @@ export default function ProfileNotifications({ lang }: ProfileNotificationsProps
           return (
             <Card
               key={notification.id}
-              className={`hover:shadow-lg transition-shadow ${
-                !notification.isRead ? "border-l-4 border-l-blue-500" : ""
-              }`}
+              className={`${PROFILE_GLASS_CARD_INTERACTIVE} ${!notification.isRead ? "border-l-4 border-l-primary" : ""}`}
             >
               <CardBody className="p-6">
-                <div className="flex items-start space-x-3">
+                <div className="flex items-start gap-3">
                   {/* 通知图标 */}
-                  <div className={`p-2 rounded-full ${colorClass} flex-shrink-0`}>
-                    <Icon className="w-5 h-5" />
+                  <div className={`flex shrink-0 rounded-full p-2 ${colorClass}`}>
+                    <Icon className="h-5 w-5" />
                   </div>
 
                   {/* 通知内容 */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{notification.title}</h3>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="mb-2 flex flex-wrap items-center gap-2">
+                          <h3 className="text-sm font-semibold text-foreground">{notification.title}</h3>
                           <Chip
                             size="sm"
                             variant="flat"
@@ -405,11 +415,11 @@ export default function ProfileNotifications({ lang }: ProfileNotificationsProps
                         </div>
 
                         {notification.content && (
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">{notification.content}</p>
+                          <p className="mb-3 text-sm text-default-600">{notification.content}</p>
                         )}
 
                         {/* 通知时间 */}
-                        <div className="flex items-center space-x-4 text-xs text-gray-500 dark:text-gray-400">
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-default-500">
                           <span>{formatTimeAgo(notification.createdAt)}</span>
                           {notification.readAt && (
                             <span>
@@ -420,17 +430,17 @@ export default function ProfileNotifications({ lang }: ProfileNotificationsProps
                       </div>
 
                       {/* 操作按钮 */}
-                      <div className="flex items-center space-x-2 ml-4">
+                      <div className="ml-0 flex shrink-0 items-center gap-1 sm:ml-4">
                         {!notification.isRead && (
                           <Button
                             isIconOnly
                             variant="light"
                             size="sm"
                             color="success"
-                            startContent={<Check className="w-4 h-4" />}
-                            onClick={() => handleMarkAsRead(notification.id)}
+                            aria-label={t.markRead}
+                            onPress={() => handleMarkAsRead(notification.id)}
                           >
-                            {t.markRead}
+                            <Check className="h-4 w-4" />
                           </Button>
                         )}
                         <Button
@@ -438,18 +448,13 @@ export default function ProfileNotifications({ lang }: ProfileNotificationsProps
                           variant="light"
                           size="sm"
                           color="danger"
-                          startContent={<Trash2 className="w-4 h-4" />}
-                          onClick={() => handleDeleteNotification(notification.id)}
+                          aria-label={t.del}
+                          onPress={() => handleDeleteNotification(notification.id)}
                         >
-                          {t.del}
+                          <Trash2 className="h-4 w-4" />
                         </Button>
-                        <Button
-                          isIconOnly
-                          variant="light"
-                          size="sm"
-                          startContent={<MoreHorizontal className="w-4 h-4" />}
-                        >
-                          {t.more}
+                        <Button isIconOnly variant="light" size="sm" aria-label={t.more}>
+                          <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
@@ -463,16 +468,21 @@ export default function ProfileNotifications({ lang }: ProfileNotificationsProps
 
       {/* 空状态 */}
       {filteredNotifications.length === 0 && !loading && (
-        <Card>
+        <Card className={PROFILE_GLASS_CARD}>
           <CardBody className="p-12 text-center">
-            <Bell className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+            <Bell className="mx-auto mb-4 h-16 w-16 text-default-300" />
+            <h3 className="mb-2 text-lg font-medium text-foreground">
               {typeFilter !== "all" || readFilter !== "all" ? t.emptyMatch : t.empty}
             </h3>
-            <p className="text-gray-500 dark:text-gray-400 mb-6">
+            <p className="mb-6 text-default-500">
               {typeFilter !== "all" || readFilter !== "all" ? t.emptyMatchDesc : t.emptyDesc}
             </p>
-            <Button color="primary" variant="flat">
+            <Button
+              color="primary"
+              variant="flat"
+              className="border border-primary/20 bg-primary/10 text-primary backdrop-blur-xl"
+              onPress={() => window.location.reload()}
+            >
               {t.refresh}
             </Button>
           </CardBody>
