@@ -1,3 +1,9 @@
+# [1.2.0](https://github.com/HarveyWebLee/blog-next/compare/v1.1.2...v1.2.0) (2026-04-12)
+
+### Features
+
+- **blog:** 添加特色图上传功能与MinIO集成 ([ba1bd82](https://github.com/HarveyWebLee/blog-next/commit/ba1bd82b128682037d9ee5167819fce1d93cfea0))
+
 ## [1.1.2](https://github.com/HarveyWebLee/blog-next/compare/v1.1.1...v1.1.2) (2026-04-10)
 
 ### Bug Fixes
