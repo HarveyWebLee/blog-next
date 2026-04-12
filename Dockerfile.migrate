@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # 仅用于执行 Drizzle 迁移的一次性镜像（不重含 Next 应用）
 # 使用：docker compose --env-file deploy/.env.docker --profile migrate run --rm db-migrate
 
@@ -12,7 +13,9 @@ RUN npm config set fetch-retries 2 \
   && npm install -g pnpm@9
 
 COPY package.json pnpm-lock.yaml .npmrc ./
-RUN pnpm install --frozen-lockfile
+# BuildKit：挂载 pnpm store 缓存，减轻「每次 --build 都全量下载」的压力（需 Docker 启用 BuildKit，默认已开）
+RUN --mount=type=cache,id=blog-next-pnpm-migrate-store,target=/pnpm/store \
+  pnpm install --frozen-lockfile --store-dir /pnpm/store
 
 COPY drizzle.config.ts ./
 COPY drizzle ./drizzle

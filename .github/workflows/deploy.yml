@@ -85,14 +85,17 @@ jobs:
             echo "[DEPLOY] step1b done"
 
             # 2) 运行数据库迁移（幂等）
-            echo "[DEPLOY] step2: run db migrations"
-            if timeout 300 docker compose -f "${COMPOSE_FILE}" --env-file "${COMPOSE_ENV}" --profile migrate run --rm -T --no-deps --build db-migrate < /dev/null; then
+            # 注意：含 --build 时会执行 Dockerfile.migrate 内的 pnpm install（依赖多、冷缓存或弱网时
+            # 仅安装就可能数分钟级）。原先 300s 在「首次构建 / 无 Docker layer 命中」场景易误杀（timeout 124）。
+            MIGRATE_TIMEOUT_SEC=1200
+            echo "[DEPLOY] step2: run db migrations (timeout ${MIGRATE_TIMEOUT_SEC}s)"
+            if timeout "${MIGRATE_TIMEOUT_SEC}" docker compose -f "${COMPOSE_FILE}" --env-file "${COMPOSE_ENV}" --profile migrate run --rm -T --no-deps --build db-migrate < /dev/null; then
               echo "[DEPLOY] step2 migrate exit code: 0"
             else
               migrate_exit_code=$?
               echo "[DEPLOY] step2 migrate exit code: ${migrate_exit_code}"
               if [ "${migrate_exit_code}" -eq 124 ]; then
-                echo "部署失败：数据库迁移步骤超时（超过 300 秒）" >&2
+                echo "部署失败：数据库迁移步骤超时（超过 ${MIGRATE_TIMEOUT_SEC} 秒；含镜像构建与 pnpm install）" >&2
               else
                 echo "部署失败：数据库迁移步骤执行异常（退出码 ${migrate_exit_code}）" >&2
               fi

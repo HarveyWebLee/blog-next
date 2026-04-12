@@ -8,22 +8,41 @@ import { DeleteObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client
 
 import type { ObjectStorageScope } from "@/lib/storage/resource-scopes";
 
-let client: S3Client | null = null;
+/** 按 endpoint+凭证缓存，避免改 .env 后仍沿用旧 S3Client */
+let cachedClient: { client: S3Client; signature: string } | null = null;
+
+/**
+ * 解析 S3 凭证：仅当 ACCESS 与 SECRET 均非空时才用专用密钥；
+ * 否则用 MINIO_ROOT_*（避免只填了占位文案的 ACCESS 却覆盖掉正确的 root）。
+ */
+function resolveS3Credentials(): { accessKeyId: string; secretAccessKey: string } | null {
+  const access = process.env.MINIO_ACCESS_KEY?.trim() ?? "";
+  const secret = process.env.MINIO_SECRET_KEY?.trim() ?? "";
+  const useDedicated = access.length > 0 && secret.length > 0;
+  const accessKeyId = useDedicated ? access : (process.env.MINIO_ROOT_USER?.trim() ?? "");
+  const secretAccessKey = useDedicated ? secret : (process.env.MINIO_ROOT_PASSWORD?.trim() ?? "");
+  if (!accessKeyId || !secretAccessKey) return null;
+  return { accessKeyId, secretAccessKey };
+}
 
 function getS3Client(): S3Client | null {
   const endpoint = process.env.MINIO_ENDPOINT?.trim();
-  const accessKeyId = (process.env.MINIO_ACCESS_KEY || process.env.MINIO_ROOT_USER)?.trim();
-  const secretAccessKey = (process.env.MINIO_SECRET_KEY || process.env.MINIO_ROOT_PASSWORD)?.trim();
-  if (!endpoint || !accessKeyId || !secretAccessKey) return null;
-  if (!client) {
-    client = new S3Client({
-      region: process.env.MINIO_REGION?.trim() || "us-east-1",
-      endpoint,
-      credentials: { accessKeyId, secretAccessKey },
-      forcePathStyle: true,
-    });
+  const creds = resolveS3Credentials();
+  if (!endpoint || !creds) return null;
+
+  const signature = `${endpoint}\0${creds.accessKeyId}\0${creds.secretAccessKey}`;
+  if (!cachedClient || cachedClient.signature !== signature) {
+    cachedClient = {
+      signature,
+      client: new S3Client({
+        region: process.env.MINIO_REGION?.trim() || "us-east-1",
+        endpoint,
+        credentials: { accessKeyId: creds.accessKeyId, secretAccessKey: creds.secretAccessKey },
+        forcePathStyle: true,
+      }),
+    };
   }
-  return client;
+  return cachedClient.client;
 }
 
 export function isObjectStorageConfigured(): boolean {
