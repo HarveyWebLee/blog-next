@@ -7,6 +7,7 @@ import { Chip } from "@heroui/chip";
 import dayjs from "dayjs";
 import { ArrowRight, Calendar, Clock, Eye, Folder, Heart, MessageCircle, Tag, User } from "lucide-react";
 
+import { stripMarkdownForExcerpt } from "@/lib/utils/markdown-plain";
 import { PostData } from "@/types/blog";
 
 interface PostCardProps {
@@ -36,6 +37,12 @@ export function PostCard({ post, lang = "zh-CN", onView, onLike }: PostCardProps
         className="blog-card relative w-full border-0 backdrop-blur-xl bg-white/10 dark:bg-black/10 hover:bg-white/20 dark:hover:bg-black/20 transition-all duration-500 hover:scale-105 hover:shadow-2xl hover:shadow-primary/20 cursor-pointer overflow-hidden"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
+        onClick={(e) => {
+          // 点击标题、封面、摘要等任意非按钮区域即可进入详情；底部 HeroUI Button 会拦截，不重复跳转
+          const el = e.target as HTMLElement;
+          if (el.closest("button, [role='button']")) return;
+          onView?.();
+        }}
       >
         {/* 顶部装饰条 */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-secondary to-accent" />
@@ -109,7 +116,9 @@ export function PostCard({ post, lang = "zh-CN", onView, onLike }: PostCardProps
             </h3>
 
             {/* 摘要 - 固定行数 */}
-            <p className="text-small text-default-600 line-clamp-3 min-h-[4.5rem]">{post.excerpt || t.emptyExcerpt}</p>
+            <p className="text-small text-default-600 line-clamp-3 min-h-[4.5rem]">
+              {stripMarkdownForExcerpt(post.excerpt || "") || t.emptyExcerpt}
+            </p>
           </div>
         </CardHeader>
 
@@ -189,7 +198,7 @@ export function PostCard({ post, lang = "zh-CN", onView, onLike }: PostCardProps
         </CardBody>
 
         {/* 底部按钮 - 固定在底部 */}
-        <CardFooter className="blog-card-footer pt-2 border-t border-white/10 dark:border-white/5">
+        <CardFooter className="blog-card-footer relative z-10 pt-2 border-t border-white/10 dark:border-white/5">
           <div className="flex items-center justify-between w-full">
             <Button
               size="sm"
@@ -220,9 +229,12 @@ export function PostCard({ post, lang = "zh-CN", onView, onLike }: PostCardProps
           </div>
         </CardFooter>
 
-        {/* 悬停时的光效 */}
+        {/* 悬停时玻璃高光：挂载后单次扫过（见 globals 的 animate-post-card-glass-sweep-once），避免沿用加载骨架的 infinite shimmer */}
         {isHovered && (
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-shimmer pointer-events-none" />
+          <div
+            className="absolute inset-0 animate-post-card-glass-sweep-once pointer-events-none rounded-2xl"
+            aria-hidden
+          />
         )}
       </Card>
     </div>

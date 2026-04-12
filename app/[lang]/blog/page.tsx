@@ -6,7 +6,6 @@ import { Button } from "@heroui/button";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Chip } from "@heroui/chip";
 import { Input } from "@heroui/input";
-import { Pagination } from "@heroui/pagination";
 import { Select, SelectItem } from "@heroui/select";
 import { Spinner } from "@heroui/spinner";
 import {
@@ -21,6 +20,7 @@ import {
   TrendingUpIcon,
 } from "lucide-react";
 
+import { BlogPagination } from "@/components/blog/blog-pagination";
 import { BlogSidebar } from "@/components/blog/blog-sidebar";
 import { PostCard } from "@/components/blog/post-card";
 import { useAuth } from "@/lib/contexts/auth-context";
@@ -127,9 +127,14 @@ export default function BlogWithAPIPage() {
     sortPosts(value, "desc");
   };
 
-  // 处理分页
-  const handlePageChange = (page: number) => {
-    goToPage(page);
+  // 分页：归一化页码；滚动到文章区，避免只回到页面顶端看不到列表
+  const handlePageChange = (raw: number) => {
+    const p = Math.floor(Number(raw));
+    if (!Number.isFinite(p)) return;
+    goToPage(p);
+    requestAnimationFrame(() => {
+      document.getElementById("blog-posts-anchor")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   };
 
   // 处理文章交互
@@ -291,8 +296,11 @@ export default function BlogWithAPIPage() {
             </Card>
           ) : (
             <>
-              {/* 文章统计 */}
-              <div className="flex items-center gap-4 mb-6 animate-fade-in-up">
+              {/* 文章统计 + 列表锚点：翻页后滚动定位 */}
+              <div
+                id="blog-posts-anchor"
+                className="scroll-mt-24 flex flex-wrap items-center gap-4 mb-6 animate-fade-in-up"
+              >
                 <Chip
                   startContent={<TrendingUpIcon className="w-4 h-4" />}
                   variant="flat"
@@ -327,25 +335,13 @@ export default function BlogWithAPIPage() {
 
               {/* 分页 */}
               {pagination.totalPages > 1 && (
-                <div className="flex justify-center animate-fade-in-up">
-                  <Card className="border-0 backdrop-blur-xl bg-white/10 dark:bg-black/10">
-                    <CardBody className="p-4">
-                      <Pagination
-                        total={pagination.totalPages}
-                        page={pagination.page}
-                        onChange={handlePageChange}
-                        showControls
-                        showShadow
-                        color="primary"
-                        classNames={{
-                          wrapper: "gap-0 overflow-visible h-8 rounded border border-divider",
-                          item: "w-8 h-8 text-small rounded-none bg-transparent",
-                          cursor:
-                            "bg-gradient-to-b shadow-lg from-default-50 to-default-100 dark:from-default-50 dark:to-default-100",
-                        }}
-                      />
-                    </CardBody>
-                  </Card>
+                <div className="animate-fade-in-up w-full max-w-3xl mx-auto rounded-2xl border-[3px] border-foreground/15 bg-white/20 px-2 py-1 backdrop-blur-xl dark:border-white/15 dark:bg-black/20">
+                  <BlogPagination
+                    page={pagination.page}
+                    totalPages={pagination.totalPages}
+                    onPageChange={handlePageChange}
+                    lang={lang}
+                  />
                 </div>
               )}
             </>

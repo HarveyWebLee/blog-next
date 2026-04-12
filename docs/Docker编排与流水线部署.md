@@ -96,10 +96,10 @@ docker compose --env-file deploy/.env.docker up -d --build blog-web
 1. `git fetch/checkout/pull` 拉取最新 `main`
 2. `docker compose up -d mysql redis minio`
 3. `docker compose --profile minio-init run --rm minio-init`（幂等；与本地「1b」一致）
-4. `docker compose --profile migrate run --rm --build db-migrate`（`--build` 确保新迁移文件打进镜像；**含镜像构建与 `pnpm install`**，弱网/冷缓存时可能较慢）
+4. **数据库迁移（两步）**：先 `docker compose --profile migrate build db-migrate`（**`pnpm install`** 在此阶段），再 `docker compose --profile migrate run --rm -T --no-deps db-migrate`（仅执行 **`drizzle-kit migrate`**；**不再** `--build`，避免重复构建）
 5. `docker compose up -d --build blog-web`
 
-**说明**：工作流对步骤 4 使用 **`timeout`（当前默认 1200 秒）**，防止异常挂死；若仍报 **124**，多为 **`Dockerfile.migrate` 内依赖安装过慢** 或磁盘/网络问题，可在服务器上手动执行同条 `docker compose ... db-migrate` 观察日志，或酌情调大 `.github/workflows/deploy.yml` 中的 **`MIGRATE_TIMEOUT_SEC`**。
+**说明**：工作流在远端设置 **`DOCKER_BUILDKIT=1`** / **`COMPOSE_DOCKER_CLI_BUILD=1`**，使 **`Dockerfile.migrate`** 的 pnpm store **缓存挂载**生效。对 **步骤 4 的 `build`** 使用 **`timeout`（默认 3600 秒）**、对 **`run`** 使用 **600 秒**。若 **step2a** 报 **124**，多为依赖安装过慢；若 **step2b** 报 **124**，多为连库或迁移挂起。可调大 **`.github/workflows/deploy.yml`** 中的 **`BUILD_DB_MIGRATE_TIMEOUT_SEC`** / **`MIGRATE_RUN_TIMEOUT_SEC`**。
 
 为确保该流程稳定，需同时完成「服务器配置」与「GitHub 配置」两部分。
 
@@ -302,20 +302,20 @@ chown -R deployer:deployer /home/deployer/.ssh
 
 ## 9. 常见问题
 
-| 现象                                      | 处理                                                                                                                                                                                                                                                |
-| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `db-migrate` 报找不到迁移                 | 若日志含 `COPY drizzle ./drizzle ... "/drizzle": not found`：先 `pnpm db:generate` 生成并提交 `drizzle/*.sql`，再重跑 `docker compose ... --profile migrate run --rm --build db-migrate`                                                            |
-| 迁移显示成功但库里没有新表                | 多为 **未重建 db-migrate 镜像**：`run` 时务必加 **`--build`**，否则容器内仍是旧版 `drizzle/*.sql`；流水线见 `.github/workflows/deploy.yml`。                                                                                                        |
-| 部署日志 **step2 migrate exit code: 124** | **`timeout` 超时**（默认 **1200s**）。多为 **`db-migrate` 镜像构建**中 **`pnpm install`** 过慢（日志常见 `#10 ... Progress: resolved`）；确认服务器磁盘与镜像源网络；**`Dockerfile.migrate`** 已用 BuildKit **pnpm store 缓存**加速重复构建。       |
-| 应用连不上数据库                          | 检查 `depends_on` 与 MySQL **healthy**；确认 `DB_*` 与 MySQL 一致                                                                                                                                                                                   |
-| Compose 提示缺少 `MYSQL_ROOT_PASSWORD`    | 使用 `docker compose --env-file deploy/.env.docker`，且文件内已赋值                                                                                                                                                                                 |
-| 宿主机连 MySQL                            | `127.0.0.1:13307`（默认），用户/库见 `.env.docker`                                                                                                                                                                                                  |
-| `fatal: detected dubious ownership`       | 服务器仓库目录 owner 与部署用户不一致。执行 `sudo chown -R <SERVER_USER>:<SERVER_USER> /opt/blog-next`，并在工作流中保留 `git config --global --add safe.directory /opt/blog-next`                                                                  |
-| `Host key verification failed`            | 服务器无法校验 `github.com` 主机指纹。执行 `ssh-keyscan github.com >> ~/.ssh/known_hosts`，并确认服务器已配置可访问仓库的 SSH key（Deploy Key）                                                                                                     |
-| Compose 提示缺少 `MINIO_ROOT_*`           | 在 **`deploy/.env.docker`** 中补齐 **`MINIO_ROOT_USER`** / **`MINIO_ROOT_PASSWORD`**（及可选 **`MINIO_BUCKET`**），与 **`deploy/env.docker.example`** 对照。                                                                                        |
-| `minio-init` 失败                         | 核对 **`MINIO_ROOT_USER`/`PASSWORD`** 与 **`minio` 服务一致**；在服务器执行 `docker compose ... logs minio`；确认 **`minio` 已 healthy** 后再跑 **`--profile minio-init`**。                                                                        |
-| MinIO 数据目录                            | 在 **`deploy/.env.docker`** 设置 **`MINIO_HOST_DATA_DIR`**（默认 **`./data/minio`**，相对路径相对于 **`docker-compose.yml`** 所在目录即仓库根）。已 **`.gitignore` `/data/minio/`**。Linux 注意目录权限与容器 UID。                                 |
-| macOS `mounts denied`（MinIO）            | 勿将 **`MINIO_HOST_DATA_DIR`** 设为 **`/data/minio`** 等根路径；Docker Desktop 未共享该路径。改为 **`./data/minio`**（仓库下）或 **`/Users/…/…`**，或在 Docker Desktop → Settings → Resources → File Sharing 添加允许路径（不推荐随意开放根目录）。 |
+| 现象                                          | 处理                                                                                                                                                                                                                                                                                  |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `db-migrate` 报找不到迁移                     | 若日志含 `COPY drizzle ./drizzle ... "/drizzle": not found`：先 `pnpm db:generate` 生成并提交 `drizzle/*.sql`，再 **`docker compose ... --profile migrate build db-migrate`** 后 **`run --rm db-migrate`**（或一条 **`run --rm --build`**）                                           |
+| 迁移显示成功但库里没有新表                    | 多为 **未重建 db-migrate 镜像**：部署前需 **`build db-migrate`**（或 **`run --build`**）；流水线见 **`.github/workflows/deploy.yml`** 的 **step2a**。                                                                                                                                 |
+| 部署日志 **step2a**/**step2b** 退出码 **124** | **`timeout` 超时**。**step2a**：**`pnpm install`** 过慢（日志常见 **`reused:0`**、全量下载）。**step2b**：连库或 **`drizzle-kit migrate`** 过久。确认远端已 **`export DOCKER_BUILDKIT=1`**（工作流已写）；可调大 **`BUILD_DB_MIGRATE_TIMEOUT_SEC`** / **`MIGRATE_RUN_TIMEOUT_SEC`**。 |
+| 应用连不上数据库                              | 检查 `depends_on` 与 MySQL **healthy**；确认 `DB_*` 与 MySQL 一致                                                                                                                                                                                                                     |
+| Compose 提示缺少 `MYSQL_ROOT_PASSWORD`        | 使用 `docker compose --env-file deploy/.env.docker`，且文件内已赋值                                                                                                                                                                                                                   |
+| 宿主机连 MySQL                                | `127.0.0.1:13307`（默认），用户/库见 `.env.docker`                                                                                                                                                                                                                                    |
+| `fatal: detected dubious ownership`           | 服务器仓库目录 owner 与部署用户不一致。执行 `sudo chown -R <SERVER_USER>:<SERVER_USER> /opt/blog-next`，并在工作流中保留 `git config --global --add safe.directory /opt/blog-next`                                                                                                    |
+| `Host key verification failed`                | 服务器无法校验 `github.com` 主机指纹。执行 `ssh-keyscan github.com >> ~/.ssh/known_hosts`，并确认服务器已配置可访问仓库的 SSH key（Deploy Key）                                                                                                                                       |
+| Compose 提示缺少 `MINIO_ROOT_*`               | 在 **`deploy/.env.docker`** 中补齐 **`MINIO_ROOT_USER`** / **`MINIO_ROOT_PASSWORD`**（及可选 **`MINIO_BUCKET`**），与 **`deploy/env.docker.example`** 对照。                                                                                                                          |
+| `minio-init` 失败                             | 核对 **`MINIO_ROOT_USER`/`PASSWORD`** 与 **`minio` 服务一致**；在服务器执行 `docker compose ... logs minio`；确认 **`minio` 已 healthy** 后再跑 **`--profile minio-init`**。                                                                                                          |
+| MinIO 数据目录                                | 在 **`deploy/.env.docker`** 设置 **`MINIO_HOST_DATA_DIR`**（默认 **`./data/minio`**，相对路径相对于 **`docker-compose.yml`** 所在目录即仓库根）。已 **`.gitignore` `/data/minio/`**。Linux 注意目录权限与容器 UID。                                                                   |
+| macOS `mounts denied`（MinIO）                | 勿将 **`MINIO_HOST_DATA_DIR`** 设为 **`/data/minio`** 等根路径；Docker Desktop 未共享该路径。改为 **`./data/minio`**（仓库下）或 **`/Users/…/…`**，或在 Docker Desktop → Settings → Resources → File Sharing 添加允许路径（不推荐随意开放根目录）。                                   |
 
 ---
 

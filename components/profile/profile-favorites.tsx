@@ -5,6 +5,8 @@ import Image from "next/image";
 import { Avatar, Button, Card, CardBody, Chip } from "@heroui/react";
 import { BookOpen, Calendar, Eye, Filter, Heart, MessageSquare, Search, Tag, Trash2, User } from "lucide-react";
 
+import { stripMarkdownForExcerpt } from "@/lib/utils/markdown-plain";
+
 interface ProfileFavoritesProps {
   lang: string;
 }
@@ -345,7 +347,9 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
                         {favorite.post.title}
                       </h3>
                       {favorite.post.excerpt && (
-                        <p className="text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">{favorite.post.excerpt}</p>
+                        <p className="text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
+                          {stripMarkdownForExcerpt(favorite.post.excerpt)}
+                        </p>
                       )}
 
                       {/* 作者信息 */}

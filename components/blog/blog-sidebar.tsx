@@ -198,7 +198,7 @@ export function BlogSidebar({ lang = "zh-CN" }: { lang?: string }) {
               <Link
                 key={category.id}
                 href={`/${lang}/categories/${category.slug}`}
-                className="flex items-center justify-between p-3 rounded-lg backdrop-blur-xl bg-white/5 dark:bg-black/5 hover:bg-white/10 dark:hover:bg-black/10 transition-all duration-300 group hover:scale-105"
+                className="group flex items-center justify-between rounded-lg border border-transparent bg-white/5 p-3 backdrop-blur-xl transition-colors duration-300 dark:bg-black/5 hover:border-primary/20 hover:bg-white/10 dark:hover:border-primary/25 dark:hover:bg-black/10"
                 style={{ animationDelay: `${index * 100}ms` }}
               >
                 <div className="flex items-center gap-2">
@@ -274,7 +274,8 @@ export function BlogSidebar({ lang = "zh-CN" }: { lang?: string }) {
             {hotPosts.slice(0, 5).map((post, index) => (
               <div key={post.slug} className="animate-fade-in-up" style={{ animationDelay: `${index * 100}ms` }}>
                 <Link href={`/${lang}/blog/${post.slug}`} className="block group">
-                  <div className="flex items-start gap-3 p-3 rounded-lg backdrop-blur-xl bg-white/5 dark:bg-black/5 hover:bg-white/10 dark:hover:bg-black/10 transition-all duration-300 hover:scale-105">
+                  {/* 悬停不用 scale，避免侧栏/卡片内出现临时滚动条；用边框与阴影做层次即可 */}
+                  <div className="flex items-start gap-3 rounded-lg border border-transparent bg-white/5 p-3 backdrop-blur-xl transition-colors duration-300 dark:bg-black/5 hover:border-primary/20 hover:bg-white/10 dark:hover:border-primary/25 dark:hover:bg-black/10">
                     <div className="flex-shrink-0">
                       <Chip
                         size="sm"

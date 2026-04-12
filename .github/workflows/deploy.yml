@@ -11,7 +11,7 @@ on:
 # 1) 远程构建期间 SSH 链路偶发中断（Broken pipe）-> 增加 keepalive 参数。
 # 2) db-migrate 在 SSH heredoc 场景可能“看似完成但不返回”-> run 时断开 stdin（< /dev/null）。
 # 3) 仅看“迁移成功”无法判断整体部署完成 -> 增加阶段标记、容器运行态校验与日志输出。
-# 4) db-migrate 若不加 --build，会沿用旧镜像内 COPY 的 drizzle/，新增 0001 等迁移不会进库 -> run 前必须 --build。
+# 4) db-migrate 若未重新 build 镜像，会沿用旧 COPY 的 drizzle/ -> 流水线先 compose build db-migrate，再 compose run（无 --build）。
 concurrency:
   group: deploy-main
   cancel-in-progress: false
@@ -19,9 +19,9 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    # 部署步骤包含远程拉取镜像、构建与迁移，网络慢时可能超过 30 分钟。
-    # 适当放宽超时，避免正常部署被误判为超时。
-    timeout-minutes: 60
+    # 部署步骤含远端两次 Docker 构建（db-migrate、blog-web）与迁移，弱网/无 BuildKit 缓存时可能较长。
+    # 与下方 db-migrate 分步超时对齐，避免 Actions 整 job 先被杀死。
+    timeout-minutes: 120
     env:
       # 目标服务器中的项目目录。
       # 如需修改部署目录，只需改这里即可。
@@ -64,6 +64,11 @@ jobs:
             dc() { docker compose -f "${COMPOSE_FILE}" --env-file "${COMPOSE_ENV}" "$@"; }
             echo "[DEPLOY] init: cwd=${APP_DIR}"
 
+            # 确保启用 BuildKit，使 Dockerfile.migrate 中 pnpm store 的 RUN --mount=type=cache 生效；
+            # 否则每次构建常见 reused:0、全量下载，极易触发迁移步骤超时。
+            export DOCKER_BUILDKIT=1
+            export COMPOSE_DOCKER_CLI_BUILD=1
+
             # 始终对齐远端 main，确保部署内容可追踪、可复现。
             git fetch origin main
             git checkout main
@@ -84,24 +89,36 @@ jobs:
             fi
             echo "[DEPLOY] step1b done"
 
-            # 2) 运行数据库迁移（幂等）
-            # 注意：含 --build 时会执行 Dockerfile.migrate 内的 pnpm install（依赖多、冷缓存或弱网时
-            # 仅安装就可能数分钟级）。原先 300s 在「首次构建 / 无 Docker layer 命中」场景易误杀（timeout 124）。
-            MIGRATE_TIMEOUT_SEC=1200
-            echo "[DEPLOY] step2: run db migrations (timeout ${MIGRATE_TIMEOUT_SEC}s)"
-            if timeout "${MIGRATE_TIMEOUT_SEC}" docker compose -f "${COMPOSE_FILE}" --env-file "${COMPOSE_ENV}" --profile migrate run --rm -T --no-deps --build db-migrate < /dev/null; then
-              echo "[DEPLOY] step2 migrate exit code: 0"
-            else
-              migrate_exit_code=$?
-              echo "[DEPLOY] step2 migrate exit code: ${migrate_exit_code}"
-              if [ "${migrate_exit_code}" -eq 124 ]; then
-                echo "部署失败：数据库迁移步骤超时（超过 ${MIGRATE_TIMEOUT_SEC} 秒；含镜像构建与 pnpm install）" >&2
+            # 2) 数据库迁移：拆成「仅构建镜像」与「仅运行容器」，避免 run --build 共用一条短超时。
+            # 构建阶段含 pnpm install，弱网/无 store 缓存时可能远长于 drizzle-kit migrate 本身。
+            BUILD_DB_MIGRATE_TIMEOUT_SEC=3600
+            echo "[DEPLOY] step2a: build db-migrate image (timeout ${BUILD_DB_MIGRATE_TIMEOUT_SEC}s)"
+            if ! timeout "${BUILD_DB_MIGRATE_TIMEOUT_SEC}" dc --profile migrate build db-migrate; then
+              build_exit_code=$?
+              echo "[DEPLOY] step2a build exit code: ${build_exit_code}"
+              if [ "${build_exit_code}" -eq 124 ]; then
+                echo "部署失败：db-migrate 镜像构建超时（超过 ${BUILD_DB_MIGRATE_TIMEOUT_SEC} 秒；多为 pnpm install）" >&2
               else
-                echo "部署失败：数据库迁移步骤执行异常（退出码 ${migrate_exit_code}）" >&2
+                echo "部署失败：db-migrate 镜像构建失败（退出码 ${build_exit_code}）" >&2
+              fi
+              exit "${build_exit_code}"
+            fi
+            echo "[DEPLOY] step2a done"
+
+            MIGRATE_RUN_TIMEOUT_SEC=600
+            echo "[DEPLOY] step2b: run db migrations (timeout ${MIGRATE_RUN_TIMEOUT_SEC}s)"
+            if ! timeout "${MIGRATE_RUN_TIMEOUT_SEC}" dc --profile migrate run --rm -T --no-deps db-migrate < /dev/null; then
+              migrate_exit_code=$?
+              echo "[DEPLOY] step2b migrate exit code: ${migrate_exit_code}"
+              if [ "${migrate_exit_code}" -eq 124 ]; then
+                echo "部署失败：数据库迁移命令超时（超过 ${MIGRATE_RUN_TIMEOUT_SEC} 秒；镜像已构建，多为连库慢或迁移挂起）" >&2
+              else
+                echo "部署失败：数据库迁移执行异常（退出码 ${migrate_exit_code}）" >&2
               fi
               dc --profile migrate logs --tail=100 db-migrate || true
               exit "${migrate_exit_code}"
             fi
+            echo "[DEPLOY] step2b migrate exit code: 0"
             echo "[DEPLOY] step2 done"
 
             # 3) 构建并更新应用容器

@@ -2,9 +2,9 @@
 
 ## 需求摘要
 
-- 登录用户在**创建/编辑博客**页可上传特色图到 MinIO（S3 兼容 API），展示预览，可替换或移除。
+- 登录用户在**创建/编辑博客**页**仅能通过上传**设置特色图到 MinIO（S3 兼容 API），展示预览，可替换或移除（不提供手输图片 URL）。
 - 对象键按业务划分：`{MINIO_BUCKET}` 下 **`article/{userId}/{uuid}.ext`**（文章）；预留 **`profile/{userId}/...`** 供后续头像等使用。
-- 未配置对象存储时，仍可**手动填写图片 URL**。
+- 数据库中已存的**历史外链 URL**仍可展示；新设/修改特色图请走上传。
 
 ## 环境变量
 
@@ -25,7 +25,7 @@
 - **存储抽象**：`lib/services/object-storage.service.ts`、`lib/storage/resource-scopes.ts`
 - **上传/删除 API**：`app/api/uploads/image/route.ts`（`POST` multipart、`DELETE` JSON `{ key }`）
 - **鉴权**：`lib/utils/request-auth.ts`（`Authorization: Bearer`）
-- **前端组件**：`components/blog/featured-image-upload.tsx`（`scope` 默认 `article`）
+- **前端组件**：`components/blog/featured-image-upload.tsx`（`scope` 默认 `article`；与管理页一致的渐变/圆角面板，空态支持点击与拖拽上传，`labels.emptyDropHint` 等为三语文案）
 - **接入页面**：`app/[lang]/blog/manage/create/page.tsx`、`app/[lang]/blog/manage/edit/[id]/page.tsx`
 - **数据库**：`posts.featured_image` 长度 **512**（迁移 **`drizzle/0002_*.sql`**）
 

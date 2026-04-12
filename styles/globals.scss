@@ -152,6 +152,43 @@
   background-size: 200px 100%;
 }
 
+/* 博客列表 PostCard 悬停玻璃高光：单次左→右扫过，结束后保持静止（不用 infinite，避免停留时反复闪动） */
+@keyframes post-card-glass-sweep {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+.animate-post-card-glass-sweep-once {
+  animation: post-card-glass-sweep 0.75s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.12) 45%,
+    rgba(255, 255, 255, 0.22) 50%,
+    rgba(255, 255, 255, 0.12) 55%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-repeat: no-repeat;
+  background-size: 200px 100%;
+}
+
+.dark .animate-post-card-glass-sweep-once {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.06) 45%,
+    rgba(255, 255, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0.06) 55%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-repeat: no-repeat;
+  background-size: 200px 100%;
+}
+
 /* 新增动画效果 */
 @keyframes fade-in {
   from {

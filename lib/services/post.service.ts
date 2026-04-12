@@ -3,12 +3,40 @@
  * 实现文章的增删改查、状态管理、标签关联等核心业务逻辑
  */
 
-import { and, asc, count, desc, eq, like, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { categories, comments, posts, postTags, tags, users } from "@/lib/db/schema";
 import { calculatePagination, generateSlug, truncateText } from "@/lib/utils";
 import { CreatePostRequest, PaginatedResponseData, PostData, PostQueryParams, UpdatePostRequest } from "@/types/blog";
+
+/** 列表接口允许的排序字段（防注入；未命中则走默认「最近优先」） */
+const POST_LIST_SORT_COLUMNS = {
+  publishedAt: posts.publishedAt,
+  createdAt: posts.createdAt,
+  updatedAt: posts.updatedAt,
+  title: posts.title,
+  viewCount: posts.viewCount,
+  likeCount: posts.likeCount,
+} as const;
+
+type PostListSortKey = keyof typeof POST_LIST_SORT_COLUMNS;
+
+/**
+ * 构建文章列表 ORDER BY：无 sortBy 时默认「最近越靠前」
+ * - 已发布：以 publishedAt 为主；草稿等无发布时间则回退 updatedAt、createdAt
+ * - 显式 sortBy 时按调用方 asc/desc；并加 id 保证分页稳定
+ */
+function buildPostsListOrderBy(params: PostQueryParams) {
+  const dir = params.sortOrder === "asc" ? asc : desc;
+  const key = params.sortBy as PostListSortKey | undefined;
+  if (key && key in POST_LIST_SORT_COLUMNS) {
+    const col = POST_LIST_SORT_COLUMNS[key];
+    return [dir(col), desc(posts.id)];
+  }
+  const recency = sql`COALESCE(${posts.publishedAt}, ${posts.updatedAt}, ${posts.createdAt})`;
+  return [desc(recency), desc(posts.id)];
+}
 
 /**
  * 文章服务类
@@ -199,8 +227,9 @@ export class PostService {
    */
   async getPosts(params: PostQueryParams = {}): Promise<PaginatedResponseData<PostData>> {
     try {
-      const pagination = calculatePagination(0, params.page || 1, params.limit || 10);
-      const { page, limit } = pagination;
+      // 禁止先用 total=0 算分页：此时 totalPages=0，会把任意页码钳成 1，导致永远查第一页且响应里 page 恒为 1
+      const limit = Math.min(100, Math.max(1, params.limit || 10));
+      const requestedPage = Math.max(1, Number(params.page) || 1);
 
       // 构建查询条件
       const conditions = [];
@@ -223,6 +252,15 @@ export class PostService {
       // 分类过滤
       if (params.categoryId) {
         conditions.push(eq(posts.categoryId, params.categoryId));
+      }
+
+      // 标签过滤（与 GET /api/posts 的 tagId 查询参数一致）
+      if (params.tagId != null && Number.isFinite(params.tagId)) {
+        const postsWithTag = db
+          .select({ postId: postTags.postId })
+          .from(postTags)
+          .where(eq(postTags.tagId, params.tagId));
+        conditions.push(inArray(posts.id, postsWithTag));
       }
 
       // 搜索过滤
@@ -248,8 +286,8 @@ export class PostService {
       const totalResult = await db.select({ count: count() }).from(posts).where(whereClause);
       const total = totalResult[0]?.count || 0;
 
-      // 计算分页信息
-      const paginationResult = calculatePagination(total, page, limit);
+      // 在拿到真实 total 后再计算页码与 offset（与列表查询一致）
+      const paginationResult = calculatePagination(total, requestedPage, limit);
 
       // 构建查询
       let query = db
@@ -280,7 +318,10 @@ export class PostService {
         .leftJoin(categories, eq(posts.categoryId, categories.id))
         .where(whereClause);
 
-      query = (query as any).limit(limit).offset(pagination.offset);
+      query = (query as any)
+        .orderBy(...buildPostsListOrderBy(params))
+        .limit(paginationResult.limit)
+        .offset(paginationResult.offset);
 
       const results = await query;
 
@@ -324,8 +365,8 @@ export class PostService {
       return {
         data: postsData,
         pagination: {
-          page,
-          limit,
+          page: paginationResult.page,
+          limit: paginationResult.limit,
           total: paginationResult.total,
           totalPages: paginationResult.totalPages,
           hasNext: paginationResult.hasNext,

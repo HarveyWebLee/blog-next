@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Avatar } from "@heroui/avatar";
 import { Button } from "@heroui/button";
 import { Card, CardBody, CardHeader } from "@heroui/card";
@@ -28,16 +28,27 @@ import {
 } from "lucide-react";
 
 import { BlogNavigation } from "@/components/blog/blog-navigation";
+import { useAuth } from "@/lib/contexts/auth-context";
+import { message } from "@/lib/utils";
+import { clientBearerHeaders } from "@/lib/utils/client-bearer-auth";
+import { stripMarkdownForExcerpt } from "@/lib/utils/markdown-plain";
 import { PostData, PostStatus, PostVisibility } from "@/types/blog";
 
+/** 仅文章作者本人可编辑/删除（与接口 authorId 校验一致） */
+function isPostOwner(post: PostData, userId: number | undefined): boolean {
+  return userId != null && post.authorId === userId;
+}
+
 export default function BlogManagePage() {
+  const router = useRouter();
   const params = useParams<{ lang: string }>();
   const lang = params.lang || "zh-CN";
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const t =
     lang === "en-US"
       ? {
           title: "Blog Management",
-          subtitle: "Manage all your posts",
+          subtitle: "Only posts you authored are listed; edit and delete are limited to the author.",
           create: "Create Post",
           searchFilter: "Search & Filter",
           searchFilterDesc: "Quickly find the posts you need",
@@ -64,6 +75,7 @@ export default function BlogManagePage() {
           page: "Page",
           of: "of",
           deleteConfirm: "Are you sure to delete this post?",
+          deleteForbidden: "You can only delete posts you created.",
           deleted: "Delete",
           edit: "Edit",
           view: "View",
@@ -81,7 +93,7 @@ export default function BlogManagePage() {
       : lang === "ja-JP"
         ? {
             title: "ブログ管理",
-            subtitle: "すべての記事を管理",
+            subtitle: "自分が作成した記事のみ表示・編集・削除できます。",
             create: "記事作成",
             searchFilter: "検索と絞り込み",
             searchFilterDesc: "必要な記事をすばやく見つける",
@@ -108,6 +120,7 @@ export default function BlogManagePage() {
             page: "ページ",
             of: "/",
             deleteConfirm: "このブログを削除しますか？",
+            deleteForbidden: "自分が作成した記事のみ削除できます。",
             deleted: "削除",
             edit: "編集",
             view: "表示",
@@ -124,7 +137,7 @@ export default function BlogManagePage() {
           }
         : {
             title: "博客管理",
-            subtitle: "管理您的所有博客文章，创建精彩内容",
+            subtitle: "仅展示您本人创建的文章；编辑与删除仅限作者本人。",
             create: "创建博客",
             searchFilter: "搜索和过滤",
             searchFilterDesc: "快速找到您需要的文章",
@@ -151,6 +164,7 @@ export default function BlogManagePage() {
             page: "第",
             of: "页 / 共",
             deleteConfirm: "确定要删除这篇博客吗？",
+            deleteForbidden: "只能删除您本人创建的文章。",
             deleted: "删除",
             edit: "编辑",
             view: "查看",
@@ -176,50 +190,70 @@ export default function BlogManagePage() {
   const [sortBy, setSortBy] = useState<"createdAt" | "updatedAt" | "title" | "viewCount">("createdAt");
 
   const fetchPosts = useCallback(async () => {
+    if (!user?.id) return;
     try {
       setLoading(true);
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: "12",
+        authorId: String(user.id),
+        sortOrder: "desc",
         search: searchTerm,
         ...(statusFilter !== "all" && { status: statusFilter }),
         ...(visibilityFilter !== "all" && { visibility: visibilityFilter }),
         sortBy: sortBy,
       });
 
-      const response = await fetch(`/api/posts?${params}`);
+      const response = await fetch(`/api/posts?${params}`, {
+        headers: {
+          ...clientBearerHeaders(),
+        },
+      });
       const result = await response.json();
 
       if (result.success) {
-        console.log("result", result.data.data);
         setPosts(result.data.data);
         setTotalPages(result.data.pagination.totalPages);
+      } else if (response.status === 401 || response.status === 403) {
+        message.error(result.message || "无权加载该列表，请重新登录");
       }
     } catch (error) {
       console.error("获取博客列表失败:", error);
     } finally {
       setLoading(false);
     }
-  }, [currentPage, searchTerm, statusFilter, visibilityFilter, sortBy]);
+  }, [currentPage, searchTerm, statusFilter, visibilityFilter, sortBy, user?.id]);
 
   useEffect(() => {
-    fetchPosts();
-  }, [fetchPosts]);
+    if (isAuthLoading) return;
+    if (!isAuthenticated || !user) {
+      router.replace(`/${lang}/auth/login`);
+      return;
+    }
+    void fetchPosts();
+  }, [fetchPosts, isAuthLoading, isAuthenticated, user, router, lang]);
 
-  // 删除博客
+  // 删除博客（仅作者；接口与列表 authorId 筛选一致）
   const handleDelete = async (postId: number) => {
     if (!confirm(t.deleteConfirm)) return;
 
     try {
       const response = await fetch(`/api/posts/${postId}`, {
         method: "DELETE",
+        headers: {
+          ...clientBearerHeaders(),
+        },
       });
+      const result = await response.json().catch(() => ({}));
 
       if (response.ok) {
         fetchPosts();
+      } else {
+        message.error((result as { message?: string }).message || t.deleteForbidden);
       }
     } catch (error) {
       console.error("删除博客失败:", error);
+      message.error(t.deleteForbidden);
     }
   };
 
@@ -278,6 +312,21 @@ export default function BlogManagePage() {
         return t.unknown;
     }
   };
+
+  if (isAuthLoading) {
+    return (
+      <>
+        <BlogNavigation />
+        <div className="flex justify-center py-24">
+          <Spinner size="lg" color="primary" />
+        </div>
+      </>
+    );
+  }
+
+  if (!isAuthenticated || !user) {
+    return null;
+  }
 
   return (
     <>
@@ -462,21 +511,124 @@ export default function BlogManagePage() {
             </div>
           ) : (
             <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" : "space-y-4"}>
-              {posts.map((post) => (
-                <Card
-                  key={post.id}
-                  className={`border-1 hover:border-primary transition-all duration-300 hover:shadow-lg ${
-                    viewMode === "grid" ? "h-full" : ""
-                  }`}
-                >
-                  <CardBody className={viewMode === "grid" ? "p-6 flex flex-col h-full" : "p-4"}>
-                    {viewMode === "grid" ? (
-                      // 网格视图
-                      <>
-                        <div className="flex items-start justify-between gap-3 mb-4">
+              {posts.map((post) => {
+                const canManage = isPostOwner(post, user?.id);
+                const viewHref = `/${lang}/blog/${post.slug}`;
+                return (
+                  <Card
+                    key={post.id}
+                    className={`border-1 hover:border-primary transition-all duration-300 hover:shadow-lg ${
+                      viewMode === "grid" ? "h-full" : ""
+                    }`}
+                  >
+                    <CardBody className={viewMode === "grid" ? "p-6 flex flex-col h-full" : "p-4"}>
+                      {viewMode === "grid" ? (
+                        // 网格视图
+                        <>
+                          <div className="flex items-start justify-between gap-3 mb-4">
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-lg line-clamp-2 mb-2">{post.title}</h3>
+                              <div className="flex flex-wrap gap-2 mb-3">
+                                <Chip size="sm" color={getStatusColor(post.status)} variant="flat">
+                                  {getStatusText(post.status)}
+                                </Chip>
+                                <Chip size="sm" color={getVisibilityColor(post.visibility)} variant="flat">
+                                  {getVisibilityText(post.visibility)}
+                                </Chip>
+                              </div>
+                            </div>
+                            <Dropdown>
+                              <DropdownTrigger>
+                                <Button isIconOnly size="sm" variant="light" color="default">
+                                  <MoreHorizontal className="w-4 h-4" />
+                                </Button>
+                              </DropdownTrigger>
+                              <DropdownMenu>
+                                <DropdownItem
+                                  key="view"
+                                  startContent={<Eye className="w-4 h-4" />}
+                                  as="a"
+                                  href={viewHref}
+                                >
+                                  {t.view}
+                                </DropdownItem>
+                                {canManage ? (
+                                  <DropdownItem
+                                    key="edit"
+                                    startContent={<Edit className="w-4 h-4" />}
+                                    as="a"
+                                    href={`/${lang}/blog/manage/edit/${post.id}`}
+                                  >
+                                    {t.edit}
+                                  </DropdownItem>
+                                ) : null}
+                                {canManage ? (
+                                  <DropdownItem
+                                    key="delete"
+                                    color="danger"
+                                    startContent={<Trash2 className="w-4 h-4" />}
+                                    onPress={() => handleDelete(post.id)}
+                                  >
+                                    {t.deleted}
+                                  </DropdownItem>
+                                ) : null}
+                              </DropdownMenu>
+                            </Dropdown>
+                          </div>
+
+                          <p className="text-default-500 text-sm line-clamp-3 mb-4 flex-1">
+                            {stripMarkdownForExcerpt(post.excerpt || "") || "..."}
+                          </p>
+
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2 text-sm text-default-400">
+                              <Avatar size="sm" name={post.author?.displayName || t.unknown} className="w-5 h-5" />
+                              <span>{post.author?.displayName || t.unknown}</span>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2 text-xs text-default-400">
+                              <div className="flex items-center gap-1">
+                                <Bookmark className="w-3 h-3" />
+                                <span className="truncate">{post.category?.name || t.uncategorized}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <TrendingUp className="w-3 h-3" />
+                                <span>
+                                  {post.viewCount} {t.views}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between pt-2 border-t border-default-100">
+                              <span className="text-xs text-default-400">
+                                {new Date(post.createdAt).toLocaleDateString()}
+                              </span>
+                              <div className="flex gap-1">
+                                <Button isIconOnly size="sm" variant="light" color="default" as="a" href={viewHref}>
+                                  <Eye className="w-3 h-3" />
+                                </Button>
+                                {canManage ? (
+                                  <Button
+                                    isIconOnly
+                                    size="sm"
+                                    variant="light"
+                                    color="primary"
+                                    as="a"
+                                    href={`/${lang}/blog/manage/edit/${post.id}`}
+                                  >
+                                    <Edit className="w-3 h-3" />
+                                  </Button>
+                                ) : null}
+                              </div>
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        // 列表视图
+                        <div className="flex items-start justify-between gap-4">
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-lg line-clamp-2 mb-2">{post.title}</h3>
-                            <div className="flex flex-wrap gap-2 mb-3">
+                            <div className="flex items-center gap-3 mb-3">
+                              <h3 className="font-semibold text-lg line-clamp-1">{post.title}</h3>
                               <Chip size="sm" color={getStatusColor(post.status)} variant="flat">
                                 {getStatusText(post.status)}
                               </Chip>
@@ -484,78 +636,38 @@ export default function BlogManagePage() {
                                 {getVisibilityText(post.visibility)}
                               </Chip>
                             </div>
-                          </div>
-                          <Dropdown>
-                            <DropdownTrigger>
-                              <Button isIconOnly size="sm" variant="light" color="default">
-                                <MoreHorizontal className="w-4 h-4" />
-                              </Button>
-                            </DropdownTrigger>
-                            <DropdownMenu>
-                              <DropdownItem
-                                key="view"
-                                startContent={<Eye className="w-4 h-4" />}
-                                as="a"
-                                href={`/${lang}/blog/${post.id}`}
-                              >
-                                {t.view}
-                              </DropdownItem>
-                              <DropdownItem
-                                key="edit"
-                                startContent={<Edit className="w-4 h-4" />}
-                                as="a"
-                                href={`/${lang}/blog/manage/edit/${post.id}`}
-                              >
-                                {t.edit}
-                              </DropdownItem>
-                              <DropdownItem
-                                key="delete"
-                                color="danger"
-                                startContent={<Trash2 className="w-4 h-4" />}
-                                onPress={() => handleDelete(post.id)}
-                              >
-                                {t.deleted}
-                              </DropdownItem>
-                            </DropdownMenu>
-                          </Dropdown>
-                        </div>
 
-                        <p className="text-default-500 text-sm line-clamp-3 mb-4 flex-1">{post.excerpt || "..."}</p>
+                            <p className="text-default-500 text-sm line-clamp-2 mb-4">
+                              {stripMarkdownForExcerpt(post.excerpt || "") || "..."}
+                            </p>
 
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-2 text-sm text-default-400">
-                            <Avatar size="sm" name={post.author?.displayName || t.unknown} className="w-5 h-5" />
-                            <span>{post.author?.displayName || t.unknown}</span>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-2 text-xs text-default-400">
-                            <div className="flex items-center gap-1">
-                              <Bookmark className="w-3 h-3" />
-                              <span className="truncate">{post.category?.name || t.uncategorized}</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <TrendingUp className="w-3 h-3" />
-                              <span>
-                                {post.viewCount} {t.views}
-                              </span>
+                            <div className="flex flex-wrap items-center gap-4 text-sm text-default-400">
+                              <div className="flex items-center gap-2">
+                                <Avatar size="sm" name={post.author?.displayName || t.unknown} className="w-4 h-4" />
+                                <span>{post.author?.displayName || t.unknown}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Bookmark className="w-4 h-4" />
+                                <span>{post.category?.name || t.uncategorized}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <TrendingUp className="w-4 h-4" />
+                                <span>
+                                  {post.viewCount} {t.views}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Calendar className="w-4 h-4" />
+                                <span>{new Date(post.createdAt).toLocaleDateString()}</span>
+                              </div>
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-between pt-2 border-t border-default-100">
-                            <span className="text-xs text-default-400">
-                              {new Date(post.createdAt).toLocaleDateString()}
-                            </span>
-                            <div className="flex gap-1">
-                              <Button
-                                isIconOnly
-                                size="sm"
-                                variant="light"
-                                color="default"
-                                as="a"
-                                href={`/${lang}/blog/${post.id}`}
-                              >
-                                <Eye className="w-3 h-3" />
-                              </Button>
+                          <div className="flex items-center gap-2">
+                            <Button isIconOnly size="sm" variant="light" color="default" as="a" href={viewHref}>
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            {canManage ? (
                               <Button
                                 isIconOnly
                                 size="sm"
@@ -564,94 +676,35 @@ export default function BlogManagePage() {
                                 as="a"
                                 href={`/${lang}/blog/manage/edit/${post.id}`}
                               >
-                                <Edit className="w-3 h-3" />
+                                <Edit className="w-4 h-4" />
                               </Button>
-                            </div>
+                            ) : null}
+                            {canManage ? (
+                              <Dropdown>
+                                <DropdownTrigger>
+                                  <Button isIconOnly size="sm" variant="light" color="default">
+                                    <MoreHorizontal className="w-4 h-4" />
+                                  </Button>
+                                </DropdownTrigger>
+                                <DropdownMenu>
+                                  <DropdownItem
+                                    key="delete"
+                                    color="danger"
+                                    startContent={<Trash2 className="w-4 h-4" />}
+                                    onPress={() => handleDelete(post.id)}
+                                  >
+                                    {t.deleted}
+                                  </DropdownItem>
+                                </DropdownMenu>
+                              </Dropdown>
+                            ) : null}
                           </div>
                         </div>
-                      </>
-                    ) : (
-                      // 列表视图
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-3 mb-3">
-                            <h3 className="font-semibold text-lg line-clamp-1">{post.title}</h3>
-                            <Chip size="sm" color={getStatusColor(post.status)} variant="flat">
-                              {getStatusText(post.status)}
-                            </Chip>
-                            <Chip size="sm" color={getVisibilityColor(post.visibility)} variant="flat">
-                              {getVisibilityText(post.visibility)}
-                            </Chip>
-                          </div>
-
-                          <p className="text-default-500 text-sm line-clamp-2 mb-4">{post.excerpt || "..."}</p>
-
-                          <div className="flex flex-wrap items-center gap-4 text-sm text-default-400">
-                            <div className="flex items-center gap-2">
-                              <Avatar size="sm" name={post.author?.displayName || t.unknown} className="w-4 h-4" />
-                              <span>{post.author?.displayName || t.unknown}</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Bookmark className="w-4 h-4" />
-                              <span>{post.category?.name || t.uncategorized}</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <TrendingUp className="w-4 h-4" />
-                              <span>
-                                {post.viewCount} {t.views}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Calendar className="w-4 h-4" />
-                              <span>{new Date(post.createdAt).toLocaleDateString()}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <Button
-                            isIconOnly
-                            size="sm"
-                            variant="light"
-                            color="default"
-                            as="a"
-                            href={`/${lang}/blog/${post.id}`}
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            isIconOnly
-                            size="sm"
-                            variant="light"
-                            color="primary"
-                            as="a"
-                            href={`/${lang}/blog/manage/edit/${post.id}`}
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Dropdown>
-                            <DropdownTrigger>
-                              <Button isIconOnly size="sm" variant="light" color="default">
-                                <MoreHorizontal className="w-4 h-4" />
-                              </Button>
-                            </DropdownTrigger>
-                            <DropdownMenu>
-                              <DropdownItem
-                                key="delete"
-                                color="danger"
-                                startContent={<Trash2 className="w-4 h-4" />}
-                                onPress={() => handleDelete(post.id)}
-                              >
-                                {t.deleted}
-                              </DropdownItem>
-                            </DropdownMenu>
-                          </Dropdown>
-                        </div>
-                      </div>
-                    )}
-                  </CardBody>
-                </Card>
-              ))}
+                      )}
+                    </CardBody>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </CardBody>

@@ -12,6 +12,7 @@ import { db } from "@/lib/db/config";
 import { categories } from "@/lib/db/schema";
 import { getDictionary } from "@/lib/dictionaries";
 import { postService } from "@/lib/services/post.service";
+import { stripMarkdownForExcerpt } from "@/lib/utils/markdown-plain";
 import type { Locale } from "@/types";
 
 /** 日期展示与 [lang] 对齐 */
@@ -60,7 +61,7 @@ function HomePostCard({
   viewsLabel: string;
 }) {
   const href = `/${lang}/blog/${post.slug}`;
-  const excerpt = (post.excerpt ?? "").trim();
+  const excerpt = stripMarkdownForExcerpt((post.excerpt ?? "").trim());
   const authorLabel = post.author?.displayName || post.author?.username || "";
   const categoryName = post.category?.name;
 

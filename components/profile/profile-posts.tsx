@@ -5,6 +5,8 @@ import Image from "next/image";
 import { Badge, Button, Card, CardBody, Chip } from "@heroui/react";
 import { BookOpen, Edit, Eye, Filter, Heart, MessageSquare, MoreHorizontal, Plus, Search, Trash2 } from "lucide-react";
 
+import { stripMarkdownForExcerpt } from "@/lib/utils/markdown-plain";
+
 interface ProfilePostsProps {
   lang: string;
 }
@@ -315,7 +317,9 @@ export default function ProfilePosts({ lang }: ProfilePostsProps) {
                         {post.title}
                       </h3>
                       {post.excerpt && (
-                        <p className="text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">{post.excerpt}</p>
+                        <p className="text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
+                          {stripMarkdownForExcerpt(post.excerpt)}
+                        </p>
                       )}
 
                       {/* 文章元信息 */}

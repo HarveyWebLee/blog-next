@@ -31,9 +31,11 @@ import {
 
 import { FeaturedImageUpload } from "@/components/blog/featured-image-upload";
 import SimpleEditor from "@/components/blog/simple-editor";
+import { useAuth } from "@/lib/contexts/auth-context";
 import { useCategories } from "@/lib/hooks/useCategories";
 import { useTags } from "@/lib/hooks/useTags";
 import { message } from "@/lib/utils";
+import { clientBearerHeaders } from "@/lib/utils/client-bearer-auth";
 import {
   Category,
   PostData,
@@ -80,14 +82,13 @@ export default function EditBlogPage() {
           excerptPlaceholder: "Write an engaging excerpt to introduce your content...",
           excerptHint: "Shown in post list and search results",
           featuredImage: "Featured Image",
-          featuredImagePlaceholder: "Enter image URL",
-          featuredImageHint: "Recommended size: 1200x630",
+          featuredImageHint: "Upload JPG, PNG, GIF or WebP; recommended size 1200×630.",
+          featuredImageEmptyDrop: "Click to choose or drag an image here",
           featuredImageBtnUpload: "Upload image",
           featuredImageBtnRemove: "Remove",
           featuredImageUploading: "Uploading...",
           featuredImageNeedLogin: "Please sign in to upload images",
           featuredImageUploadFailed: "Upload failed",
-          featuredImageOrUrl: "Or paste an image URL below",
           categoryTag: "Category & Tags",
           categoryTagDesc: "Choose suitable category and tags",
           selectCategory: "Select Category",
@@ -117,6 +118,8 @@ export default function EditBlogPage() {
           allowComments: "Allow Comments",
           allowCommentsHint: "Readers can comment on this post",
           savedAt: "Saved at:",
+          noPermission: "You cannot edit this post",
+          noPermissionDesc: "Only the user who created this post may edit it.",
         }
       : lang === "ja-JP"
         ? {
@@ -148,14 +151,13 @@ export default function EditBlogPage() {
             excerptPlaceholder: "読者に内容を伝える魅力的な概要を書いてください...",
             excerptHint: "記事一覧と検索結果に表示されます",
             featuredImage: "アイキャッチ画像",
-            featuredImagePlaceholder: "画像URLを入力",
-            featuredImageHint: "推奨サイズ: 1200x630",
+            featuredImageHint: "JPG / PNG / GIF / WebP をアップロード。推奨サイズ 1200×630。",
+            featuredImageEmptyDrop: "クリックで選ぶか、ここに画像をドラッグ",
             featuredImageBtnUpload: "画像をアップロード",
             featuredImageBtnRemove: "削除",
             featuredImageUploading: "アップロード中...",
             featuredImageNeedLogin: "アップロードするにはログインしてください",
             featuredImageUploadFailed: "アップロードに失敗しました",
-            featuredImageOrUrl: "または下に画像URLを貼り付け",
             categoryTag: "カテゴリとタグ",
             categoryTagDesc: "適切なカテゴリとタグを選択",
             selectCategory: "カテゴリを選択",
@@ -185,6 +187,8 @@ export default function EditBlogPage() {
             allowComments: "コメントを許可",
             allowCommentsHint: "読者がこの記事にコメントできます",
             savedAt: "保存時刻:",
+            noPermission: "この記事を編集できません",
+            noPermissionDesc: "記事を作成した本人のみ編集できます。",
           }
         : {
             fetchFailed: "获取博客数据失败",
@@ -215,14 +219,13 @@ export default function EditBlogPage() {
             excerptPlaceholder: "写一段吸引人的摘要，让读者了解文章内容...",
             excerptHint: "摘要将显示在博客列表和搜索结果中",
             featuredImage: "特色图片",
-            featuredImagePlaceholder: "输入图片链接地址",
-            featuredImageHint: "建议尺寸：1200x630",
+            featuredImageHint: "请上传 JPG、PNG、GIF 或 WebP；建议尺寸 1200×630。",
+            featuredImageEmptyDrop: "点击选择或将图片拖拽到此处",
             featuredImageBtnUpload: "上传图片",
             featuredImageBtnRemove: "移除图片",
             featuredImageUploading: "上传中...",
             featuredImageNeedLogin: "请先登录后再上传图片",
             featuredImageUploadFailed: "上传失败",
-            featuredImageOrUrl: "或在下方粘贴图片链接",
             categoryTag: "分类和标签",
             categoryTagDesc: "为您的博客选择合适的分类和标签",
             selectCategory: "选择分类",
@@ -252,9 +255,13 @@ export default function EditBlogPage() {
             allowComments: "允许评论",
             allowCommentsHint: "读者可以对此博客发表评论",
             savedAt: "最后保存:",
+            noPermission: "您无权编辑该文章",
+            noPermissionDesc: "只有创建该博客的作者本人可以编辑。",
           };
 
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [forbidden, setForbidden] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [post, setPost] = useState<PostManageDetailData | null>(null);
@@ -277,16 +284,29 @@ export default function EditBlogPage() {
     tagIds: [],
   });
 
-  // 获取博客数据
+  // 获取博客数据：登录后拉取，并校验当前用户是否为作者（与接口 PUT 权限一致）
   useEffect(() => {
+    if (isAuthLoading) return;
+    if (!isAuthenticated || !user) {
+      router.replace(`/${lang}/auth/login`);
+      return;
+    }
+    if (!postId) return;
+
     const fetchPost = async () => {
       try {
         setLoading(true);
+        setForbidden(false);
         const response = await fetch(`/api/posts/${postId}`);
         const result = await response.json();
 
         if (result.success) {
           const postData = result.data as PostManageDetailData;
+          if (postData.posts.authorId !== user.id) {
+            setForbidden(true);
+            setPost(null);
+            return;
+          }
           setPost(postData);
           setFormData({
             title: postData.posts.title || "",
@@ -294,13 +314,12 @@ export default function EditBlogPage() {
             excerpt: postData.posts.excerpt || "",
             content: postData.posts.content || "",
             featuredImage: postData.posts.featuredImage || "",
-            // UpdatePostRequest 使用 undefined 表示未选分类；库表字段可能为 null
             categoryId: postData.posts.categoryId ?? undefined,
             status: postData.posts.status || "draft",
             visibility: postData.posts.visibility || "public",
             password: postData.posts.password || "",
             allowComments: postData.posts.allowComments ?? true,
-            tagIds: postData.tags?.map((tag: any) => tag.id) || [],
+            tagIds: postData.tags?.map((tag: { id: number }) => tag.id) || [],
           });
         } else {
           message.error(t.fetchFailed);
@@ -315,10 +334,8 @@ export default function EditBlogPage() {
       }
     };
 
-    if (postId) {
-      fetchPost();
-    }
-  }, [postId, router, lang, t.fetchFailed]);
+    void fetchPost();
+  }, [postId, router, lang, t.fetchFailed, isAuthLoading, isAuthenticated, user]);
 
   // 处理表单输入变化
   const handleInputChange = (field: keyof UpdatePostRequest, value: any) => {
@@ -373,6 +390,7 @@ export default function EditBlogPage() {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
+          ...clientBearerHeaders(),
         },
         body: JSON.stringify(formData),
       });
@@ -393,12 +411,49 @@ export default function EditBlogPage() {
     }
   };
 
+  if (isAuthLoading) {
+    return (
+      <Card className="shadow-lg border-0">
+        <CardBody className="text-center py-16">
+          <Spinner size="lg" color="primary" />
+          <p className="mt-4 text-default-500 text-lg">{t.loading}</p>
+        </CardBody>
+      </Card>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
+
   if (loading) {
     return (
       <Card className="shadow-lg border-0">
         <CardBody className="text-center py-16">
           <Spinner size="lg" color="primary" />
           <p className="mt-4 text-default-500 text-lg">{t.loading}</p>
+        </CardBody>
+      </Card>
+    );
+  }
+
+  if (forbidden) {
+    return (
+      <Card className="shadow-lg border-0">
+        <CardBody className="text-center py-16">
+          <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-warning-100">
+            <Lock className="h-12 w-12 text-warning" />
+          </div>
+          <h3 className="mb-2 text-xl font-semibold">{t.noPermission}</h3>
+          <p className="mb-6 text-default-500">{t.noPermissionDesc}</p>
+          <Button
+            onPress={() => router.push(`/${lang}/blog/manage`)}
+            color="primary"
+            size="lg"
+            startContent={<ArrowLeft className="h-4 w-4" />}
+          >
+            {t.backManage}
+          </Button>
         </CardBody>
       </Card>
     );
@@ -521,18 +576,17 @@ export default function EditBlogPage() {
 
             <FeaturedImageUpload
               scope="article"
-              value={formData.featuredImage}
+              value={formData.featuredImage ?? ""}
               onChange={(url) => handleInputChange("featuredImage", url)}
               labels={{
                 title: t.featuredImage,
-                urlPlaceholder: t.featuredImagePlaceholder,
                 hint: t.featuredImageHint,
+                emptyDropHint: t.featuredImageEmptyDrop,
                 uploadButton: t.featuredImageBtnUpload,
                 removeButton: t.featuredImageBtnRemove,
                 uploading: t.featuredImageUploading,
                 needLogin: t.featuredImageNeedLogin,
                 uploadFailed: t.featuredImageUploadFailed,
-                orPasteUrl: t.featuredImageOrUrl,
               }}
             />
 

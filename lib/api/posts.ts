@@ -3,6 +3,7 @@
  * 封装所有与文章相关的API调用
  */
 
+import { clientBearerHeaders } from "@/lib/utils/client-bearer-auth";
 import { CreatePostRequest, PaginatedResponse, PostData, PostQueryParams, UpdatePostRequest } from "@/types/blog";
 
 const API_BASE = "/api/posts";
@@ -24,10 +25,15 @@ export class PostsAPI {
     if (params.visibility) searchParams.append("visibility", params.visibility);
     if (params.authorId) searchParams.append("authorId", params.authorId.toString());
     if (params.categoryId) searchParams.append("categoryId", params.categoryId.toString());
+    if (params.tagId != null) searchParams.append("tagId", params.tagId.toString());
     if (params.sortBy) searchParams.append("sortBy", params.sortBy);
     if (params.sortOrder) searchParams.append("sortOrder", params.sortOrder);
 
-    const response = await fetch(`${API_BASE}?${searchParams.toString()}`);
+    const response = await fetch(`${API_BASE}?${searchParams.toString()}`, {
+      headers: {
+        ...clientBearerHeaders(),
+      },
+    });
 
     if (!response.ok) {
       throw new Error(`获取文章列表失败: ${response.statusText}`);
@@ -70,6 +76,7 @@ export class PostsAPI {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...clientBearerHeaders(),
       },
       body: JSON.stringify(data),
     });
@@ -89,6 +96,7 @@ export class PostsAPI {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
+        ...clientBearerHeaders(),
       },
       body: JSON.stringify(data),
     });
@@ -106,6 +114,9 @@ export class PostsAPI {
   static async deletePost(id: number): Promise<boolean> {
     const response = await fetch(`${API_BASE}/${id}`, {
       method: "DELETE",
+      headers: {
+        ...clientBearerHeaders(),
+      },
     });
 
     if (!response.ok) {
@@ -123,6 +134,7 @@ export class PostsAPI {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
+        ...clientBearerHeaders(),
       },
       body: JSON.stringify({ status }),
     });

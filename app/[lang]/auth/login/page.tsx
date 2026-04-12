@@ -8,6 +8,7 @@ import { Button, Form, Input } from "@heroui/react";
 import { ArrowLeftIcon, Eye, EyeOff, Lock, Mail } from "lucide-react";
 
 import { useAuth } from "@/lib/contexts/auth-context";
+import message from "@/lib/utils/message";
 import { LoginRequest } from "@/types/blog";
 
 export default function LoginPage() {
@@ -38,6 +39,7 @@ export default function LoginPage() {
           terms: "Terms",
           and: " and ",
           privacy: "Privacy Policy",
+          networkError: "Network error, please try again later",
         }
       : lang === "ja-JP"
         ? {
@@ -62,6 +64,7 @@ export default function LoginPage() {
             terms: "利用規約",
             and: "と",
             privacy: "プライバシーポリシー",
+            networkError: "通信エラーです。しばらくしてからお試しください",
           }
         : {
             backHome: "返回首页",
@@ -85,6 +88,7 @@ export default function LoginPage() {
             terms: "服务条款",
             and: "和",
             privacy: "隐私政策",
+            networkError: "网络异常，请稍后重试",
           };
   const { login, isLoading } = useAuth();
 
@@ -104,8 +108,12 @@ export default function LoginPage() {
         const returnUrl = new URLSearchParams(window.location.search).get("returnUrl") || `/${lang}`;
         router.push(returnUrl);
       } else {
+        // 接口返回 success:false 时携带 message（如 401 用户名或密码错误）
+        message.error(result.message || t.networkError);
       }
     } catch (error) {
+      console.error("登录提交异常:", error);
+      message.error(t.networkError);
     } finally {
       setIsSubmitting(false);
     }

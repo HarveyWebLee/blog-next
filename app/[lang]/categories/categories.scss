@@ -6,7 +6,6 @@
 // 动画变量
 $animation-duration: 0.3s;
 $animation-easing: cubic-bezier(0.4, 0, 0.2, 1);
-$hover-scale: 1.02;
 $card-shadow:
   0 4px 6px -1px rgba(0, 0, 0, 0.1),
   0 2px 4px -1px rgba(0, 0, 0, 0.06);
@@ -85,7 +84,7 @@ $card-shadow-hover:
 
   &:hover {
     box-shadow: $card-shadow-hover;
-    transform: translateY(-8px) scale($hover-scale);
+    /* 不使用 scale/大幅 translateY，避免分类页内容区出现临时滚动条 */
 
     &::before {
       left: 100%;
@@ -312,7 +311,7 @@ $card-shadow-hover:
   &:hover {
     border-color: var(--heroui-primary-300);
     box-shadow: $card-shadow-hover;
-    transform: translateY(-4px) scale($hover-scale);
+    /* 列表项悬停仅用边框与阴影强调，避免 scale/位移撑出滚动区域 */
 
     &::before {
       transform: scaleX(1);
@@ -371,7 +370,8 @@ $card-shadow-hover:
 
     &:hover {
       background: var(--heroui-primary-200);
-      transform: scale(1.1) rotate(5deg);
+      /* 卡片内图标不再 scale，避免与卡片裁切/滚动条产生观感问题 */
+      filter: brightness(1.05);
     }
   }
 

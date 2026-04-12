@@ -29,6 +29,7 @@
     "format": "prettier . --write",
     "lint:fix": "eslint \"./**/*.+(ts|tsx)\" --fix",
     "format:check": "prettier . --check",
+    "browserslist:update": "pnpm up caniuse-lite baseline-browser-mapping --depth Infinity",
     "prepare": "husky",
     "precommit": "pnpm format:check && lint-staged",
     "release:dry-run": "semantic-release --dry-run",

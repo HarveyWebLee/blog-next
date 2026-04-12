@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { postService } from "@/lib/services/post.service";
 import { subscriptionService } from "@/lib/services/subscription.service";
 import { createErrorResponse, createSuccessResponse } from "@/lib/utils";
+import { requirePostAuthorMutation } from "@/lib/utils/post-author-guard";
 import { UpdatePostRequest } from "@/types/blog";
 
 /**
@@ -68,7 +69,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 /**
  * PUT /api/posts/[id]
  * 更新指定文章的信息
- * 需要用户认证和适当的权限（作者或管理员）
+ * 需要登录且 **仅文章作者本人** 可操作（非作者含管理员亦不可代编辑）。
  */
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -82,9 +83,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       });
     }
 
+    const guard = await requirePostAuthorMutation(request, postId);
+    if (!guard.ok) {
+      return guard.response;
+    }
+    const beforePost = guard.post;
+
     // 获取请求体数据
     const body: UpdatePostRequest = await request.json();
-    const beforePost = await postService.getPostById(postId, false);
 
     // 验证更新数据
     if (body.title && body.title.length > 200) {
@@ -94,12 +100,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (body.content && body.content.length < 10) {
       return NextResponse.json(createErrorResponse("文章内容不能少于10个字符"), { status: 400 });
     }
-
-    // TODO: 这里应该验证用户权限
-    // 检查当前用户是否有权限编辑这篇文章
-    // 1. 检查用户是否已登录
-    // 2. 检查用户是否是文章作者或管理员
-    // 目前暂时跳过权限检查
 
     // 调用服务层更新文章
     const updatedPost = await postService.updatePost(postId, body);
@@ -142,7 +142,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 /**
  * DELETE /api/posts/[id]
  * 删除指定文章
- * 需要用户认证和适当的权限（作者或管理员）
+ * 需要登录且 **仅文章作者本人** 可删除。
  */
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -156,11 +156,10 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       });
     }
 
-    // TODO: 这里应该验证用户权限
-    // 检查当前用户是否有权限删除这篇文章
-    // 1. 检查用户是否已登录
-    // 2. 检查用户是否是文章作者或管理员
-    // 目前暂时跳过权限检查
+    const guard = await requirePostAuthorMutation(request, postId);
+    if (!guard.ok) {
+      return guard.response;
+    }
 
     // 调用服务层删除文章
     const result = await postService.deletePost(postId);
@@ -197,7 +196,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 /**
  * PATCH /api/posts/[id]
  * 部分更新文章信息
- * 主要用于更新文章状态、可见性等字段
+ * 主要用于更新文章状态、可见性等字段；**仅作者本人**。
  */
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -211,9 +210,14 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       });
     }
 
+    const guard = await requirePostAuthorMutation(request, postId);
+    if (!guard.ok) {
+      return guard.response;
+    }
+    const beforePost = guard.post;
+
     // 获取请求体数据
     const body = await request.json();
-    const beforePost = await postService.getPostById(postId, false);
 
     // 验证更新数据
     if (body.status && !["draft", "published", "archived"].includes(body.status)) {
@@ -227,8 +231,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         status: 400,
       });
     }
-
-    // TODO: 这里应该验证用户权限
 
     // 调用服务层更新文章
     const updatedPost = await postService.updatePost(postId, body);

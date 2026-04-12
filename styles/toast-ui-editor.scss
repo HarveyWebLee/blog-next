@@ -614,3 +614,33 @@
 [data-theme="dark"] .toastui-editor-viewer .toastui-editor-contents hr {
   background: linear-gradient(to right, transparent, var(--heroui-default-600), transparent) !important;
 }
+
+/* 博客正文外层：阅读宽度与首段顶边距（与详情页 Card 搭配） */
+.blog-article-markdown {
+  color: inherit;
+  font-size: 1.0625rem;
+  line-height: 1.75;
+  max-width: 48rem;
+}
+
+.blog-article-markdown .toastui-editor-viewer .toastui-editor-contents > *:first-child {
+  margin-top: 0 !important;
+}
+
+.blog-article-markdown .toastui-editor-viewer .toastui-editor-contents {
+  font-size: 1.0625rem !important;
+  line-height: 1.75 !important;
+}
+
+.blog-article-markdown .toastui-editor-viewer .toastui-editor-contents p {
+  line-height: 1.75 !important;
+}
+
+.blog-article-markdown .toastui-editor-viewer .toastui-editor-contents h1 {
+  margin-top: 0 !important;
+}
+
+.blog-article-markdown .toastui-editor-viewer .toastui-editor-contents h2 + p,
+.blog-article-markdown .toastui-editor-viewer .toastui-editor-contents h3 + p {
+  margin-top: 0.5rem !important;
+}

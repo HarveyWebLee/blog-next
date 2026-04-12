@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Avatar } from "@heroui/avatar";
 import { Button } from "@heroui/button";
@@ -26,7 +27,9 @@ import {
 } from "lucide-react";
 
 import MarkdownRenderer from "@/components/blog/markdown-renderer";
+import { useAuth } from "@/lib/contexts/auth-context";
 import { message } from "@/lib/utils";
+import { stripMarkdownForExcerpt } from "@/lib/utils/markdown-plain";
 import { PostData } from "@/types/blog";
 
 export default function BlogDetailPage({ params }: { params: Promise<{ lang: string; slug: string }> }) {
@@ -65,6 +68,7 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
           submitting: "Submitting...",
           submitComment: "Post Comment",
           anonymous: "Anonymous",
+          editArticle: "Edit post",
         }
       : lang === "ja-JP"
         ? {
@@ -88,6 +92,7 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
             submitting: "投稿中...",
             submitComment: "コメント投稿",
             anonymous: "匿名ユーザー",
+            editArticle: "記事を編集",
           }
         : {
             fetchFailed: "获取博客失败",
@@ -110,7 +115,10 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
             submitting: "发布中...",
             submitComment: "发表评论",
             anonymous: "匿名用户",
+            editArticle: "编辑文章",
           };
+
+  const { user, isAuthenticated } = useAuth();
 
   // 解析params
   useEffect(() => {
@@ -376,7 +384,9 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
               <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                 <div className="space-y-4 flex-1">
                   <h1 className="text-4xl lg:text-5xl font-bold blog-title-gradient leading-tight">{post.title}</h1>
-                  {post.excerpt && <p className="text-xl text-default-600 leading-relaxed">{post.excerpt}</p>}
+                  {post.excerpt && (
+                    <p className="text-xl text-default-600 leading-relaxed">{stripMarkdownForExcerpt(post.excerpt)}</p>
+                  )}
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                   <Chip
@@ -493,8 +503,8 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
         {/* 博客内容 - 使用 Markdown 渲染器 */}
         <div className="animate-blog-fade-in-up delay-200">
           <Card className="glass-enhanced">
-            <CardBody className="p-8">
-              <MarkdownRenderer content={post.content} />
+            <CardBody className="p-5 sm:p-8">
+              <MarkdownRenderer content={post.content ?? ""} />
             </CardBody>
           </Card>
 
@@ -536,17 +546,19 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
                     </Button>
                   </div>
 
-                  {/* 编辑按钮 */}
-                  <Button
-                    variant="bordered"
-                    size="lg"
-                    as="a"
-                    href={`/blog/manage/edit/${post.id}`}
-                    startContent={<Edit className="w-5 h-5" />}
-                    className="button-hover-effect animate-blog-scale-in delay-400"
-                  >
-                    编辑文章
-                  </Button>
+                  {/* 仅文章作者本人可见编辑入口（与 /api/posts/[id] PUT 权限一致） */}
+                  {isAuthenticated && user != null && (post.authorId === user.id || post.author?.id === user.id) && (
+                    <Button
+                      variant="bordered"
+                      size="lg"
+                      as={Link}
+                      href={`/${lang}/blog/manage/edit/${post.id}`}
+                      startContent={<Edit className="w-5 h-5" />}
+                      className="button-hover-effect animate-blog-scale-in delay-400"
+                    >
+                      {t.editArticle}
+                    </Button>
+                  )}
                 </div>
               </CardBody>
             </Card>

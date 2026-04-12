@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { postService } from "@/lib/services/post.service";
 import { subscriptionService } from "@/lib/services/subscription.service";
 import { createErrorResponse, createSuccessResponse } from "@/lib/utils";
+import { getAuthUserFromRequest } from "@/lib/utils/request-auth";
 import { CreatePostRequest, PostQueryParams } from "@/types/blog";
 
 /**
@@ -22,12 +23,15 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
 
+    const rawSortOrder = searchParams.get("sortOrder");
+    const sortOrder: "asc" | "desc" = rawSortOrder === "asc" || rawSortOrder === "desc" ? rawSortOrder : "desc";
+
     // 解析查询参数
     const queryParams: PostQueryParams = {
       page: parseInt(searchParams.get("page") || "1"),
       limit: parseInt(searchParams.get("limit") || "10"),
       sortBy: searchParams.get("sortBy") || undefined,
-      sortOrder: (searchParams.get("sortOrder") as "asc" | "desc") || "desc",
+      sortOrder,
       status: (searchParams.get("status") as any) || undefined,
       visibility: (searchParams.get("visibility") as any) || undefined,
       authorId: searchParams.get("authorId") ? parseInt(searchParams.get("authorId")!) : undefined,
@@ -48,6 +52,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(createErrorResponse("每页数量必须在1-100之间"), {
         status: 400,
       });
+    }
+
+    // 按 authorId 筛选（管理后台「我的文章」）时：必须登录且只能查本人，防止窥探他人草稿
+    if (queryParams.authorId != null && !Number.isNaN(queryParams.authorId)) {
+      const viewer = getAuthUserFromRequest(request);
+      if (!viewer) {
+        return NextResponse.json(createErrorResponse("按作者筛选文章需先登录"), { status: 401 });
+      }
+      if (viewer.userId !== queryParams.authorId) {
+        return NextResponse.json(createErrorResponse("无权查看其他作者的管理列表"), { status: 403 });
+      }
     }
 
     // 调用服务层获取文章列表
@@ -93,12 +108,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(createErrorResponse("文章内容不能少于10个字符"), { status: 400 });
     }
 
-    // TODO: 这里应该从JWT token中获取用户ID
-    // 目前暂时使用固定值进行演示
-    const authorId = 1; // 实际应用中应该从认证中间件获取
+    const viewer = getAuthUserFromRequest(request);
+    if (!viewer) {
+      return NextResponse.json(createErrorResponse("请先登录后再创建文章"), { status: 401 });
+    }
 
-    // 调用服务层创建文章
-    const newPost = await postService.createPost(body, authorId);
+    // 调用服务层创建文章（作者固定为当前登录用户）
+    const newPost = await postService.createPost(body, viewer.userId);
 
     const postCore = (newPost as any)?.posts || newPost;
 

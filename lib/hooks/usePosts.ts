@@ -37,7 +37,8 @@ export function usePosts(options: UsePostsOptions = {}) {
 
         const newParams = { ...params, ...queryParams };
         const response = await PostsAPI.getPosts(newParams);
-        console.log("response", response);
+        // 仅在成功落库后同步查询条件，避免失败时页码已变、列表仍是旧数据
+        setParams(newParams);
         setPosts(response.data?.data ?? []);
         setPagination(response.data?.pagination ?? {});
       } catch (err) {
@@ -268,12 +269,13 @@ export function usePosts(options: UsePostsOptions = {}) {
     fetchPosts(resetParams);
   }, [fetchPosts]);
 
-  // 自动获取数据
+  // 首屏拉取：勿把 fetchPosts 放进依赖——fetchPosts 内会 setParams，否则会反复请求
   useEffect(() => {
     if (autoFetch) {
       fetchPosts();
     }
-  }, [autoFetch, fetchPosts]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 仅挂载时拉取；分页/筛选由各操作显式调用 fetchPosts
+  }, [autoFetch]);
 
   return {
     // 状态
