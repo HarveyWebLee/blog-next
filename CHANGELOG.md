@@ -1,3 +1,9 @@
+## [1.2.4](https://github.com/HarveyWebLee/blog-next/compare/v1.2.3...v1.2.4) (2026-04-12)
+
+### Performance Improvements
+
+- **blog:** 更新博客页面链接与登录注册页面的返回链接 ([2b03955](https://github.com/HarveyWebLee/blog-next/commit/2b0395554eb6d28e6255fc7b5f627efc54546d38))
+
 ## [1.2.3](https://github.com/HarveyWebLee/blog-next/compare/v1.2.2...v1.2.3) (2026-04-12)
 
 ### Bug Fixes
