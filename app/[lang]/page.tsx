@@ -170,12 +170,13 @@ export default async function HomePage({ params }: { params: Promise<{ lang: Loc
 
   try {
     const [postsResult, topicRows] = await Promise.all([
+      // 不传 sortBy：与 GET /api/posts、博客列表默认一致，按 COALESCE(publishedAt, updatedAt, createdAt) 最近优先。
+      // 若只按 publishedAt 排序，历史上 publishedAt 为空的已发布文章会排在博客靠前、首页却靠后或进不了前 6 条。
       postService.getPosts({
         status: "published",
         visibility: "public",
         page: 1,
         limit: 6,
-        sortBy: "publishedAt",
         sortOrder: "desc",
       }),
       db
