@@ -1,3 +1,9 @@
+## [1.2.3](https://github.com/HarveyWebLee/blog-next/compare/v1.2.2...v1.2.3) (2026-04-12)
+
+### Bug Fixes
+
+- **config:** 添加从MinIO生成next/image远程图规则的功能 ([c0d96d6](https://github.com/HarveyWebLee/blog-next/commit/c0d96d64164bdeb3e006ff01a6d742904d237e63))
+
 ## [1.2.2](https://github.com/HarveyWebLee/blog-next/compare/v1.2.1...v1.2.2) (2026-04-12)
 
 ### Bug Fixes
