@@ -133,23 +133,8 @@ export function PostCard({ post, lang = "zh-CN", onView, onLike }: PostCardProps
                 fill
                 className="object-cover group-hover:scale-110 transition-transform duration-500"
               />
-              {/* 图片遮罩效果 */}
+              {/* 图片底部轻遮罩（悬停）：仅氛围，不叠分类文案（分类仍在卡片头部展示） */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
-              {/* 图片上的分类标签（备用位置） */}
-              {post.category && (
-                <div className="absolute top-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                  <Chip
-                    size="sm"
-                    variant="solid"
-                    color="primary"
-                    startContent={<Folder className="w-3 h-3" />}
-                    className="backdrop-blur-md bg-primary/90 text-white font-medium shadow-lg"
-                  >
-                    {post.category.name}
-                  </Chip>
-                </div>
-              )}
             </div>
           )}
 

@@ -229,7 +229,8 @@
       }
     },
     "agreement": "プライバシーポリシーを読み、理解しました",
-    "backToHome": "ホームに戻る"
+    "backToHome": "ホームに戻る",
+    "backToPrevious": "前のページへ戻る"
   },
   "tag": {
     "name": "タグ名",
@@ -320,7 +321,8 @@
       }
     },
     "agreement": "利用規約を読み、同意します",
-    "backToHome": "ホームに戻る"
+    "backToHome": "ホームに戻る",
+    "backToPrevious": "前のページへ戻る"
   },
   "title": "荒野"
 }

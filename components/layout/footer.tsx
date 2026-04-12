@@ -2,22 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import { Button } from "@heroui/button";
 import { Divider } from "@heroui/divider";
 import { Input } from "@heroui/input";
-import {
-  BookOpen,
-  ClipboardList,
-  FileCode2,
-  FolderOpen,
-  Hash,
-  Home,
-  Mail,
-  Scale,
-  Shield,
-  Sparkles,
-} from "lucide-react";
+import { BookOpen, ClipboardList, FolderOpen, Hash, Home, Mail, Scale, Shield } from "lucide-react";
 
 import { useAuth } from "@/lib/contexts/auth-context";
 import { message } from "@/lib/utils";
@@ -31,10 +20,9 @@ const resolveLocale = (lang: string): Locale => {
   return "zh-CN";
 };
 
-/** 底部文案：与 Header 导航对齐，并补充隐私条款、API 说明、关于页联系区块 */
+/** 底部文案：与 Header 导航对齐，并补充隐私条款、关于页联系区块 */
 const copy = {
   "zh-CN": {
-    tagline: "记录思考，分享灵感与实用见解。",
     explore: "浏览",
     home: "首页",
     blog: "博客",
@@ -44,12 +32,11 @@ const copy = {
     legal: "条款与说明",
     privacy: "隐私政策",
     terms: "服务条款",
-    apiDocs: "API 说明",
     contact: "联系与反馈",
     contactDesc: "合作、建议或问题，欢迎到关于页查看联系方式。",
     contactCta: "前往联系",
     subscribe: "邮件订阅",
-    subscribeDesc: "新文章发布时我们会发送邮件通知（与侧边栏订阅同一服务）。",
+    subscribeDesc: "新文章发布时我们会发送邮件通知。",
     emailPlaceholder: "输入邮箱地址",
     subscribeBtn: "订阅",
     unsubscribeBtn: "取消订阅",
@@ -62,7 +49,6 @@ const copy = {
     rights: "保留所有权利。",
   },
   "en-US": {
-    tagline: "Ideas, stories, and practical notes — in one place.",
     explore: "Explore",
     home: "Home",
     blog: "Blog",
@@ -72,12 +58,11 @@ const copy = {
     legal: "Legal & docs",
     privacy: "Privacy",
     terms: "Terms",
-    apiDocs: "API docs",
     contact: "Contact",
     contactDesc: "For collaboration or feedback, see contact options on the About page.",
     contactCta: "View contact",
     subscribe: "Newsletter",
-    subscribeDesc: "Get an email when new posts are published (same service as the blog sidebar).",
+    subscribeDesc: "Get an email when new posts are published.",
     emailPlaceholder: "Enter your email",
     subscribeBtn: "Subscribe",
     unsubscribeBtn: "Unsubscribe",
@@ -90,7 +75,6 @@ const copy = {
     rights: "All rights reserved.",
   },
   "ja-JP": {
-    tagline: "思考や実践の記録を、ひとつの場所で。",
     explore: "ナビ",
     home: "ホーム",
     blog: "ブログ",
@@ -100,12 +84,11 @@ const copy = {
     legal: "規約・資料",
     privacy: "プライバシー",
     terms: "利用規約",
-    apiDocs: "API ドキュメント",
     contact: "お問い合わせ",
     contactDesc: "連携やご意見は、についてページの連絡先をご覧ください。",
     contactCta: "連絡先へ",
     subscribe: "メール購読",
-    subscribeDesc: "新着記事をメールでお知らせします（サイドバーと同じ購読サービスです）。",
+    subscribeDesc: "新着記事をメールでお知らせします。",
     emailPlaceholder: "メールアドレスを入力",
     subscribeBtn: "購読する",
     unsubscribeBtn: "購読解除",
@@ -121,6 +104,7 @@ const copy = {
 
 export function Footer() {
   const params = useParams();
+  const pathname = usePathname() || "/";
   const lang = typeof params?.lang === "string" ? params.lang : FALLBACK_LANG;
   const locale = resolveLocale(lang);
   const prefix = `/${lang}`;
@@ -237,22 +221,8 @@ export function Footer() {
         />
 
         <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-12 lg:gap-8 xl:gap-12">
-          {/* 品牌与简介 */}
-          <div className="space-y-4 lg:col-span-4">
-            <Link
-              href={prefix}
-              className="inline-flex items-center gap-2 text-xl font-semibold tracking-tight text-foreground transition-opacity hover:opacity-90"
-            >
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-secondary/20 text-primary">
-                <Sparkles className="h-4 w-4" aria-hidden />
-              </span>
-              BlogNext
-            </Link>
-            <p className="max-w-sm text-sm leading-relaxed text-default-500">{t.tagline}</p>
-          </div>
-
           {/* 主导航 */}
-          <div className="space-y-4 lg:col-span-2">
+          <div className="space-y-4 lg:col-span-3">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-default-400">{t.explore}</h3>
             <nav className="flex flex-col" aria-label={t.explore}>
               <Link href={prefix} className={navLinkClass}>
@@ -278,26 +248,26 @@ export function Footer() {
             </nav>
           </div>
 
-          {/* 条款与联系 */}
+          {/* 条款与说明（链接） */}
           <div className="space-y-4 lg:col-span-3">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-default-400">{t.legal}</h3>
             <nav className="flex flex-col" aria-label={t.legal}>
-              <Link href={`${prefix}/privacy`} className={navLinkClass}>
+              <Link href={`${prefix}/privacy?return=${encodeURIComponent(pathname)}`} className={navLinkClass}>
                 <Shield className="h-4 w-4 shrink-0 text-default-400 transition-colors group-hover:text-primary" />
                 {t.privacy}
               </Link>
-              <Link href={`${prefix}/terms`} className={navLinkClass}>
+              <Link href={`${prefix}/terms?return=${encodeURIComponent(pathname)}`} className={navLinkClass}>
                 <Scale className="h-4 w-4 shrink-0 text-default-400 transition-colors group-hover:text-primary" />
                 {t.terms}
               </Link>
-              <Link href={`${prefix}/api-docs`} className={navLinkClass}>
-                <FileCode2 className="h-4 w-4 shrink-0 text-default-400 transition-colors group-hover:text-primary" />
-                {t.apiDocs}
-              </Link>
             </nav>
+          </div>
+
+          {/* 联系与反馈：独占一列（lg 下与浏览 / 条款 / 订阅并列各占 3 栅格） */}
+          <div className="space-y-4 lg:col-span-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-default-400">{t.contact}</h3>
             <div className="rounded-2xl border-0 bg-white/40 p-4 backdrop-blur-md dark:bg-black/20">
-              <p className="text-xs font-semibold text-foreground">{t.contact}</p>
-              <p className="mt-1 text-xs leading-relaxed text-default-500">{t.contactDesc}</p>
+              <p className="text-xs leading-relaxed text-default-500">{t.contactDesc}</p>
               <Button
                 as={Link}
                 href={`${prefix}/about#contact`}
@@ -312,16 +282,14 @@ export function Footer() {
             </div>
           </div>
 
-          {/* 订阅：与 blog-sidebar 同一套 API */}
+          {/* 邮件订阅：独占一列 */}
           <div className="space-y-4 lg:col-span-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-default-400">{t.subscribe}</h3>
             <div className="flex items-start gap-3">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 text-primary">
                 <Mail className="h-5 w-5" aria-hidden />
               </span>
-              <div>
-                <h3 className="text-sm font-semibold text-foreground">{t.subscribe}</h3>
-                <p className="mt-1 text-xs leading-relaxed text-default-500">{t.subscribeDesc}</p>
-              </div>
+              <p className="text-xs leading-relaxed text-default-500">{t.subscribeDesc}</p>
             </div>
             <div className="rounded-2xl border border-white/20 bg-gradient-to-br from-primary/10 via-secondary/5 to-accent/10 p-4 backdrop-blur-xl dark:border-white/10">
               {!isAuthLoading && isAuthenticated && <p className="mb-3 text-xs text-default-500">{t.loggedInHint}</p>}

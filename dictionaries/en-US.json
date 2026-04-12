@@ -229,7 +229,8 @@
       }
     },
     "agreement": "I have read and understood the privacy policy",
-    "backToHome": "Back to Home"
+    "backToHome": "Back to Home",
+    "backToPrevious": "Back"
   },
   "tag": {
     "name": "Tag Name",
@@ -320,7 +321,8 @@
       }
     },
     "agreement": "I have read and agree to the Terms of Service",
-    "backToHome": "Back to Home"
+    "backToHome": "Back to Home",
+    "backToPrevious": "Back"
   },
   "title": "Wilderness"
 }

@@ -259,7 +259,8 @@
       }
     },
     "agreement": "我已阅读并理解隐私政策",
-    "backToHome": "返回首页"
+    "backToHome": "返回首页",
+    "backToPrevious": "返回上一页"
   },
   "profile": {
     "title": "个人中心",
@@ -479,7 +480,8 @@
       }
     },
     "agreement": "我已阅读并同意服务条款",
-    "backToHome": "返回首页"
+    "backToHome": "返回首页",
+    "backToPrevious": "返回上一页"
   },
   "title": "荒野"
 }

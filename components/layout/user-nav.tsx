@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Button } from "@heroui/button";
 import { Avatar, Dropdown, DropdownItem, DropdownMenu, DropdownSection, DropdownTrigger } from "@heroui/react";
-import { FileIcon, FilesIcon, LogInIcon, LogOutIcon, MailIcon, SettingsIcon, User, UserCircleIcon } from "lucide-react";
+import { FileIcon, FilesIcon, LogInIcon, LogOutIcon, SettingsIcon, UserCircleIcon } from "lucide-react";
 
 import { useAuth } from "@/lib/contexts/auth-context";
 import { Locale } from "@/types";
@@ -26,8 +26,6 @@ export function UserNav() {
       ? {
           dropdown: "User menu",
           section: "Profile & Actions",
-          username: "Username",
-          email: "Email",
           profile: "Profile",
           profileDesc: "Open profile center",
           manage: "Post Management",
@@ -44,8 +42,6 @@ export function UserNav() {
         ? {
             dropdown: "ユーザーメニュー",
             section: "情報と操作",
-            username: "ユーザー名",
-            email: "メール",
             profile: "プロフィール",
             profileDesc: "プロフィールセンターへ",
             manage: "記事管理",
@@ -61,8 +57,6 @@ export function UserNav() {
         : {
             dropdown: "登录下拉框",
             section: "信息及操作",
-            username: "用户名",
-            email: "邮箱",
             profile: "个人中心",
             profileDesc: "个人信息操作入口",
             manage: "文章管理",
@@ -122,20 +116,6 @@ export function UserNav() {
       </DropdownTrigger>
       <DropdownMenu aria-label={t.dropdown} variant="faded">
         <DropdownSection showDivider title={t.section}>
-          <DropdownItem
-            key="user"
-            description={t.username}
-            startContent={<User className={iconClasses} width="1em" height="1em" />}
-          >
-            {user.displayName || user.username}
-          </DropdownItem>
-          <DropdownItem
-            key="email"
-            description={t.email}
-            startContent={<MailIcon className={iconClasses} width="1em" height="1em" />}
-          >
-            {user.email}
-          </DropdownItem>
           <DropdownItem
             key="user-center"
             description={t.profileDesc}

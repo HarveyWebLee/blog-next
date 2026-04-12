@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, usePathname, useRouter } from "next/navigation";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Button, Form, Input } from "@heroui/react";
 import { ArrowLeftIcon, Eye, EyeOff, Lock, Mail } from "lucide-react";
@@ -14,6 +14,7 @@ import { LoginRequest } from "@/types/blog";
 export default function LoginPage() {
   const router = useRouter();
   const params = useParams<{ lang: string }>();
+  const pathname = usePathname();
   const lang = params.lang || "zh-CN";
   const t =
     lang === "en-US"
@@ -252,11 +253,17 @@ export default function LoginPage() {
         <div className="mt-8 text-center">
           <p className="text-xs text-gray-200">
             {t.agreementPrefix}{" "}
-            <Link href={`/${lang}/terms`} className="text-blue-600 hover:underline">
+            <Link
+              href={`/${lang}/terms?return=${encodeURIComponent(pathname)}`}
+              className="text-blue-600 hover:underline"
+            >
               {t.terms}
             </Link>{" "}
             {t.and}{" "}
-            <Link href={`/${lang}/privacy`} className="text-blue-600 hover:underline">
+            <Link
+              href={`/${lang}/privacy?return=${encodeURIComponent(pathname)}`}
+              className="text-blue-600 hover:underline"
+            >
               {t.privacy}
             </Link>
           </p>

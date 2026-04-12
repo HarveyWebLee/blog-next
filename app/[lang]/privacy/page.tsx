@@ -3,7 +3,6 @@
 import { use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
-  ArrowLeft,
   BookOpen,
   CheckCircle,
   Database,
@@ -20,6 +19,7 @@ import {
   Zap,
 } from "lucide-react";
 
+import { LegalBackNav } from "@/components/legal/legal-back-nav";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -236,20 +236,14 @@ export default function PrivacyPage({ params }: PrivacyPageProps) {
         <div className="container mx-auto px-4 relative z-10">
           <AnimatedSection delay={0} animation="fadeInUp">
             <div className="mx-auto text-center">
-              {/* 返回按钮 */}
-              <div className="flex justify-start mb-8">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  asChild
-                  className="group hover:scale-105 transition-all duration-300 hover:shadow-lg hover:shadow-primary/25 border-primary/50 hover:border-primary hover:bg-primary/5"
-                >
-                  <Link href="/auth/login" className="flex items-center">
-                    <ArrowLeft className="h-4 w-4 mr-2 group-hover:-translate-x-1 transition-transform" />
-                    返回登录页
-                  </Link>
-                </Button>
-              </div>
+              <LegalBackNav
+                lang={resolvedParams.lang}
+                forbidSegment="privacy"
+                labels={{
+                  backToPrevious: dict.privacy.backToPrevious,
+                  backToHome: dict.privacy.backToHome,
+                }}
+              />
 
               {/* 标题区域 */}
               <div className="relative mb-8 group">

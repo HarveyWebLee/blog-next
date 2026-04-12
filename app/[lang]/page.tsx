@@ -268,7 +268,7 @@ export default async function HomePage({ params }: { params: Promise<{ lang: Loc
                 {topics.map((topic) => (
                   <Link
                     key={topic.id}
-                    href={`/${lang}/categories`}
+                    href={`/${lang}/blog?categoryId=${topic.id}`}
                     className="min-w-[11rem] max-w-[14rem] shrink-0 snap-start rounded-2xl border-0 bg-white/10 p-4 shadow-none backdrop-blur-xl transition-all duration-300 hover:bg-white/20 hover:shadow-lg hover:shadow-primary/10 dark:bg-black/10 dark:hover:bg-black/20 sm:min-w-0 sm:max-w-none sm:flex-1 sm:basis-[calc(50%-0.375rem)] lg:basis-[calc(25%-0.45rem)]"
                   >
                     <div className="mb-2 flex items-center gap-2 text-primary">

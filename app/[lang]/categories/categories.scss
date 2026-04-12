@@ -13,6 +13,29 @@ $card-shadow-hover:
   0 20px 25px -5px rgba(0, 0, 0, 0.1),
   0 10px 10px -5px rgba(0, 0, 0, 0.04);
 
+/** 分类列表根卡片与搜索条内容区共用：底色、描边、模糊（与 .category-card-modern 根级一致） */
+@mixin category-root-panel-light {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  background: color-mix(in srgb, #ffffff 80%, var(--heroui-content2)) !important;
+  border: 1px solid color-mix(in srgb, var(--heroui-divider) 80%, transparent);
+}
+
+@mixin category-root-panel-shadow-base {
+  box-shadow:
+    0 1px 3px 0 rgba(0, 0, 0, 0.1),
+    0 1px 2px 0 rgba(0, 0, 0, 0.06),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+@mixin category-root-panel-shadow-hover {
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04),
+    0 0 0 1px var(--heroui-primary-200),
+    0 0 20px rgba(59, 130, 246, 0.15);
+}
+
 // 页面容器
 .categories-page {
   background: linear-gradient(
@@ -168,23 +191,78 @@ $card-shadow-hover:
   }
 }
 
-// 搜索和筛选 - 现代化设计
+// 搜索和筛选：外层 Card 透明（去掉 HeroUI 双层 content1），视觉全在 .search-content，与下方 .category-card-modern 根级同一套 mixin
 .search-filter-modern {
   animation: fadeInUp 0.6s ease-out 0.6s both;
-  backdrop-filter: blur(10px);
-  background: var(--heroui-background);
-  border: 1px solid var(--heroui-divider);
-  border-radius: 1.5rem;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
   margin-bottom: 3rem;
 
   .search-content {
-    padding: 2rem;
+    @include category-root-panel-light;
+    @include category-root-panel-shadow-base;
+    border-radius: 1.5rem;
+    overflow: hidden;
+    padding: 2rem !important;
+    position: relative;
+    transition:
+      box-shadow $animation-duration $animation-easing,
+      border-color $animation-duration $animation-easing,
+      opacity $animation-duration $animation-easing;
+
+    // 与 .category-card-modern 一致：顶部渐变条（悬停展开）
+    &::before {
+      background: linear-gradient(90deg, var(--heroui-primary-500), var(--heroui-secondary-500));
+      content: "";
+      height: 4px;
+      left: 0;
+      position: absolute;
+      right: 0;
+      top: 0;
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform $animation-duration $animation-easing;
+      z-index: 3;
+    }
+
+    // 与分类卡片 &:hover::after 一致：轻微光晕层
+    &::after {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 50%, rgba(0, 0, 0, 0.05) 100%);
+      border-radius: inherit;
+      bottom: 0;
+      content: "";
+      left: 0;
+      opacity: 0;
+      pointer-events: none;
+      position: absolute;
+      right: 0;
+      top: 0;
+      transition: opacity $animation-duration $animation-easing;
+      z-index: 1;
+    }
+  }
+
+  // 悬停在外层 Card 或内层任意控件上时，面板与下方分类卡片 hover 表现一致
+  &:hover .search-content {
+    border-color: var(--heroui-primary-300);
+    @include category-root-panel-shadow-hover;
+
+    &::before {
+      transform: scaleX(1);
+    }
+
+    &::after {
+      opacity: 1;
+    }
   }
 
   .search-section {
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
+    position: relative;
+    z-index: 2;
 
     @media (min-width: 768px) {
       align-items: center;
@@ -264,12 +342,11 @@ $card-shadow-hover:
   grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
 }
 
-// 分类卡片 - 全新现代化设计
+// 分类卡片 - 全新现代化设计（根级与搜索条 .search-content 共用 mixin）
 .category-card-modern {
   animation: slideInFromLeft 0.6s ease-out;
   animation-fill-mode: both;
-  background: var(--heroui-background);
-  border: 1px solid var(--heroui-divider);
+  @include category-root-panel-light;
   border-radius: 1.5rem;
   cursor: pointer;
   overflow: hidden;
@@ -318,21 +395,21 @@ $card-shadow-hover:
     }
   }
 
-  // 层级样式
+  // 层级样式（浅色下略掺白，保持通透）
   &.level-1 {
-    background: var(--heroui-primary-50);
+    background: color-mix(in srgb, var(--heroui-primary-50) 88%, #ffffff) !important;
     border-left: 4px solid var(--heroui-primary-300);
     margin-left: 2rem;
   }
 
   &.level-2 {
-    background: var(--heroui-secondary-50);
+    background: color-mix(in srgb, var(--heroui-secondary-50) 88%, #ffffff) !important;
     border-left: 4px solid var(--heroui-secondary-300);
     margin-left: 4rem;
   }
 
   &.level-3 {
-    background: var(--heroui-success-50);
+    background: color-mix(in srgb, var(--heroui-success-50) 88%, #ffffff) !important;
     border-left: 4px solid var(--heroui-success-300);
     margin-left: 6rem;
   }
@@ -703,44 +780,107 @@ $card-shadow-hover:
   }
 }
 
-// 暗色主题适配
-@media (prefers-color-scheme: dark) {
-  .categories-page {
-    background: linear-gradient(
-      135deg,
-      var(--heroui-background) 0%,
-      var(--heroui-background) 50%,
-      var(--heroui-primary-900) 100%
-    );
-  }
+// 暗色主题：与 next-themes 一致使用 html.dark（勿仅用 prefers-color-scheme，否则系统浅色 + 站点暗色时与 HeroUI token 错位）
+html.dark .categories-page {
+  background: linear-gradient(
+    135deg,
+    var(--heroui-background) 0%,
+    var(--heroui-background) 50%,
+    var(--heroui-primary-900) 100%
+  );
 
   .category-card-modern {
-    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    background: color-mix(in srgb, var(--heroui-content1) 82%, transparent) !important;
     border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow:
+      0 1px 3px 0 rgba(0, 0, 0, 0.3),
+      0 1px 2px 0 rgba(0, 0, 0, 0.2),
+      0 0 0 1px rgba(255, 255, 255, 0.1);
+
+    &:hover {
+      box-shadow:
+        0 20px 25px -5px rgba(0, 0, 0, 0.4),
+        0 10px 10px -5px rgba(0, 0, 0, 0.3),
+        0 0 0 1px var(--heroui-primary-400),
+        0 0 20px rgba(59, 130, 246, 0.2);
+    }
 
     &.level-1 {
-      background: var(--heroui-primary-900);
+      background: color-mix(in srgb, var(--heroui-primary-900) 75%, var(--heroui-content1)) !important;
       border-left-color: var(--heroui-primary-600);
     }
 
     &.level-2 {
-      background: var(--heroui-secondary-900);
+      background: color-mix(in srgb, var(--heroui-secondary-900) 75%, var(--heroui-content1)) !important;
       border-left-color: var(--heroui-secondary-600);
     }
 
     &.level-3 {
-      background: var(--heroui-success-900);
+      background: color-mix(in srgb, var(--heroui-success-900) 75%, var(--heroui-content1)) !important;
       border-left-color: var(--heroui-success-600);
     }
   }
 
+  // 搜索条外层透明，与浅色结构一致；面板在 .search-content
   .search-filter-modern {
-    background: rgba(0, 0, 0, 0.4);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+
+    .search-content {
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      background: color-mix(in srgb, var(--heroui-content1) 82%, transparent) !important;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow:
+        0 1px 3px 0 rgba(0, 0, 0, 0.3),
+        0 1px 2px 0 rgba(0, 0, 0, 0.2),
+        0 0 0 1px rgba(255, 255, 255, 0.1);
+      overflow: hidden;
+      position: relative;
+
+      // 顶条在暗色下略提亮，与分类卡片观感一致
+      &::before {
+        background: linear-gradient(90deg, var(--heroui-primary-400), var(--heroui-secondary-400));
+      }
+    }
+
+    &:hover .search-content {
+      border-color: var(--heroui-primary-400);
+      box-shadow:
+        0 20px 25px -5px rgba(0, 0, 0, 0.4),
+        0 10px 10px -5px rgba(0, 0, 0, 0.3),
+        0 0 0 1px var(--heroui-primary-400),
+        0 0 20px rgba(59, 130, 246, 0.2);
+
+      &::before {
+        transform: scaleX(1);
+      }
+
+      &::after {
+        opacity: 1;
+      }
+    }
   }
 
   .children-grid {
     background: var(--heroui-default-100);
+  }
+
+  .stat-card-modern {
+    box-shadow:
+      0 4px 6px -1px rgba(0, 0, 0, 0.3),
+      0 2px 4px -1px rgba(0, 0, 0, 0.2),
+      0 0 0 1px rgba(255, 255, 255, 0.1);
+
+    &:hover {
+      box-shadow:
+        0 25px 50px -12px rgba(0, 0, 0, 0.5),
+        0 0 0 1px rgba(255, 255, 255, 0.2),
+        0 0 30px rgba(255, 255, 255, 0.1);
+    }
   }
 }
 
@@ -762,19 +902,11 @@ $card-shadow-hover:
 
 // 动态box-shadow效果优化
 .category-card-modern {
-  // 基础阴影
-  box-shadow:
-    0 1px 3px 0 rgba(0, 0, 0, 0.1),
-    0 1px 2px 0 rgba(0, 0, 0, 0.06),
-    0 0 0 1px rgba(255, 255, 255, 0.05);
+  @include category-root-panel-shadow-base;
 
   // 悬停时的动态阴影
   &:hover {
-    box-shadow:
-      0 20px 25px -5px rgba(0, 0, 0, 0.1),
-      0 10px 10px -5px rgba(0, 0, 0, 0.04),
-      0 0 0 1px var(--heroui-primary-200),
-      0 0 20px rgba(59, 130, 246, 0.15);
+    @include category-root-panel-shadow-hover;
   }
 
   // 聚焦状态
@@ -903,21 +1035,6 @@ $card-shadow-hover:
   }
 }
 
-// 搜索和筛选卡片的阴影
-.search-filter-modern {
-  box-shadow:
-    0 4px 6px -1px rgba(0, 0, 0, 0.1),
-    0 2px 4px -1px rgba(0, 0, 0, 0.06),
-    0 0 0 1px var(--heroui-divider);
-
-  &:hover {
-    box-shadow:
-      0 10px 15px -3px rgba(0, 0, 0, 0.1),
-      0 4px 6px -2px rgba(0, 0, 0, 0.05),
-      0 0 0 1px var(--heroui-primary-200);
-  }
-}
-
 // 子分类容器的阴影
 .children-section {
   .children-grid {
@@ -973,38 +1090,6 @@ $card-shadow-hover:
       0 4px 6px -1px rgba(0, 0, 0, 0.1),
       0 2px 4px -1px rgba(0, 0, 0, 0.06),
       0 0 20px rgba(59, 130, 246, 0.3);
-  }
-}
-
-// 暗色主题的阴影适配
-@media (prefers-color-scheme: dark) {
-  .category-card-modern {
-    box-shadow:
-      0 1px 3px 0 rgba(0, 0, 0, 0.3),
-      0 1px 2px 0 rgba(0, 0, 0, 0.2),
-      0 0 0 1px rgba(255, 255, 255, 0.1);
-
-    &:hover {
-      box-shadow:
-        0 20px 25px -5px rgba(0, 0, 0, 0.4),
-        0 10px 10px -5px rgba(0, 0, 0, 0.3),
-        0 0 0 1px var(--heroui-primary-400),
-        0 0 20px rgba(59, 130, 246, 0.2);
-    }
-  }
-
-  .stat-card-modern {
-    box-shadow:
-      0 4px 6px -1px rgba(0, 0, 0, 0.3),
-      0 2px 4px -1px rgba(0, 0, 0, 0.2),
-      0 0 0 1px rgba(255, 255, 255, 0.1);
-
-    &:hover {
-      box-shadow:
-        0 25px 50px -12px rgba(0, 0, 0, 0.5),
-        0 0 0 1px rgba(255, 255, 255, 0.2),
-        0 0 30px rgba(255, 255, 255, 0.1);
-    }
   }
 }
 

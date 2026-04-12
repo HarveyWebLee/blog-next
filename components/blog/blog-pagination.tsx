@@ -90,14 +90,15 @@ export function BlogPagination({ page, totalPages, onPageChange, lang = "zh-CN" 
       {/* 状态气泡 */}
       <div className="mb-4 flex justify-center">
         <div
-          className="relative rounded-2xl border-[3px] border-foreground/80 bg-warning-200 px-5 py-2 font-black text-foreground shadow-[5px_5px_0_0] shadow-primary/40 dark:border-warning-400/80 dark:bg-warning-500/25 dark:text-warning-100 dark:shadow-warning-900/40"
+          className="relative rounded-2xl border-[3px] border-foreground/80 bg-warning-200 px-5 py-2 font-black text-foreground dark:border-warning-300/70 dark:bg-warning-950/55 dark:text-warning-50"
           role="status"
           aria-live="polite"
         >
+          {/* 暗色：深琥珀底 + warning-50 正文，避免 warning-100 叠在半透明 warning-500 上对比不足 */}
           <span className="tabular-nums">{t.bubble(page, totalPages)}</span>
           {/* 小尖角，漫画对话框感 */}
           <span
-            className="absolute -bottom-2 left-1/2 h-0 w-0 -translate-x-1/2 border-x-8 border-t-8 border-x-transparent border-t-foreground/80 dark:border-t-warning-400/80"
+            className="absolute -bottom-2 left-1/2 h-0 w-0 -translate-x-1/2 border-x-8 border-t-8 border-x-transparent border-t-foreground/80 dark:border-t-warning-300/70"
             aria-hidden
           />
         </div>

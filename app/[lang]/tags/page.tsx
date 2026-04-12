@@ -13,7 +13,6 @@ import {
   AlertCircle,
   BarChart3,
   Calendar,
-  Eye,
   Filter,
   Grid3X3,
   Hash,
@@ -42,7 +41,6 @@ const TAG_PAGE_TEXT: Record<
   Locale,
   {
     createdAt: string;
-    viewsSuffix: string;
     activeTag: string;
     inactiveTag: string;
     sortByName: string;
@@ -74,7 +72,6 @@ const TAG_PAGE_TEXT: Record<
 > = {
   "zh-CN": {
     createdAt: "创建于",
-    viewsSuffix: "次浏览",
     activeTag: "活跃标签",
     inactiveTag: "非活跃标签",
     sortByName: "按名称排序",
@@ -105,7 +102,6 @@ const TAG_PAGE_TEXT: Record<
   },
   "en-US": {
     createdAt: "Created at",
-    viewsSuffix: "views",
     activeTag: "Active Tag",
     inactiveTag: "Inactive Tag",
     sortByName: "Sort by Name",
@@ -136,7 +132,6 @@ const TAG_PAGE_TEXT: Record<
   },
   "ja-JP": {
     createdAt: "作成日",
-    viewsSuffix: "閲覧",
     activeTag: "有効タグ",
     inactiveTag: "無効タグ",
     sortByName: "名前順",
@@ -193,13 +188,16 @@ function TagCard({
   const [isLiked, setIsLiked] = useState(false);
 
   return (
-    <div className="group relative animate-fade-in-up" style={{ animationDelay: `${index * 100}ms` }}>
-      {/* 背景光效 */}
-      <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/20 via-secondary/10 to-accent/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl" />
+    <div
+      className="group relative flex h-full min-h-0 animate-fade-in-up flex-col"
+      style={{ animationDelay: `${index * 100}ms` }}
+    >
+      {/* 背景光效：与博客 PostCard 外层一致（不使用全局 .blog-card，避免文章卡专用 min-height 拉到标签卡） */}
+      <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/20 via-secondary/10 to-accent/20 opacity-0 blur-xl transition-opacity duration-500 group-hover:opacity-100" />
 
-      {/* 主卡片 */}
+      {/* 主卡片：整列等高（grid items-stretch + h-full），内部用 flex 把底栏顶到底 */}
       <Card
-        className="relative w-full border-0 backdrop-blur-xl bg-white/10 dark:bg-black/10 hover:bg-white/20 dark:hover:bg-black/20 transition-all duration-500 hover:scale-105 hover:shadow-2xl hover:shadow-primary/20 cursor-pointer overflow-hidden"
+        className="relative flex h-full min-h-[260px] w-full cursor-pointer flex-col overflow-hidden border-0 bg-white/10 backdrop-blur-xl transition-all duration-500 hover:scale-105 hover:bg-white/20 hover:shadow-2xl hover:shadow-primary/20 sm:min-h-[280px] dark:bg-black/10 dark:hover:bg-black/20"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
@@ -211,72 +209,62 @@ function TagCard({
           }}
         />
 
-        <CardBody className="p-6 relative">
-          {/* 标签头部 */}
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center gap-3">
-              {/* 动态颜色指示器 */}
-              <div className="relative">
+        <CardBody className="relative flex min-h-0 flex-1 flex-col overflow-hidden p-6">
+          {/* 标签头部：标题两行 + 描述两行占位，避免有无描述时卡片高低不一 */}
+          <div className="mb-4 flex shrink-0 items-start justify-between gap-2">
+            <div className="flex min-w-0 flex-1 items-start gap-3">
+              <div className="relative shrink-0">
                 <div
-                  className="w-6 h-6 rounded-full border-2 border-white/50 shadow-lg transition-all duration-300 group-hover:scale-110 group-hover:shadow-xl"
+                  className="h-6 w-6 rounded-full border-2 border-white/50 shadow-lg transition-all duration-300 group-hover:scale-110 group-hover:shadow-xl"
                   style={{
                     backgroundColor: tag.color || "#667eea",
                     boxShadow: `0 0 20px ${tag.color || "#667eea"}40`,
                   }}
                 />
-                {isHovered && (
-                  <div
-                    className="absolute inset-0 rounded-full animate-ping opacity-75"
-                    style={{ backgroundColor: tag.color || "#667eea" }}
-                  />
-                )}
               </div>
 
-              {/* 标签信息 */}
-              <div className="flex-1 min-w-0">
-                <h3 className="text-xl font-bold text-foreground group-hover:text-primary transition-colors duration-300 truncate">
+              <div className="min-w-0 flex-1">
+                <h3 className="line-clamp-2 min-h-[3.25rem] text-xl font-bold leading-snug text-foreground transition-colors duration-300 group-hover:text-primary">
                   {tag.name}
                 </h3>
-                {tag.description && (
-                  <p className="text-sm text-default-600 mt-1 line-clamp-2 group-hover:text-default-700 dark:group-hover:text-default-300 transition-colors duration-300">
-                    {tag.description}
-                  </p>
-                )}
+                <p className="mt-1 line-clamp-2 min-h-[2.5rem] text-sm text-default-600 transition-colors duration-300 group-hover:text-default-700 dark:group-hover:text-default-300">
+                  {tag.description?.trim() ? tag.description : "\u00a0"}
+                </p>
               </div>
             </div>
 
-            {/* 文章数量徽章 */}
             <Badge
               content={tag.postCount || 0}
               color="primary"
               variant="flat"
-              className="animate-scale-in"
+              className="shrink-0 animate-scale-in"
               style={{ animationDelay: `${index * 100 + 200}ms` }}
             >
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
-                <Hash className="w-5 h-5 text-primary" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-secondary/20">
+                <Hash className="h-5 w-5 text-primary" />
               </div>
             </Badge>
           </div>
 
           {/* 标签统计信息 */}
-          <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="mb-4 grid shrink-0 grid-cols-2 gap-4">
             <div className="flex items-center gap-2 text-sm text-default-600">
-              <Calendar className="w-4 h-4" />
-              <span>
+              <Calendar className="h-4 w-4 shrink-0" />
+              <span className="leading-snug">
                 {t.createdAt} {new Date(tag.createdAt).toLocaleDateString(locale)}
               </span>
             </div>
+            {/* 须使用稳定数据：勿用 Math.random()，否则 isHovered / isLiked 触发重渲染时数字会跳变 */}
             <div className="flex items-center gap-2 text-sm text-default-600">
-              <Eye className="w-4 h-4" />
-              <span>
-                {Math.floor(Math.random() * 1000)} {t.viewsSuffix}
+              <Layers className="h-4 w-4 shrink-0" />
+              <span className="leading-snug">
+                {tag.postCount ?? 0} {t.postUnit}
               </span>
             </div>
           </div>
 
-          {/* 底部操作栏 */}
-          <div className="flex items-center justify-between pt-4 border-t border-white/10">
+          {/* 底部操作栏：顶到底部，同一行卡片等高时仍对齐底边 */}
+          <div className="mt-auto flex shrink-0 items-center justify-between border-t border-white/10 pt-4">
             <div className="flex items-center gap-2">
               <Button
                 size="sm"
@@ -313,12 +301,15 @@ function TagCard({
               <span>{tag.isActive ? t.activeTag : t.inactiveTag}</span>
             </div>
           </div>
-
-          {/* 悬停时的光效 */}
-          {isHovered && (
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-shimmer" />
-          )}
         </CardBody>
+
+        {/* 悬停玻璃高光：与 PostCard 相同的一次性扫光，避免 CardBody 内 infinite shimmer */}
+        {isHovered ? (
+          <div
+            className="pointer-events-none absolute inset-0 rounded-2xl animate-post-card-glass-sweep-once"
+            aria-hidden
+          />
+        ) : null}
       </Card>
     </div>
   );
@@ -774,7 +765,7 @@ export default function TagsPage() {
 
       {/* 标签列表 */}
       <div
-        className={`grid gap-6 ${
+        className={`grid items-stretch gap-6 ${
           viewMode === "grid" ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-1"
         }`}
       >

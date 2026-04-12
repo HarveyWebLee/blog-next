@@ -359,8 +359,14 @@ function SearchAndFilter({
   t: (typeof CATEGORY_PAGE_TEXT)[Locale];
 }) {
   return (
-    <Card className="search-filter-modern">
-      <CardBody className="search-content">
+    <Card
+      className="search-filter-modern"
+      classNames={{
+        // 与 categories.scss 一致：外层不铺 content1，由 .search-content 承担与分类卡片相同的表面样式
+        base: "!rounded-none !border-none !bg-transparent !shadow-none overflow-visible",
+      }}
+    >
+      <CardBody className="search-content !bg-transparent">
         <div className="search-section">
           <div className="search-input-wrapper">
             <Search className="search-icon" />

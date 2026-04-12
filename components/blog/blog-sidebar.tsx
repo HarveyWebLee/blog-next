@@ -197,7 +197,7 @@ export function BlogSidebar({ lang = "zh-CN" }: { lang?: string }) {
             {activeCategories.map((category, index) => (
               <Link
                 key={category.id}
-                href={`/${lang}/categories/${category.slug}`}
+                href={`/${lang}/blog?categoryId=${category.id}`}
                 className="group flex items-center justify-between rounded-lg border border-transparent bg-white/5 p-3 backdrop-blur-xl transition-colors duration-300 dark:bg-black/5 hover:border-primary/20 hover:bg-white/10 dark:hover:border-primary/25 dark:hover:bg-black/10"
                 style={{ animationDelay: `${index * 100}ms` }}
               >
@@ -237,7 +237,7 @@ export function BlogSidebar({ lang = "zh-CN" }: { lang?: string }) {
             {activeTags.map((tag, index) => (
               <Link
                 key={tag.id}
-                href={`/${lang}/tags/${tag.slug}`}
+                href={`/${lang}/blog?tagId=${tag.id}`}
                 className="animate-fade-in-up"
                 style={{ animationDelay: `${index * 100}ms` }}
               >
