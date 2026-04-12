@@ -1,3 +1,9 @@
+## [1.2.1](https://github.com/HarveyWebLee/blog-next/compare/v1.2.0...v1.2.1) (2026-04-12)
+
+### Bug Fixes
+
+- **deploy:** 调整数据库迁移超时设置与优化 pnpm 安装 ([d98965c](https://github.com/HarveyWebLee/blog-next/commit/d98965cb791f1d4507b413fd78960dbf74f8774f))
+
 # [1.2.0](https://github.com/HarveyWebLee/blog-next/compare/v1.1.2...v1.2.0) (2026-04-12)
 
 ### Features
