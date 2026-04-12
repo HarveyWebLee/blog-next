@@ -1,3 +1,9 @@
+## [1.2.2](https://github.com/HarveyWebLee/blog-next/compare/v1.2.1...v1.2.2) (2026-04-12)
+
+### Bug Fixes
+
+- **deploy:** 优化数据库迁移步骤与超时设置 ([cb187e2](https://github.com/HarveyWebLee/blog-next/commit/cb187e2e76c406c543acd4998a7dec34d184d86e))
+
 ## [1.2.1](https://github.com/HarveyWebLee/blog-next/compare/v1.2.0...v1.2.1) (2026-04-12)
 
 ### Bug Fixes
