@@ -97,6 +97,12 @@ const nextConfig: NextConfig = {
         port: "",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "**.music.126.net",
+        port: "",
+        pathname: "/**",
+      },
     ],
   },
   eslint: {

@@ -5,8 +5,8 @@
 
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useParams } from "next/navigation";
+import { MouseEvent, useEffect, useRef, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { Button, Card, CardBody, Chip, Divider, Input, Spinner } from "@heroui/react";
 import {
   BookOpen,
@@ -18,12 +18,10 @@ import {
   FolderOpen,
   Hash,
   Search,
-  Settings,
   TrendingUp,
   Users,
 } from "lucide-react";
 
-import { useAuth } from "@/lib/contexts/auth-context";
 import { useCategories } from "@/lib/hooks/useCategories";
 import { Locale } from "@/types";
 import { Category } from "@/types/blog";
@@ -152,6 +150,7 @@ function CategoryCard({
   locale: Locale;
   t: (typeof CATEGORY_PAGE_TEXT)[Locale];
 }) {
+  const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isSelected, setIsSelected] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -186,6 +185,12 @@ function CategoryCard({
     if (hasChildren) {
       setIsExpanded(!isExpanded);
     }
+  };
+
+  /** 跳转到博客列表并按当前分类过滤文章 */
+  const handleOpenCategoryPosts = (e: MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    router.push(`/${locale}/blog?categoryId=${category.id}`);
   };
 
   return (
@@ -254,11 +259,11 @@ function CategoryCard({
         {/* 卡片内容区域 */}
         <div className="category-card-body">
           <div className="category-stats-grid">
-            <div className="stat-item">
+            <button type="button" className="stat-item" onClick={handleOpenCategoryPosts}>
               <BookOpen className="w-4 h-4" />
               <span>{t.statPosts}</span>
               <strong>{category.postCount || 0}</strong>
-            </div>
+            </button>
             <div className="stat-item">
               <Users className="w-4 h-4" />
               <span>{t.statChildren}</span>
@@ -403,7 +408,6 @@ export default function CategoriesPage() {
   const params = useParams<{ lang: string }>();
   const locale = resolveLocale(params.lang);
   const t = CATEGORY_PAGE_TEXT[locale];
-  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   // 使用分类数据管理 Hook
   const {
     categories,
@@ -420,46 +424,8 @@ export default function CategoriesPage() {
     limit: 100,
   });
 
-  // 仅在认证状态完成初始化后，基于登录态决定是否展示分类管理入口。
-  // 这里不做角色判断，满足“登录后可见”的产品要求。
-  const canShowManageEntry = !isAuthLoading && isAuthenticated;
-
-  // 管理功能处理
-  const handleManageCategories = () => {
-    // 分类页面本身位于国际化路由下，管理页也需要保留当前语言前缀。
-    window.location.href = `/${locale}/categories/manage`;
-  };
-
   return (
     <div className="categories-page">
-      {/* 管理功能入口 */}
-      {canShowManageEntry && (
-        <div className="mb-6">
-          <Card className="bg-gradient-to-r from-primary-50 to-secondary-50 border-primary-200">
-            <CardBody className="flex flex-row items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
-                  <Settings className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-foreground">{t.manageTitle}</h3>
-                  <p className="text-sm text-default-600">{t.manageDesc}</p>
-                </div>
-              </div>
-              <Button
-                color="primary"
-                variant="solid"
-                startContent={<Settings className="w-4 h-4" />}
-                onPress={handleManageCategories}
-                className="ml-4"
-              >
-                {t.enterManage}
-              </Button>
-            </CardBody>
-          </Card>
-        </div>
-      )}
-
       {/* 统计信息 */}
       <CategoryStats categories={categories} t={t} />
 

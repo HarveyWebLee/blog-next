@@ -21,7 +21,7 @@ import {
 } from "@heroui/react";
 import { ArrowLeft, Eye, FileText, Folder, Plus } from "lucide-react";
 
-import { message } from "@/lib/utils";
+import { generateRandomUrlAlias, message } from "@/lib/utils";
 import { Locale } from "@/types";
 import { ApiResponse, Category, CreateCategoryRequest } from "@/types/blog";
 
@@ -39,8 +39,8 @@ const CREATE_TEXT: Record<Locale, Record<string, string>> = {
     namePlaceholder: "请输入分类名称",
     nameDesc: "分类的显示名称",
     slug: "分类标识 (Slug)",
-    slugPlaceholder: "URL友好的标识符",
-    slugAuto: "留空将自动生成",
+    slugPlaceholder: "默认 8 位随机码，可手动修改",
+    slugAuto: "默认自动生成 8 位英文数字随机码",
     description: "分类描述",
     descriptionPlaceholder: "请输入分类描述",
     descriptionDesc: "可选的分类描述信息",
@@ -75,8 +75,8 @@ const CREATE_TEXT: Record<Locale, Record<string, string>> = {
     namePlaceholder: "Enter category name",
     nameDesc: "Display name of category",
     slug: "Category Slug",
-    slugPlaceholder: "URL-friendly identifier",
-    slugAuto: "Leave empty to auto-generate",
+    slugPlaceholder: "8-char random code by default; editable",
+    slugAuto: "Auto-generated 8-char alphanumeric code",
     description: "Description",
     descriptionPlaceholder: "Enter category description",
     descriptionDesc: "Optional category description",
@@ -111,8 +111,8 @@ const CREATE_TEXT: Record<Locale, Record<string, string>> = {
     namePlaceholder: "カテゴリー名を入力",
     nameDesc: "表示用のカテゴリー名",
     slug: "カテゴリースラッグ",
-    slugPlaceholder: "URL 用識別子",
-    slugAuto: "空欄で自動生成",
+    slugPlaceholder: "既定は8文字のランダムコード（編集可）",
+    slugAuto: "英数字8文字のランダムコードを自動生成",
     description: "説明",
     descriptionPlaceholder: "カテゴリー説明を入力",
     descriptionDesc: "任意の説明",
@@ -148,9 +148,10 @@ export default function CreateCategoryPage() {
   const t = CREATE_TEXT[locale];
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
+  /** 创建分类：默认生成 8 位英文数字随机标识，用户可手动修改 */
   const [formData, setFormData] = useState<CreateCategoryRequest>({
     name: "",
-    slug: "",
+    slug: generateRandomUrlAlias(8),
     description: "",
     parentId: undefined,
     sortOrder: 0,
@@ -171,21 +172,11 @@ export default function CreateCategoryPage() {
     }
   };
 
-  // 自动生成slug
-  const generateSlug = (name: string) => {
-    return name
-      .toLowerCase()
-      .replace(/[^a-z0-9\u4e00-\u9fa5]/g, "-")
-      .replace(/-+/g, "-")
-      .replace(/^-|-$/g, "");
-  };
-
   // 处理名称变化
   const handleNameChange = (value: string) => {
     setFormData({
       ...formData,
       name: value,
-      slug: formData.slug || generateSlug(value),
     });
   };
 
@@ -208,7 +199,8 @@ export default function CreateCategoryPage() {
         },
         body: JSON.stringify({
           ...formData,
-          slug: formData.slug || generateSlug(formData.name),
+          // 若用户手动清空，则提交前再自动补一个 8 位随机标识
+          slug: formData.slug?.trim() || generateRandomUrlAlias(8),
         }),
       });
 

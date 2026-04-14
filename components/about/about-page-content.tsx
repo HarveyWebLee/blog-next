@@ -12,24 +12,22 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
-/**
- * 关于页「可扫读信息卡」统一悬停：轻微上浮、阴影与底色略提亮，ease-out 收束更自然。
- * prefers-reduced-motion 下取消位移，避免眩晕感。
- */
-const ABOUT_CARD_HOVER = cn(
-  "group overflow-hidden rounded-xl border-0 bg-background/70 shadow-sm backdrop-blur-sm",
-  "transition-[transform,box-shadow,background-color] duration-300 ease-out",
-  "hover:-translate-y-1 hover:bg-background/88 hover:shadow-lg hover:shadow-black/[0.07] dark:hover:shadow-black/30",
-  "motion-reduce:transition-shadow motion-reduce:hover:translate-y-0 motion-reduce:hover:shadow-md"
-);
+import "./about-page-content.scss";
 
-/** 底部致谢条：位移更小、阴影略更强，与上方三列卡片区分开层次 */
-const ABOUT_THANKS_HOVER = cn(
-  "group overflow-hidden rounded-xl border-0 bg-gradient-to-br from-background/90 to-muted/25 shadow-md backdrop-blur-sm",
-  "transition-[transform,box-shadow] duration-300 ease-out",
-  "hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/[0.08] dark:hover:shadow-black/35",
-  "motion-reduce:hover:translate-y-0 motion-reduce:hover:shadow-lg"
-);
+/**
+ * 关于页卡片统一复用「分类页卡片」的核心视觉与交互：
+ * 1) 毛玻璃半透明底 + 细描边；
+ * 2) 顶部渐变条 hover 展开；
+ * 3) hover 光晕蒙层 + 发光阴影；
+ * 4) 轻微上浮（减少动画偏好时自动关闭位移）。
+ */
+const ABOUT_CARD_HOVER = cn("about-card-modern", "group");
+
+/**
+ * 底部致谢卡沿用同一交互语言，保持全页卡片体验一致。
+ * 仅保留轻微渐变底色来区分信息层级，不再使用另一套 hover 动效。
+ */
+const ABOUT_THANKS_HOVER = cn(ABOUT_CARD_HOVER, "about-card-modern--thanks");
 
 /** 关于页文案：由服务端词典注入，避免硬编码三语文案 */
 export type AboutPageDictionary = AboutMusicCopy & {
@@ -42,8 +40,24 @@ export type AboutPageDictionary = AboutMusicCopy & {
   badge3: string;
   ctaBlog: string;
   ctaContact: string;
+  introTitle: string;
+  introLead: string;
+  intro1Title: string;
+  intro1Desc: string;
+  intro2Title: string;
+  intro2Desc: string;
+  intro3Title: string;
+  intro3Desc: string;
   valuesTitle: string;
   valuesLead: string;
+  practiceTitle: string;
+  practiceLead: string;
+  practice1Title: string;
+  practice1Desc: string;
+  practice2Title: string;
+  practice2Desc: string;
+  practice3Title: string;
+  practice3Desc: string;
   value1Title: string;
   value1Desc: string;
   value2Title: string;
@@ -117,6 +131,11 @@ export function AboutPageContent({ lang, about: a }: Props) {
     musicPause: a.musicPause,
     musicMute: a.musicMute,
     musicUnmute: a.musicUnmute,
+    musicVolume: a.musicVolume,
+    musicOpenExternal: a.musicOpenExternal,
+    musicLoopOff: a.musicLoopOff,
+    musicLoopAll: a.musicLoopAll,
+    musicLoopOne: a.musicLoopOne,
     tracks: a.tracks,
   };
 
@@ -134,7 +153,7 @@ export function AboutPageContent({ lang, about: a }: Props) {
 
       {/* 首屏：无额外全幅色块，避免与主背景形成「硬边条」 */}
       <section className="relative overflow-hidden py-16 md:py-24">
-        <div className="relative z-10 container mx-auto max-w-3xl px-4 text-center">
+        <div className="relative z-10 container mx-auto max-w-5xl px-4 text-center">
           <AnimatedSection animation="fadeInUp">
             <div className="relative mx-auto mb-8 w-28 h-28 md:w-32 md:h-32">
               <div className="relative z-10 overflow-hidden rounded-full shadow-xl ring-2 ring-primary/10">
@@ -176,9 +195,65 @@ export function AboutPageContent({ lang, about: a }: Props) {
         </div>
       </section>
 
+      <section className="relative pb-8 md:pb-12">
+        <div className="container mx-auto max-w-7xl px-4">
+          <AnimatedSection className="mb-8 text-center" animation="fadeInUp">
+            <h2 className="mb-3 text-2xl font-bold md:text-3xl">{a.introTitle}</h2>
+            <p className="mx-auto max-w-3xl text-muted-foreground">{a.introLead}</p>
+          </AnimatedSection>
+          <div className="grid gap-6 md:grid-cols-3">
+            {[
+              { title: a.intro1Title, desc: a.intro1Desc, icon: BookOpen },
+              { title: a.intro2Title, desc: a.intro2Desc, icon: PenLine },
+              { title: a.intro3Title, desc: a.intro3Desc, icon: Sparkles },
+            ].map((item, i) => (
+              <AnimatedSection key={item.title} delay={i * 80} animation="slideInUp">
+                <Card className={cn("h-full p-6", ABOUT_CARD_HOVER)}>
+                  <div className="mb-4 inline-flex rounded-xl bg-primary/10 p-3 text-primary transition-[transform,background-color] duration-300 ease-out group-hover:scale-[1.06] group-hover:bg-primary/[0.16]">
+                    <item.icon className="h-6 w-6" />
+                  </div>
+                  <h3 className="mb-2 text-lg font-semibold transition-colors duration-300 group-hover:text-foreground">
+                    {item.title}
+                  </h3>
+                  <p className="text-sm leading-relaxed text-muted-foreground transition-colors duration-300 group-hover:text-muted-foreground/90">
+                    {item.desc}
+                  </p>
+                </Card>
+              </AnimatedSection>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* 价值观：仅用极淡背景做过渡，不用上下边框线 */}
       <section className="relative bg-gradient-to-b from-muted/0 via-muted/20 to-muted/0 py-16 md:py-20">
-        <div className="container mx-auto max-w-5xl px-4">
+        <div className="container mx-auto max-w-7xl px-4">
+          <AnimatedSection className="mb-12 text-center" animation="fadeInUp">
+            <h2 className="mb-3 text-2xl font-bold md:text-3xl">{a.practiceTitle}</h2>
+            <p className="mx-auto max-w-3xl text-muted-foreground">{a.practiceLead}</p>
+          </AnimatedSection>
+          <div className="mb-14 grid gap-6 md:grid-cols-3">
+            {[
+              { title: a.practice1Title, desc: a.practice1Desc, icon: PenLine },
+              { title: a.practice2Title, desc: a.practice2Desc, icon: Sparkles },
+              { title: a.practice3Title, desc: a.practice3Desc, icon: Heart },
+            ].map((item, i) => (
+              <AnimatedSection key={item.title} delay={i * 80} animation="slideInUp">
+                <Card className={cn("h-full p-6", ABOUT_CARD_HOVER)}>
+                  <div className="mb-4 inline-flex rounded-xl bg-primary/10 p-3 text-primary transition-[transform,background-color] duration-300 ease-out group-hover:scale-[1.06] group-hover:bg-primary/[0.16]">
+                    <item.icon className="h-6 w-6" />
+                  </div>
+                  <h3 className="mb-2 text-lg font-semibold transition-colors duration-300 group-hover:text-foreground">
+                    {item.title}
+                  </h3>
+                  <p className="text-sm leading-relaxed text-muted-foreground transition-colors duration-300 group-hover:text-muted-foreground/90">
+                    {item.desc}
+                  </p>
+                </Card>
+              </AnimatedSection>
+            ))}
+          </div>
+
           <AnimatedSection className="mb-12 text-center" animation="fadeInUp">
             <h2 className="mb-3 text-2xl font-bold md:text-3xl">{a.valuesTitle}</h2>
             <p className="mx-auto max-w-2xl text-muted-foreground">{a.valuesLead}</p>
@@ -209,7 +284,7 @@ export function AboutPageContent({ lang, about: a }: Props) {
 
       {/* 音乐：外链 QQ 音乐 + 可选站内试听 */}
       <section className="relative py-16 md:py-20">
-        <div className="container mx-auto max-w-4xl px-4">
+        <div className="container mx-auto max-w-7xl px-4">
           <AnimatedSection className="mb-8 text-center" animation="fadeInUp">
             <h2 className="mb-2 text-2xl font-bold md:text-3xl">{a.musicTitle}</h2>
           </AnimatedSection>
@@ -221,7 +296,7 @@ export function AboutPageContent({ lang, about: a }: Props) {
 
       {/* 时间线：生活化叙事，而非开发排期 */}
       <section className="relative bg-gradient-to-b from-muted/0 via-muted/12 to-muted/0 py-16 md:py-20">
-        <div className="container mx-auto max-w-3xl px-4">
+        <div className="container mx-auto max-w-6xl px-4">
           <AnimatedSection className="mb-10 text-center" animation="fadeInUp">
             <h2 className="mb-2 text-2xl font-bold md:text-3xl">{a.timelineTitle}</h2>
             <p className="text-muted-foreground">{a.timelineLead}</p>
@@ -261,7 +336,7 @@ export function AboutPageContent({ lang, about: a }: Props) {
 
       {/* 联系 */}
       <section id="contact" className="relative py-16 md:py-24">
-        <div className="container mx-auto max-w-4xl px-4">
+        <div className="container mx-auto max-w-7xl px-4">
           <AnimatedSection className="mb-10 text-center" animation="fadeInUp">
             <h2 className="mb-2 flex items-center justify-center gap-2 text-2xl font-bold md:text-3xl">
               <MessageCircle className="h-7 w-7 text-primary" />

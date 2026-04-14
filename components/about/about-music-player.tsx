@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { Pause, Play, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react";
+import { Pause, Play, Repeat, Repeat1, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -21,6 +21,11 @@ export type AboutMusicCopy = {
   musicPause: string;
   musicMute: string;
   musicUnmute: string;
+  musicVolume: string;
+  musicOpenExternal: string;
+  musicLoopOff: string;
+  musicLoopAll: string;
+  musicLoopOne: string;
   tracks: Record<string, { title: string; artist: string }>;
 };
 
@@ -29,7 +34,7 @@ export type AboutMusicPlayerTrack = {
   title: string;
   artist: string;
   coverUrl: string;
-  qqMusicUrl: string;
+  externalUrl: string;
   previewAudioUrl?: string;
 };
 
@@ -38,7 +43,7 @@ type Props = {
 };
 
 export function AboutMusicPlayer({ copy }: Props) {
-  const tracks: AboutMusicPlayerTrack[] = useMemo(
+  const fallbackTracks: AboutMusicPlayerTrack[] = useMemo(
     () =>
       ABOUT_PLAYLIST_CONFIG.map((row) => {
         const labels = copy.tracks[row.id] ?? { title: row.id, artist: "—" };
@@ -48,22 +53,65 @@ export function AboutMusicPlayer({ copy }: Props) {
           title: labels.title,
           artist: labels.artist,
           coverUrl: row.coverUrl,
-          qqMusicUrl: row.qqMusicUrl,
+          externalUrl: row.externalUrl,
           previewAudioUrl: preview,
         };
       }),
     [copy.tracks]
   );
+  const [tracks, setTracks] = useState<AboutMusicPlayerTrack[]>(fallbackTracks);
 
   const [index, setIndex] = useState(0);
   const current = tracks[index] ?? tracks[0];
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
+  const [volume, setVolume] = useState(0.8);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [loopMode, setLoopMode] = useState<"off" | "all" | "one">("all");
+
+  useEffect(() => {
+    setTracks(fallbackTracks);
+  }, [fallbackTracks]);
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchNeteaseTracks = async () => {
+      try {
+        const res = await fetch("/api/music/netease/free-tracks", { cache: "no-store" });
+        if (!res.ok) return;
+        const json = (await res.json()) as {
+          success?: boolean;
+          tracks?: AboutMusicPlayerTrack[];
+        };
+        if (!mounted || !json.success || !Array.isArray(json.tracks) || json.tracks.length === 0) return;
+        setTracks(json.tracks);
+        setIndex(0);
+      } catch {
+        // 网易云接口不可用时自动回退到静态歌单，避免页面报错。
+      }
+    };
+    void fetchNeteaseTracks();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const hasPreview = Boolean(current?.previewAudioUrl);
+  const hasAnyPreview = tracks.some((item) => Boolean(item.previewAudioUrl));
+
+  const findNextPlayableIndex = useCallback(
+    (from: number, direction: 1 | -1): number => {
+      if (tracks.length === 0) return from;
+      for (let step = 1; step <= tracks.length; step += 1) {
+        const candidate = (from + direction * step + tracks.length) % tracks.length;
+        if (tracks[candidate]?.previewAudioUrl) return candidate;
+      }
+      return from;
+    },
+    [tracks]
+  );
 
   /** 切换曲目时重置音频状态 */
   useEffect(() => {
@@ -89,7 +137,28 @@ export function AboutMusicPlayer({ copy }: Props) {
     const onMeta = () => {
       if (a.duration && Number.isFinite(a.duration)) setDuration(a.duration);
     };
-    const onEnded = () => setPlaying(false);
+    const onEnded = async () => {
+      if (loopMode === "one") {
+        a.currentTime = 0;
+        try {
+          await a.play();
+          setPlaying(true);
+        } catch {
+          setPlaying(false);
+        }
+        return;
+      }
+      const next = findNextPlayableIndex(index, 1);
+      const isWrapped = next <= index;
+      const canAdvance = next !== index;
+      const allowAdvance = loopMode === "all" ? canAdvance : canAdvance && !isWrapped;
+      if (!allowAdvance) {
+        setPlaying(false);
+        return;
+      }
+      setIndex(next);
+      setPlaying(true);
+    };
     a.addEventListener("timeupdate", onTime);
     a.addEventListener("loadedmetadata", onMeta);
     a.addEventListener("ended", onEnded);
@@ -98,10 +167,34 @@ export function AboutMusicPlayer({ copy }: Props) {
       a.removeEventListener("loadedmetadata", onMeta);
       a.removeEventListener("ended", onEnded);
     };
-  }, [index, hasPreview, current?.id]);
+  }, [findNextPlayableIndex, index, loopMode]);
+
+  useEffect(() => {
+    const a = audioRef.current;
+    if (!a) return;
+    a.muted = muted;
+    a.volume = volume;
+  }, [muted, volume, index]);
+
+  useEffect(() => {
+    if (!playing || !hasPreview) return;
+    const a = audioRef.current;
+    if (!a) return;
+    void a.play().catch(() => {
+      setPlaying(false);
+    });
+  }, [playing, hasPreview, index]);
 
   const togglePlay = useCallback(async () => {
-    if (!current || !hasPreview) return;
+    if (!current) return;
+    if (!hasPreview) {
+      const next = findNextPlayableIndex(index, 1);
+      if (next !== index) {
+        setIndex(next);
+        setPlaying(true);
+      }
+      return;
+    }
     const a = audioRef.current;
     if (!a) return;
     if (playing) {
@@ -115,7 +208,7 @@ export function AboutMusicPlayer({ copy }: Props) {
         setPlaying(false);
       }
     }
-  }, [current, hasPreview, playing]);
+  }, [current, findNextPlayableIndex, hasPreview, index, playing]);
 
   const seek = useCallback(
     (ratio: number) => {
@@ -136,6 +229,9 @@ export function AboutMusicPlayer({ copy }: Props) {
   };
 
   const currentTimeSec = duration * progress;
+  const progressPercent = Math.round(progress * 100);
+  const volumePercent = Math.round(volume * 100);
+  const loopLabel = loopMode === "off" ? copy.musicLoopOff : loopMode === "all" ? copy.musicLoopAll : copy.musicLoopOne;
 
   return (
     <Card
@@ -177,29 +273,30 @@ export function AboutMusicPlayer({ copy }: Props) {
 
             {/* 进度条：仅在有试听源时可用 */}
             <div className="space-y-1">
-              <div
-                role="slider"
-                tabIndex={hasPreview ? 0 : -1}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={Math.round(progress * 100)}
-                className={`relative h-2 w-full overflow-hidden rounded-full bg-muted ${hasPreview ? "cursor-pointer" : "cursor-not-allowed opacity-50"}`}
-                onKeyDown={(e) => {
-                  if (!hasPreview) return;
-                  if (e.key === "ArrowRight") seek(progress + 0.05);
-                  if (e.key === "ArrowLeft") seek(progress - 0.05);
+              <input
+                type="range"
+                min={0}
+                max={1000}
+                step={1}
+                value={Math.round(progress * 1000)}
+                aria-label="progress"
+                disabled={!hasPreview}
+                className={cn(
+                  "h-1.5 w-full cursor-pointer appearance-none rounded-full bg-transparent",
+                  "[&::-webkit-slider-runnable-track]:h-1.5 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-transparent",
+                  "[&::-webkit-slider-thumb]:mt-[-5px] [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4",
+                  "[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full",
+                  "[&::-webkit-slider-thumb]:bg-primary",
+                  "[&::-webkit-slider-thumb]:shadow-sm",
+                  "disabled:cursor-not-allowed disabled:opacity-40"
+                )}
+                style={{
+                  background: `linear-gradient(to right, rgba(59,130,246,0.92) 0%, rgba(59,130,246,0.92) ${progressPercent}%, rgba(148,163,184,0.35) ${progressPercent}%, rgba(148,163,184,0.35) 100%)`,
                 }}
-                onClick={(e) => {
-                  if (!hasPreview) return;
-                  const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-                  seek((e.clientX - rect.left) / rect.width);
+                onChange={(e) => {
+                  seek(Number(e.currentTarget.value) / 1000);
                 }}
-              >
-                <div
-                  className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-primary to-primary/70"
-                  style={{ width: `${progress * 100}%` }}
-                />
-              </div>
+              />
               <div className="flex justify-between text-xs tabular-nums text-muted-foreground">
                 <span>{formatTime(currentTimeSec)}</span>
                 <span>{formatTime(duration)}</span>
@@ -216,7 +313,8 @@ export function AboutMusicPlayer({ copy }: Props) {
                 size="icon"
                 className="rounded-full"
                 aria-label={copy.musicPrev}
-                onClick={() => setIndex((i) => (i - 1 + tracks.length) % tracks.length)}
+                onClick={() => setIndex((i) => findNextPlayableIndex(i, -1))}
+                disabled={!hasAnyPreview}
               >
                 <SkipBack className="h-4 w-4" />
               </Button>
@@ -236,7 +334,8 @@ export function AboutMusicPlayer({ copy }: Props) {
                 size="icon"
                 className="rounded-full"
                 aria-label={copy.musicNext}
-                onClick={() => setIndex((i) => (i + 1) % tracks.length)}
+                onClick={() => setIndex((i) => findNextPlayableIndex(i, 1))}
+                disabled={!hasAnyPreview}
               >
                 <SkipForward className="h-4 w-4" />
               </Button>
@@ -259,6 +358,47 @@ export function AboutMusicPlayer({ copy }: Props) {
                   {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                 </Button>
               ) : null}
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="rounded-full"
+                aria-label={loopLabel}
+                title={loopLabel}
+                onClick={() => setLoopMode((mode) => (mode === "off" ? "all" : mode === "all" ? "one" : "off"))}
+              >
+                {loopMode === "one" ? <Repeat1 className="h-4 w-4" /> : <Repeat className="h-4 w-4" />}
+              </Button>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center gap-3 md:justify-start">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">{copy.musicVolume}</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={Math.round(volume * 100)}
+                  className={cn(
+                    "h-1.5 w-28 cursor-pointer appearance-none rounded-full bg-transparent",
+                    "[&::-webkit-slider-runnable-track]:h-1.5 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-transparent",
+                    "[&::-webkit-slider-thumb]:mt-[-5px] [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4",
+                    "[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full",
+                    "[&::-webkit-slider-thumb]:bg-primary",
+                    "[&::-webkit-slider-thumb]:shadow-sm"
+                  )}
+                  style={{
+                    background: `linear-gradient(to right, rgba(59,130,246,0.9) 0%, rgba(59,130,246,0.9) ${volumePercent}%, rgba(148,163,184,0.35) ${volumePercent}%, rgba(148,163,184,0.35) 100%)`,
+                  }}
+                  onChange={(e) => {
+                    const nextVolume = Number(e.currentTarget.value) / 100;
+                    setVolume(nextVolume);
+                    if (nextVolume > 0 && muted) setMuted(false);
+                  }}
+                />
+              </div>
             </div>
           </div>
         </div>

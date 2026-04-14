@@ -211,6 +211,8 @@ export default function CategoriesManagePage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  /** 顶部统计卡：固定展示全量统计，不受搜索/状态筛选影响 */
+  const [summary, setSummary] = useState({ total: 0, active: 0, inactive: 0 });
   const [limit] = useState(10);
   const [statusFilter, setStatusFilter] = useState<boolean | undefined>(undefined);
 
@@ -251,6 +253,42 @@ export default function CategoriesManagePage() {
     [currentPage, limit]
   );
 
+  /**
+   * 拉取全量统计（总数/激活/停用）：
+   * - 与列表筛选参数解耦，保证顶部统计卡语义稳定
+   * - 通过分页 total 获取计数，避免拉取全部分类数据
+   */
+  const fetchSummary = useCallback(async () => {
+    try {
+      const baseParams = "page=1&limit=1&sortBy=createdAt&sortOrder=desc";
+      const [allRes, activeRes, inactiveRes] = await Promise.all([
+        fetch(`/api/categories?${baseParams}`),
+        fetch(`/api/categories?${baseParams}&isActive=true`),
+        fetch(`/api/categories?${baseParams}&isActive=false`),
+      ]);
+
+      const [allJson, activeJson, inactiveJson] = (await Promise.all([
+        allRes.json(),
+        activeRes.json(),
+        inactiveRes.json(),
+      ])) as [
+        ApiResponse<PaginatedResponseData<Category>>,
+        ApiResponse<PaginatedResponseData<Category>>,
+        ApiResponse<PaginatedResponseData<Category>>,
+      ];
+
+      if (allJson.success && activeJson.success && inactiveJson.success) {
+        setSummary({
+          total: allJson.data?.pagination.total || 0,
+          active: activeJson.data?.pagination.total || 0,
+          inactive: inactiveJson.data?.pagination.total || 0,
+        });
+      }
+    } catch (error) {
+      console.error("获取分类汇总统计失败:", error);
+    }
+  }, []);
+
   // 搜索处理
   const handleSearch = (query: string) => {
     setSearchQuery(query);
@@ -288,6 +326,7 @@ export default function CategoriesManagePage() {
         setIsDeleteModalOpen(false);
         setSelectedCategory(null);
         fetchCategories();
+        fetchSummary();
       } else {
         message.error(result.message || t.deleteFailed);
       }
@@ -320,6 +359,7 @@ export default function CategoriesManagePage() {
 
       if (result.success) {
         fetchCategories();
+        fetchSummary();
       } else {
         message.error(result.message || t.updateFailed);
       }
@@ -331,11 +371,8 @@ export default function CategoriesManagePage() {
 
   useEffect(() => {
     fetchCategories();
-  }, [fetchCategories]);
-
-  // 统计信息
-  const activeCategories = categories.filter((category) => category.isActive).length;
-  const inactiveCategories = categories.filter((category) => !category.isActive).length;
+    fetchSummary();
+  }, [fetchCategories, fetchSummary]);
 
   return (
     <div className="space-y-6">
@@ -354,7 +391,7 @@ export default function CategoriesManagePage() {
             <div className="flex items-center gap-2">
               <BarChart3 className="w-5 h-5 text-primary" />
               <div>
-                <p className="text-2xl font-bold text-foreground">{total}</p>
+                <p className="text-2xl font-bold text-foreground">{summary.total}</p>
                 <p className="text-sm text-default-500">{t.totalLabel}</p>
               </div>
             </div>
@@ -363,7 +400,7 @@ export default function CategoriesManagePage() {
             <div className="flex items-center gap-2">
               <Eye className="w-5 h-5 text-success" />
               <div>
-                <p className="text-2xl font-bold text-success">{activeCategories}</p>
+                <p className="text-2xl font-bold text-success">{summary.active}</p>
                 <p className="text-sm text-default-500">{t.activeLabel}</p>
               </div>
             </div>
@@ -372,7 +409,7 @@ export default function CategoriesManagePage() {
             <div className="flex items-center gap-2">
               <EyeOff className="w-5 h-5 text-warning" />
               <div>
-                <p className="text-2xl font-bold text-warning">{inactiveCategories}</p>
+                <p className="text-2xl font-bold text-warning">{summary.inactive}</p>
                 <p className="text-sm text-default-500">{t.inactiveLabel}</p>
               </div>
             </div>

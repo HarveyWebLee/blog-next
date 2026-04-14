@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useMemo, useState } from "react";
+import { CSSProperties, useMemo, useState } from "react";
 import { Button, Card, CardBody, Chip } from "@heroui/react";
 import { BarChart3, Hash, Palette, Shuffle, Tag as TagIcon, TrendingUp } from "lucide-react";
 
@@ -46,8 +46,8 @@ export function TagCloud({
   layout = "cloud",
   sortBy = "postCount",
 }: TagCloudProps) {
-  /** 仅用于触发 random 模式下的重新渲染，数值本身不参与计算 */
-  const [, setShuffleKey] = useState(0);
+  /** 触发标签顺序重排；无论当前排序方式都可洗牌 */
+  const [shuffleKey, setShuffleKey] = useState(0);
 
   const baseSortedTags = useMemo(() => {
     const processed = [...tags];
@@ -66,11 +66,22 @@ export function TagCloud({
     return processed;
   }, [tags, sortBy]);
 
-  /** random 模式在每次渲染（含点击「洗牌」触发 setShuffleKey）时重新打乱 */
-  const processedTags =
-    sortBy === "random"
-      ? [...baseSortedTags].sort(() => Math.random() - 0.5).slice(0, maxTags)
-      : baseSortedTags.slice(0, maxTags);
+  /**
+   * 「洗牌」按钮对所有排序模式都生效：
+   * - random：天然随机
+   * - name/postCount：先按规则取前 maxTags，再对当前可见集合重排
+   */
+  const processedTags = useMemo(() => {
+    const visible = baseSortedTags.slice(0, maxTags);
+    // 初次渲染保持稳定顺序；点击洗牌后才重排
+    if (shuffleKey === 0 && sortBy !== "random") return visible;
+    const shuffled = [...visible];
+    for (let i = shuffled.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  }, [baseSortedTags, maxTags, shuffleKey, sortBy]);
 
   // 计算标签大小
   const getTagSize = (postCount: number) => {
@@ -95,6 +106,31 @@ export function TagCloud({
     onTagClick?.(tag);
   };
 
+  /**
+   * 生成稳定的“云漂浮”参数：
+   * - 基于 tag.id 生成伪随机值，避免每次渲染抖动
+   * - 仅使用 transform 动画，降低重排与绘制成本
+   */
+  const getCloudMotionStyle = (tag: Tag, index: number): CSSProperties => {
+    const base = (tag.id * 1103515245 + 12345 + index * 97) >>> 0;
+    const rand = (seed: number) => (((base ^ seed) % 1000) + 1000) % 1000;
+
+    const dx = 24 + (rand(17) % 40); // 24~63px
+    const dy = 16 + (rand(29) % 30); // 16~45px
+    const scale = 6 + (rand(43) % 12); // 0.06~0.17
+    const duration = 4 + (rand(71) % 6); // 4~9s
+    const delay = -1 * (rand(89) % 9); // -0~-8s（负延迟让初始状态更自然）
+
+    return {
+      // 自定义变量供 class.scss 动画读取
+      ["--cloud-dx" as string]: `${dx}px`,
+      ["--cloud-dy" as string]: `${dy}px`,
+      ["--cloud-scale" as string]: `${(scale / 100).toFixed(3)}`,
+      ["--cloud-duration" as string]: `${duration}s`,
+      ["--cloud-delay" as string]: `${delay}s`,
+    };
+  };
+
   // 重新洗牌
   const handleShuffle = () => {
     setShuffleKey((prev) => prev + 1);
@@ -108,32 +144,34 @@ export function TagCloud({
 
     return (
       <div key={tag.id} className="group relative animate-fade-in-up" style={{ animationDelay: `${index * 50}ms` }}>
-        <Chip
-          size="sm"
-          variant={isSelected ? "solid" : "flat"}
-          color={isSelected ? "primary" : "default"}
-          className={`
+        <div className={layout === "cloud" ? "tag-cloud-item-motion" : ""} style={getCloudMotionStyle(tag, index)}>
+          <Chip
+            size="sm"
+            variant={isSelected ? "solid" : "flat"}
+            color={isSelected ? "primary" : "default"}
+            className={`
             cursor-pointer transition-all duration-300 hover:scale-110 hover:shadow-lg
             backdrop-blur-sm bg-white/10 dark:bg-black/10 hover:bg-white/20 dark:hover:bg-black/20
             border-white/20 dark:border-white/10 hover:border-primary/50
             ${isSelected ? "ring-2 ring-primary/50 shadow-primary/20" : ""}
             relative overflow-hidden
           `}
-          style={{
-            fontSize: `${size}px`,
-            backgroundColor: isSelected ? undefined : `${color}20`,
-            borderColor: isSelected ? undefined : color,
-            color: isSelected ? undefined : color,
-          }}
-          onClick={() => handleTagClick(tag)}
-          startContent={showPostCount ? <Hash className="w-3 h-3" /> : undefined}
-        >
-          {tag.name}
-          {showPostCount && <span className="ml-1 text-xs opacity-75">{tag.postCount || 0}</span>}
+            style={{
+              fontSize: `${size}px`,
+              backgroundColor: isSelected ? undefined : `${color}20`,
+              borderColor: isSelected ? undefined : color,
+              color: isSelected ? undefined : color,
+            }}
+            onClick={() => handleTagClick(tag)}
+            startContent={showPostCount ? <Hash className="w-3 h-3" /> : undefined}
+          >
+            {tag.name}
+            {showPostCount && <span className="ml-1 text-xs opacity-75">{tag.postCount || 0}</span>}
 
-          {/* 悬停光效 */}
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-        </Chip>
+            {/* 悬停光效 */}
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+          </Chip>
+        </div>
       </div>
     );
   };

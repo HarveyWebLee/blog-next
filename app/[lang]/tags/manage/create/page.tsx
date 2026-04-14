@@ -10,7 +10,7 @@ import { Button, Card, CardBody, CardHeader, Chip, Divider, Input, Switch, Texta
 import { ArrowLeft, Eye, FileText, Hash, Palette, Plus, Tag as TagIcon } from "lucide-react";
 
 import { useAuth } from "@/lib/contexts/auth-context";
-import { message } from "@/lib/utils";
+import { generateRandomUrlAlias, message } from "@/lib/utils";
 import { Locale } from "@/types";
 import { ApiResponse, CreateTagRequest } from "@/types/blog";
 
@@ -61,9 +61,10 @@ export default function CreateTagPage() {
             inactive: "停用",
           };
   const [loading, setLoading] = useState(false);
+  /** 创建标签：默认生成 8 位英文数字随机标识，用户可手动修改 */
   const [formData, setFormData] = useState<CreateTagRequest>({
     name: "",
-    slug: "",
+    slug: generateRandomUrlAlias(8),
     description: "",
     color: "#667eea",
     isActive: true,
@@ -76,21 +77,11 @@ export default function CreateTagPage() {
     }
   }, [isAuthLoading, isAuthenticated, params.lang, router]);
 
-  // 自动生成slug
-  const generateSlug = (name: string) => {
-    return name
-      .toLowerCase()
-      .replace(/[^a-z0-9\u4e00-\u9fa5]/g, "-")
-      .replace(/-+/g, "-")
-      .replace(/^-|-$/g, "");
-  };
-
   // 处理名称变化
   const handleNameChange = (value: string) => {
     setFormData({
       ...formData,
       name: value,
-      slug: formData.slug || generateSlug(value),
     });
   };
 
@@ -113,7 +104,8 @@ export default function CreateTagPage() {
         },
         body: JSON.stringify({
           ...formData,
-          slug: formData.slug || generateSlug(formData.name),
+          // 若用户手动清空，则提交前自动补一个 8 位随机码
+          slug: formData.slug?.trim() || generateRandomUrlAlias(8),
         }),
       });
 
@@ -189,10 +181,10 @@ export default function CreateTagPage() {
                   />
                   <Input
                     label="标签标识 (Slug)"
-                    placeholder="URL友好的标识符"
+                    placeholder="默认 8 位随机码，可手动修改"
                     value={formData.slug}
                     onValueChange={(value) => setFormData({ ...formData, slug: value })}
-                    description="留空将自动生成"
+                    description="默认自动生成 8 位英文数字随机码"
                     startContent={<TagIcon className="w-4 h-4 text-default-400" />}
                     className="w-full"
                   />

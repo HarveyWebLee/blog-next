@@ -177,6 +177,8 @@ export default function TagsManagePage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  /** 顶部统计卡：固定展示全量统计，不受搜索/状态筛选影响 */
+  const [summary, setSummary] = useState({ total: 0, active: 0, inactive: 0 });
   const [limit] = useState(10);
   const [statusFilter, setStatusFilter] = useState<boolean | undefined>(undefined);
 
@@ -217,6 +219,42 @@ export default function TagsManagePage() {
     [currentPage, limit]
   );
 
+  /**
+   * 拉取标签全量统计（总数/激活/停用）：
+   * - 与列表筛选参数解耦，避免顶部统计随筛选变化
+   * - 仅请求分页 total，降低数据传输
+   */
+  const fetchSummary = useCallback(async () => {
+    try {
+      const baseParams = "page=1&limit=1&sortBy=createdAt&sortOrder=desc";
+      const [allRes, activeRes, inactiveRes] = await Promise.all([
+        fetch(`/api/tags?${baseParams}`),
+        fetch(`/api/tags?${baseParams}&isActive=true`),
+        fetch(`/api/tags?${baseParams}&isActive=false`),
+      ]);
+
+      const [allJson, activeJson, inactiveJson] = (await Promise.all([
+        allRes.json(),
+        activeRes.json(),
+        inactiveRes.json(),
+      ])) as [
+        ApiResponse<PaginatedResponseData<Tag>>,
+        ApiResponse<PaginatedResponseData<Tag>>,
+        ApiResponse<PaginatedResponseData<Tag>>,
+      ];
+
+      if (allJson.success && activeJson.success && inactiveJson.success) {
+        setSummary({
+          total: allJson.data?.pagination.total || 0,
+          active: activeJson.data?.pagination.total || 0,
+          inactive: inactiveJson.data?.pagination.total || 0,
+        });
+      }
+    } catch (error) {
+      console.error("获取标签汇总统计失败:", error);
+    }
+  }, []);
+
   // 搜索处理
   const handleSearch = (query: string) => {
     setSearchQuery(query);
@@ -254,6 +292,7 @@ export default function TagsManagePage() {
         setIsDeleteModalOpen(false);
         setSelectedTag(null);
         fetchTags();
+        fetchSummary();
       } else {
         message.error(result.message || t.deleteFailed);
       }
@@ -286,6 +325,7 @@ export default function TagsManagePage() {
 
       if (result.success) {
         fetchTags();
+        fetchSummary();
       } else {
         message.error(result.message || t.updateFailed);
       }
@@ -302,11 +342,8 @@ export default function TagsManagePage() {
       return;
     }
     fetchTags();
-  }, [fetchTags, isAuthLoading, isAuthenticated, params.lang, router]);
-
-  // 统计信息
-  const activeTags = tags.filter((tag) => tag.isActive).length;
-  const inactiveTags = tags.filter((tag) => !tag.isActive).length;
+    fetchSummary();
+  }, [fetchTags, fetchSummary, isAuthLoading, isAuthenticated, params.lang, router]);
 
   return (
     <div className="space-y-6">
@@ -325,7 +362,7 @@ export default function TagsManagePage() {
             <div className="flex items-center gap-2">
               <BarChart3 className="w-5 h-5 text-primary" />
               <div>
-                <p className="text-2xl font-bold text-foreground">{total}</p>
+                <p className="text-2xl font-bold text-foreground">{summary.total}</p>
                 <p className="text-sm text-default-500">{t.total}</p>
               </div>
             </div>
@@ -334,7 +371,7 @@ export default function TagsManagePage() {
             <div className="flex items-center gap-2">
               <Eye className="w-5 h-5 text-success" />
               <div>
-                <p className="text-2xl font-bold text-success">{activeTags}</p>
+                <p className="text-2xl font-bold text-success">{summary.active}</p>
                 <p className="text-sm text-default-500">{t.active}</p>
               </div>
             </div>
@@ -343,7 +380,7 @@ export default function TagsManagePage() {
             <div className="flex items-center gap-2">
               <EyeOff className="w-5 h-5 text-warning" />
               <div>
-                <p className="text-2xl font-bold text-warning">{inactiveTags}</p>
+                <p className="text-2xl font-bold text-warning">{summary.inactive}</p>
                 <p className="text-sm text-default-500">{t.inactive}</p>
               </div>
             </div>

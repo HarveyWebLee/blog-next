@@ -7,7 +7,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Badge, Button, Card, CardBody, CardHeader, Chip, Input, Select, SelectItem, Spinner } from "@heroui/react";
 import {
   AlertCircle,
@@ -32,7 +32,6 @@ import {
 } from "lucide-react";
 
 import { TagCloud } from "@/components/ui/tag-cloud";
-import { useAuth } from "@/lib/contexts/auth-context";
 import { useTags } from "@/lib/hooks/useTags";
 import { Locale } from "@/types";
 import { Tag } from "@/types/blog";
@@ -175,12 +174,14 @@ function TagCard({
   tag,
   index,
   onDelete,
+  onOpenTag,
   locale,
   t,
 }: {
   tag: Tag;
   index: number;
   onDelete?: (id: number) => void;
+  onOpenTag?: (tag: Tag) => void;
   locale: Locale;
   t: (typeof TAG_PAGE_TEXT)[Locale];
 }) {
@@ -191,6 +192,15 @@ function TagCard({
     <div
       className="group relative flex h-full min-h-0 animate-fade-in-up flex-col"
       style={{ animationDelay: `${index * 100}ms` }}
+      role="button"
+      tabIndex={0}
+      onClick={() => onOpenTag?.(tag)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpenTag?.(tag);
+        }
+      }}
     >
       {/* 背景光效：与博客 PostCard 外层一致（不使用全局 .blog-card，避免文章卡专用 min-height 拉到标签卡） */}
       <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/20 via-secondary/10 to-accent/20 opacity-0 blur-xl transition-opacity duration-500 group-hover:opacity-100" />
@@ -265,7 +275,11 @@ function TagCard({
 
           {/* 底部操作栏：顶到底部，同一行卡片等高时仍对齐底边 */}
           <div className="mt-auto flex shrink-0 items-center justify-between border-t border-white/10 pt-4">
-            <div className="flex items-center gap-2">
+            <div
+              className="flex items-center gap-2"
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
+            >
               <Button
                 size="sm"
                 variant="light"
@@ -471,7 +485,15 @@ function SearchAndFilter({
 /**
  * 热门标签组件 - 玻璃态版本
  */
-function PopularTags({ tags, t }: { tags: Tag[]; t: (typeof TAG_PAGE_TEXT)[Locale] }) {
+function PopularTags({
+  tags,
+  onTagClick,
+  t,
+}: {
+  tags: Tag[];
+  onTagClick?: (tag: Tag) => void;
+  t: (typeof TAG_PAGE_TEXT)[Locale];
+}) {
   const popularTags = tags
     .filter((tag) => tag.isActive)
     .sort((a, b) => (b.postCount || 0) - (a.postCount || 0))
@@ -496,6 +518,7 @@ function PopularTags({ tags, t }: { tags: Tag[]; t: (typeof TAG_PAGE_TEXT)[Local
               key={tag.id}
               className="group flex items-center gap-3 p-3 rounded-xl backdrop-blur-xl bg-white/5 dark:bg-black/5 hover:bg-white/10 dark:hover:bg-black/10 transition-all duration-300 hover:scale-105 cursor-pointer animate-fade-in-up"
               style={{ animationDelay: `${index * 100}ms` }}
+              onClick={() => onTagClick?.(tag)}
             >
               <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 text-sm font-bold text-primary">
                 #{index + 1}
@@ -585,8 +608,8 @@ function ErrorAlert({ error, onRetry, t }: { error: string; onRetry: () => void;
  * 主标签页面组件
  */
 export default function TagsPage() {
+  const router = useRouter();
   const params = useParams<{ lang: string }>();
-  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const locale = resolveLocale(params.lang);
   const t = TAG_PAGE_TEXT[locale];
   // 使用自定义 Hook 管理标签数据
@@ -680,6 +703,11 @@ export default function TagsPage() {
     refreshTags();
   };
 
+  /** 跳转博客并按标签筛选 */
+  const handleOpenTagPosts = (tag: Tag) => {
+    router.push(`/${locale}/blog?tagId=${tag.id}`);
+  };
+
   if (!mounted) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -692,21 +720,6 @@ export default function TagsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
-      {/* 登录后显示标签管理入口 */}
-      {!isAuthLoading && isAuthenticated && (
-        <Card className="mb-8 border-0 backdrop-blur-xl bg-primary/10 dark:bg-primary/5 animate-fade-in-up">
-          <CardBody className="flex flex-row items-center justify-between gap-4">
-            <div>
-              <h3 className="text-lg font-semibold text-foreground">{t.manageTitle}</h3>
-              <p className="text-sm text-default-600">{t.manageDesc}</p>
-            </div>
-            <Button color="primary" onPress={() => (window.location.href = `/${locale}/tags/manage`)}>
-              {t.enterManage}
-            </Button>
-          </CardBody>
-        </Card>
-      )}
-
       {/* 错误提示 */}
       {error && <ErrorAlert error={error} onRetry={handleRefresh} t={t} />}
 
@@ -733,9 +746,7 @@ export default function TagsPage() {
               minSize={12}
               maxSize={20}
               showPostCount={true}
-              onTagClick={(tag) => {
-                console.log("Clicked tag:", tag);
-              }}
+              onTagClick={handleOpenTagPosts}
               layout="cloud"
               sortBy="postCount"
             />
@@ -744,7 +755,7 @@ export default function TagsPage() {
       )}
 
       {/* 热门标签 */}
-      {tags.length > 0 && <PopularTags tags={tags} t={t} />}
+      {tags.length > 0 && <PopularTags tags={tags} onTagClick={handleOpenTagPosts} t={t} />}
 
       {/* 搜索和筛选 */}
       <SearchAndFilter
@@ -778,7 +789,7 @@ export default function TagsPage() {
           </div>
         ) : filteredAndSortedTags.length > 0 ? (
           filteredAndSortedTags.map((tag, index) => (
-            <TagCard key={tag.id} tag={tag} index={index} locale={locale} t={t} />
+            <TagCard key={tag.id} tag={tag} index={index} onOpenTag={handleOpenTagPosts} locale={locale} t={t} />
           ))
         ) : (
           <div className="col-span-full">

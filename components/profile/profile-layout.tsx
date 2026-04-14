@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@heroui/react";
-import { Bell, BookOpen, Heart, Menu, Settings, User } from "lucide-react";
+import { Bell, BookOpen, FolderTree, Heart, Menu, Settings, Tags, User } from "lucide-react";
 
 import { PROFILE_PAGE_BG } from "@/components/profile/profile-ui-presets";
 import ProfileSidebar from "./profile-sidebar";
@@ -29,6 +29,8 @@ export default function ProfileLayout({ children, lang, dict: _dict }: ProfileLa
           favorites: "My Favorites",
           notifications: "Notifications",
           settings: "Settings",
+          categoryManage: "Category Management",
+          tagManage: "Tag Management",
           pageTitle: "Profile",
           pageSubtitle: "Account and content hub",
           openMenu: "Menu",
@@ -40,6 +42,8 @@ export default function ProfileLayout({ children, lang, dict: _dict }: ProfileLa
             favorites: "お気に入り",
             notifications: "通知",
             settings: "アカウント設定",
+            categoryManage: "カテゴリー管理",
+            tagManage: "タグ管理",
             pageTitle: "プロフィール",
             pageSubtitle: "アカウントとコンテンツ",
             openMenu: "メニュー",
@@ -50,6 +54,8 @@ export default function ProfileLayout({ children, lang, dict: _dict }: ProfileLa
             favorites: "我的收藏",
             notifications: "通知中心",
             settings: "账户设置",
+            categoryManage: "分类管理",
+            tagManage: "标签管理",
             pageTitle: "个人中心",
             pageSubtitle: "账户与内容入口",
             openMenu: "目录",
@@ -62,6 +68,8 @@ export default function ProfileLayout({ children, lang, dict: _dict }: ProfileLa
     { key: "favorites", label: labels.favorites, icon: Heart, href: "/profile/favorites" },
     { key: "notifications", label: labels.notifications, icon: Bell, href: "/profile/notifications" },
     { key: "settings", label: labels.settings, icon: Settings, href: "/profile/settings" },
+    { key: "category-manage", label: labels.categoryManage, icon: FolderTree, href: "/categories/manage" },
+    { key: "tag-manage", label: labels.tagManage, icon: Tags, href: "/tags/manage" },
   ];
 
   return (

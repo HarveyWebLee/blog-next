@@ -6,19 +6,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import {
-  Badge,
-  Button,
-  Card,
-  CardBody,
-  CardHeader,
-  Chip,
-  Divider,
-  Input,
-  Spinner,
-  Switch,
-  Textarea,
-} from "@heroui/react";
+import { Button, Card, CardBody, CardHeader, Chip, Divider, Input, Spinner, Switch, Textarea } from "@heroui/react";
 import { ArrowLeft, Calendar, Edit, Eye, FileText, Hash, Palette, Save, Tag as TagIcon } from "lucide-react";
 
 import { useAuth } from "@/lib/contexts/auth-context";
@@ -217,11 +205,6 @@ export default function EditTagPage() {
           </h1>
           <p className="text-default-600 mt-2 text-lg">编辑标签：{tag.name}</p>
         </div>
-        <Badge content="ID" color="primary" variant="flat">
-          <Chip size="sm" variant="flat">
-            #{tag.id}
-          </Chip>
-        </Badge>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

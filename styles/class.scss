@@ -135,6 +135,44 @@
   width: 200%;
 }
 
+/* 标签云浮动动效：仅 transform，避免影响布局与滚动性能 */
+.tag-cloud-item-motion {
+  animation-delay: var(--cloud-delay, 0s);
+  animation-duration: var(--cloud-duration, 18s);
+  animation-iteration-count: infinite;
+  animation-name: cloudDrift;
+  animation-timing-function: ease-in-out;
+  transform: translate3d(0, 0, 0);
+  transform-origin: center center;
+  will-change: transform;
+}
+
+/* 鼠标悬停时暂停外层漂浮，让用户更易点击和阅读 */
+.tag-cloud-item-motion:hover {
+  animation-play-state: paused;
+}
+
+@keyframes cloudDrift {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  25% {
+    transform: translate3d(calc(var(--cloud-dx, 12px) * 0.5), calc(var(--cloud-dy, 8px) * -0.4), 0)
+      scale(calc(1 + var(--cloud-scale, 0.03) * 0.6));
+  }
+  50% {
+    transform: translate3d(var(--cloud-dx, 12px), calc(var(--cloud-dy, 8px) * -1), 0)
+      scale(calc(1 + var(--cloud-scale, 0.03)));
+  }
+  75% {
+    transform: translate3d(calc(var(--cloud-dx, 12px) * -0.4), calc(var(--cloud-dy, 8px) * 0.6), 0)
+      scale(calc(1 - var(--cloud-scale, 0.03) * 0.4));
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
 @keyframes rotate {
   from {
     transform: rotate(0deg);
@@ -192,6 +230,12 @@
   .popular-tag-item::before,
   .tag-cloud-container::before {
     animation: none;
+  }
+
+  .tag-cloud-item-motion {
+    animation: none;
+    transform: none;
+    will-change: auto;
   }
 
   .tag-card:hover,

@@ -269,7 +269,7 @@ export function Footer() {
             <div className="rounded-2xl border-0 bg-white/40 p-4 backdrop-blur-md dark:bg-black/20">
               <p className="text-xs leading-relaxed text-default-500">{t.contactDesc}</p>
               <Button
-                as={Link}
+                as="a"
                 href={`${prefix}/about#contact`}
                 size="sm"
                 variant="flat"
