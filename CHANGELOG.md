@@ -1,3 +1,9 @@
+## [1.2.5](https://github.com/HarveyWebLee/blog-next/compare/v1.2.4...v1.2.5) (2026-04-14)
+
+### Performance Improvements
+
+- **config:** 新增网易云音乐免费曲目API接口 ([30b1362](https://github.com/HarveyWebLee/blog-next/commit/30b1362c97551357a5e2e84c1e25aff7908682c1))
+
 ## [1.2.4](https://github.com/HarveyWebLee/blog-next/compare/v1.2.3...v1.2.4) (2026-04-12)
 
 ### Performance Improvements
