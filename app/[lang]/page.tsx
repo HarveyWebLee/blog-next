@@ -15,6 +15,9 @@ import { postService } from "@/lib/services/post.service";
 import { stripMarkdownForExcerpt } from "@/lib/utils/markdown-plain";
 import type { Locale } from "@/types";
 
+// 首页依赖数据库实时数据，强制运行时渲染，避免 Docker/CI 构建阶段预渲染触发连库失败。
+export const dynamic = "force-dynamic";
+
 /** 日期展示与 [lang] 对齐 */
 const dateLocale: Record<Locale, string> = {
   "zh-CN": "zh-CN",
