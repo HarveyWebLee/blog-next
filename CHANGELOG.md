@@ -1,3 +1,9 @@
+## [1.2.6](https://github.com/HarveyWebLee/blog-next/compare/v1.2.5...v1.2.6) (2026-04-14)
+
+### Performance Improvements
+
+- **blog:** 强制运行时渲染首页以避免数据库连接失败 ([f7215ae](https://github.com/HarveyWebLee/blog-next/commit/f7215aeebec9fc72424ec7f136f619f2bb43475a))
+
 ## [1.2.5](https://github.com/HarveyWebLee/blog-next/compare/v1.2.4...v1.2.5) (2026-04-14)
 
 ### Performance Improvements
