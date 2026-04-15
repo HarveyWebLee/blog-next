@@ -1,3 +1,9 @@
+# [1.3.0](https://github.com/HarveyWebLee/blog-next/compare/v1.2.6...v1.3.0) (2026-04-15)
+
+### Features
+
+- **api:** 新增超级管理员功能与用户管理接口 ([1044fc3](https://github.com/HarveyWebLee/blog-next/commit/1044fc34654561c3632c80dc755af5c5f35225b0))
+
 ## [1.2.6](https://github.com/HarveyWebLee/blog-next/compare/v1.2.5...v1.2.6) (2026-04-14)
 
 ### Performance Improvements
