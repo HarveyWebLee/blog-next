@@ -208,7 +208,7 @@ export function AboutPageContent({ lang, about: a, ownerPublic }: Props) {
       </section>
 
       <section className="relative pb-8 md:pb-12">
-        <div className="container mx-auto max-w-7xl px-4">
+        <div className="container mx-auto px-4">
           <AnimatedSection className="mb-8 text-center" animation="fadeInUp">
             <h2 className="mb-3 text-2xl font-bold md:text-3xl">{a.introTitle}</h2>
             <p className="mx-auto max-w-3xl text-muted-foreground">{a.introLead}</p>
@@ -239,7 +239,7 @@ export function AboutPageContent({ lang, about: a, ownerPublic }: Props) {
 
       {/* 价值观：仅用极淡背景做过渡，不用上下边框线 */}
       <section className="relative bg-gradient-to-b from-muted/0 via-muted/20 to-muted/0 py-16 md:py-20">
-        <div className="container mx-auto max-w-7xl px-4">
+        <div className="container mx-auto px-4">
           <AnimatedSection className="mb-12 text-center" animation="fadeInUp">
             <h2 className="mb-3 text-2xl font-bold md:text-3xl">{a.practiceTitle}</h2>
             <p className="mx-auto max-w-3xl text-muted-foreground">{a.practiceLead}</p>
@@ -296,7 +296,7 @@ export function AboutPageContent({ lang, about: a, ownerPublic }: Props) {
 
       {/* 音乐：外链 QQ 音乐 + 可选站内试听 */}
       <section className="relative py-16 md:py-20">
-        <div className="container mx-auto max-w-7xl px-4">
+        <div className="container mx-auto px-4">
           <AnimatedSection className="mb-8 text-center" animation="fadeInUp">
             <h2 className="mb-2 text-2xl font-bold md:text-3xl">{a.musicTitle}</h2>
           </AnimatedSection>
@@ -308,7 +308,7 @@ export function AboutPageContent({ lang, about: a, ownerPublic }: Props) {
 
       {/* 时间线：生活化叙事，而非开发排期 */}
       <section className="relative bg-gradient-to-b from-muted/0 via-muted/12 to-muted/0 py-16 md:py-20">
-        <div className="container mx-auto max-w-6xl px-4">
+        <div className="container mx-auto px-4">
           <AnimatedSection className="mb-10 text-center" animation="fadeInUp">
             <h2 className="mb-2 text-2xl font-bold md:text-3xl">{a.timelineTitle}</h2>
             <p className="text-muted-foreground">{a.timelineLead}</p>
@@ -348,7 +348,7 @@ export function AboutPageContent({ lang, about: a, ownerPublic }: Props) {
 
       {/* 联系 */}
       <section id="contact" className="relative py-16 md:py-24">
-        <div className="container mx-auto max-w-7xl px-4">
+        <div className="container mx-auto px-4">
           <AnimatedSection className="mb-10 text-center" animation="fadeInUp">
             <h2 className="mb-2 flex items-center justify-center gap-2 text-2xl font-bold md:text-3xl">
               <MessageCircle className="h-7 w-7 text-primary" />

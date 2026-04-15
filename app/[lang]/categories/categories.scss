@@ -46,7 +46,6 @@ $card-shadow-hover:
   );
   min-height: 100vh;
   overflow: hidden;
-  padding: 2rem;
   position: relative;
 
   // 背景装饰
@@ -757,10 +756,6 @@ $card-shadow-hover:
 
 // 响应式设计
 @media (max-width: 768px) {
-  .categories-page {
-    padding: 1rem;
-  }
-
   .stats-grid-modern {
     gap: 1rem;
     grid-template-columns: 1fr;
