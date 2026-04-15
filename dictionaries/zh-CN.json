@@ -69,6 +69,7 @@
     "contactSocialTitle": "代码与动态",
     "contactSocialDesc": "可在词典中替换为你的 GitHub 主页。",
     "contactGithubLabel": "访问 GitHub",
+    "contactWebsiteLabel": "个人网站",
     "contactLocationTitle": "坐标",
     "contactLocationDesc": "常驻中国杭州。",
     "thanksTitle": "感谢来访",
@@ -470,9 +471,9 @@
       "friends": "仅关注者",
       "socialLinks": "社交媒体链接",
       "github": "GitHub",
-      "twitter": "Twitter",
-      "linkedin": "LinkedIn",
-      "weibo": "微博"
+      "wechatQr": "微信二维码",
+      "douyin": "抖音",
+      "bilibili": "哔哩哔哩"
     }
   },
   "tag": {

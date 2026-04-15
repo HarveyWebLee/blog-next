@@ -7,6 +7,7 @@ import { ToastProvider } from "@heroui/toast";
 import type { ThemeProviderProps } from "next-themes";
 import { ThemeProvider as NextThemesProvider } from "next-themes";
 
+import { Api401Bridge } from "@/components/auth/api-401-bridge";
 import { AuthProvider } from "@/lib/contexts/auth-context";
 
 export interface ProvidersProps {
@@ -21,7 +22,10 @@ export function Providers({ children, themeProps }: ProvidersProps) {
     <HeroUIProvider navigate={router.push}>
       <ToastProvider placement="top-center" toastOffset={150} />
       <NextThemesProvider {...themeProps}>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <Api401Bridge />
+          {children}
+        </AuthProvider>
       </NextThemesProvider>
     </HeroUIProvider>
   );

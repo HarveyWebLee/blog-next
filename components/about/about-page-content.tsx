@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { BookOpen, Github, Heart, Mail, MapPin, MessageCircle, PenLine, Sparkles } from "lucide-react";
+import { BookOpen, Github, Globe, Heart, Mail, MapPin, MessageCircle, PenLine, Sparkles } from "lucide-react";
 
 import { AnimatedSection, ParticleBackground } from "@/components/about/about-animations";
 import { AboutMusicPlayer, type AboutMusicCopy } from "@/components/about/about-music-player";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import type { AboutOwnerPublic } from "@/lib/services/about-owner.service";
 import { cn } from "@/lib/utils";
 
 import "./about-page-content.scss";
@@ -85,6 +86,8 @@ export type AboutPageDictionary = AboutMusicCopy & {
   contactSocialTitle: string;
   contactSocialDesc: string;
   contactGithubLabel: string;
+  /** 个人网站按钮（资料中填写 website 时显示） */
+  contactWebsiteLabel: string;
   contactLocationTitle: string;
   contactLocationDesc: string;
   thanksTitle: string;
@@ -92,16 +95,18 @@ export type AboutPageDictionary = AboutMusicCopy & {
   thanksCtaBlog: string;
   thanksCtaHome: string;
   copyOk: string;
-  /** 社交链接：发布前在词典中替换为你的主页 */
+  /** 社交链接：无接口数据时在词典中配置 GitHub 主页 */
   socialGithubUrl: string;
 };
 
 type Props = {
   lang: string;
   about: AboutPageDictionary;
+  /** 内存超级管理员个人资料（服务端注入）；无则仅用词典占位 */
+  ownerPublic?: AboutOwnerPublic | null;
 };
 
-export function AboutPageContent({ lang, about: a }: Props) {
+export function AboutPageContent({ lang, about: a, ownerPublic }: Props) {
   const prefix = `/${lang}`;
   const [mounted, setMounted] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -110,15 +115,22 @@ export function AboutPageContent({ lang, about: a }: Props) {
     setMounted(true);
   }, []);
 
+  // 接口优先：与 /api/profile、/api/about/owner 同源（user_profiles.user_id=0）
+  const displayEmail = ownerPublic?.email ?? a.contactEmailValue;
+  const displayGithubUrl = ownerPublic?.githubUrl ?? a.socialGithubUrl;
+  const displayLocationBadge = ownerPublic?.location ?? a.badge1;
+  const displayLocationDesc = ownerPublic?.location ?? a.contactLocationDesc;
+  const displayWebsite = ownerPublic?.website?.trim() || null;
+
   const copyEmail = useCallback(async () => {
     try {
-      await navigator.clipboard.writeText(a.contactEmailValue);
+      await navigator.clipboard.writeText(displayEmail);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2200);
     } catch {
       /* 剪贴板权限被拒时静默失败 */
     }
-  }, [a.contactEmailValue]);
+  }, [displayEmail]);
 
   const musicCopy: AboutMusicCopy = {
     musicTitle: a.musicTitle,
@@ -172,7 +184,7 @@ export function AboutPageContent({ lang, about: a }: Props) {
             <div className="mb-10 flex flex-wrap justify-center gap-2">
               <Badge variant="secondary" className="gap-1.5 px-3 py-1.5">
                 <MapPin className="h-3.5 w-3.5" />
-                {a.badge1}
+                {displayLocationBadge}
               </Badge>
               <Badge variant="secondary" className="gap-1.5 px-3 py-1.5">
                 <BookOpen className="h-3.5 w-3.5" />
@@ -351,10 +363,10 @@ export function AboutPageContent({ lang, about: a }: Props) {
                 <Mail className="mx-auto mb-3 h-8 w-8 text-primary transition-transform duration-300 ease-out group-hover:scale-110" />
                 <h3 className="mb-1 font-semibold">{a.contactEmailTitle}</h3>
                 <p className="mb-4 text-sm text-muted-foreground">{a.contactEmailDesc}</p>
-                <p className="mb-4 truncate text-xs text-muted-foreground">{a.contactEmailValue}</p>
+                <p className="mb-4 truncate text-xs text-muted-foreground">{displayEmail}</p>
                 <div className="flex flex-col gap-2">
                   <Button variant="default" className="w-full rounded-full" asChild>
-                    <a href={`mailto:${a.contactEmailValue}`}>{a.contactEmailOpen}</a>
+                    <a href={`mailto:${displayEmail}`}>{a.contactEmailOpen}</a>
                   </Button>
                   <Button
                     variant="outline"
@@ -373,11 +385,21 @@ export function AboutPageContent({ lang, about: a }: Props) {
                 <Github className="mx-auto mb-3 h-8 w-8 text-primary transition-transform duration-300 ease-out group-hover:scale-110" />
                 <h3 className="mb-1 font-semibold">{a.contactSocialTitle}</h3>
                 <p className="mb-4 text-sm text-muted-foreground">{a.contactSocialDesc}</p>
-                <Button variant="outline" className="w-full rounded-full" asChild>
-                  <a href={a.socialGithubUrl} target="_blank" rel="noopener noreferrer">
-                    {a.contactGithubLabel}
-                  </a>
-                </Button>
+                <div className="flex flex-col gap-2">
+                  <Button variant="outline" className="w-full rounded-full" asChild>
+                    <a href={displayGithubUrl} target="_blank" rel="noopener noreferrer">
+                      {a.contactGithubLabel}
+                    </a>
+                  </Button>
+                  {displayWebsite ? (
+                    <Button variant="outline" className="w-full rounded-full gap-1.5" asChild>
+                      <a href={displayWebsite} target="_blank" rel="noopener noreferrer">
+                        <Globe className="h-4 w-4 shrink-0" />
+                        {a.contactWebsiteLabel}
+                      </a>
+                    </Button>
+                  ) : null}
+                </div>
               </Card>
             </AnimatedSection>
 
@@ -385,7 +407,7 @@ export function AboutPageContent({ lang, about: a }: Props) {
               <Card className={cn("h-full p-6 text-center", ABOUT_CARD_HOVER)}>
                 <MapPin className="mx-auto mb-3 h-8 w-8 text-primary transition-transform duration-300 ease-out group-hover:scale-110" />
                 <h3 className="mb-1 font-semibold">{a.contactLocationTitle}</h3>
-                <p className="text-sm text-muted-foreground">{a.contactLocationDesc}</p>
+                <p className="text-sm text-muted-foreground">{displayLocationDesc}</p>
               </Card>
             </AnimatedSection>
           </div>

@@ -7,6 +7,8 @@ export type AuthJwtPayload = {
   userId: number;
   username: string;
   role: string;
+  /** 内存态超级管理员等 */
+  isRoot?: boolean;
 };
 
 /**
@@ -24,4 +26,22 @@ export function getAuthUserFromRequest(request: NextRequest): AuthJwtPayload | n
   } catch {
     return null;
   }
+}
+
+/** 与 API 路由配合：区分未带 Bearer 与 JWT 校验失败（后者含过期、签名错误等），避免 verifyToken 抛错被误当作 500 */
+export type RequireAuthResult = { ok: true; user: AuthJwtPayload } | { ok: false; reason: "missing" | "invalid" };
+
+/**
+ * 从请求解析已登录用户；未提供 Authorization: Bearer、或令牌无效时返回 reason。
+ */
+export function requireAuthUser(request: NextRequest): RequireAuthResult {
+  const authHeader = request.headers.get("authorization");
+  if (!authHeader?.toLowerCase().startsWith("bearer ")) {
+    return { ok: false, reason: "missing" };
+  }
+  const user = getAuthUserFromRequest(request);
+  if (!user) {
+    return { ok: false, reason: "invalid" };
+  }
+  return { ok: true, user };
 }

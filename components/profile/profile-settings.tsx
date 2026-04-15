@@ -1,31 +1,39 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Button, Card, CardBody, Input, Select, SelectItem, Switch, Textarea } from "@heroui/react";
-import { Bell, Clock, Eye, EyeOff, Globe, Mail, MapPin, Palette, Phone, Save, Shield, User } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { Button, Card, CardBody, Input, Select, SelectItem, Switch } from "@heroui/react";
+import { Bell, Clock, Github, Globe, Mail, MapPin, Palette, Phone, Save, Shield, User } from "lucide-react";
 
+import { FeaturedImageUpload } from "@/components/blog/featured-image-upload";
 import { PROFILE_GLASS_CARD } from "@/components/profile/profile-ui-presets";
+import { useAuth } from "@/lib/contexts/auth-context";
+import { message } from "@/lib/utils";
+import type { ApiResponse, UpdateProfileRequest, UserProfile } from "@/types/blog";
 
 interface ProfileSettingsProps {
   lang: string;
 }
 
-interface UserProfile {
-  id: number;
-  userId: number;
-  firstName?: string;
-  lastName?: string;
-  phone?: string;
-  website?: string;
-  location?: string;
-  timezone?: string;
-  language: string;
-  dateFormat: string;
-  timeFormat: string;
-  theme: string;
-  notifications?: Record<string, any>;
-  privacy?: Record<string, any>;
-  socialLinks?: Record<string, any>;
+/** 从接口拉取的个人资料 JSON 中安全读取对象字段 */
+function asRecord(v: unknown): Record<string, unknown> {
+  if (v && typeof v === "object" && !Array.isArray(v)) return v as Record<string, unknown>;
+  return {};
+}
+
+/** 组装写入后端的 social_links，仅保留当前产品支持的键 */
+function buildSocialLinksPayload(form: {
+  github: string;
+  wechatQr: string;
+  douyin: string;
+  bilibili: string;
+}): Record<string, string> {
+  return {
+    github: form.github.trim(),
+    wechatQr: form.wechatQr.trim(),
+    douyin: form.douyin.trim(),
+    bilibili: form.bilibili.trim(),
+  };
 }
 
 export default function ProfileSettings({ lang }: ProfileSettingsProps) {
@@ -33,6 +41,9 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
     lang === "en-US"
       ? {
           saveSuccess: "Settings saved successfully!",
+          loadFailed: "Failed to load profile",
+          needLogin: "Please sign in to manage account settings.",
+          login: "Sign in",
           title: "Account Settings",
           subtitle: "Manage your personal info and preferences",
           saving: "Saving...",
@@ -46,6 +57,8 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
           },
           profile: {
             title: "Basic Info",
+            email: "Email",
+            emailPlaceholder: "your@email.com",
             firstName: "First Name",
             firstNamePlaceholder: "Enter first name",
             lastName: "Last Name",
@@ -111,12 +124,21 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
           },
           social: {
             title: "Social Links",
-            weibo: "Weibo",
+            github: "GitHub",
+            wechatQr: "WeChat QR code",
+            wechatQrDetail: "Upload a QR image for others to add you on WeChat",
+            douyin: "Douyin",
+            douyinPlaceholder: "Douyin ID or profile URL",
+            bilibili: "Bilibili",
+            bilibiliPlaceholder: "UID, username, or space URL",
           },
         }
       : lang === "ja-JP"
         ? {
             saveSuccess: "設定を保存しました！",
+            loadFailed: "プロフィールの読み込みに失敗しました",
+            needLogin: "アカウント設定を行うにはログインしてください。",
+            login: "ログイン",
             title: "アカウント設定",
             subtitle: "個人情報と設定を管理",
             saving: "保存中...",
@@ -130,6 +152,8 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
             },
             profile: {
               title: "基本情報",
+              email: "メール",
+              emailPlaceholder: "your@email.com",
               firstName: "名",
               firstNamePlaceholder: "名を入力",
               lastName: "姓",
@@ -195,11 +219,20 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
             },
             social: {
               title: "ソーシャルリンク",
-              weibo: "微博",
+              github: "GitHub",
+              wechatQr: "WeChat QRコード",
+              wechatQrDetail: "WeChat で追加してもらうための QR 画像をアップロード",
+              douyin: "Douyin（抖音）",
+              douyinPlaceholder: "抖音号またはプロフィール URL",
+              bilibili: "bilibili",
+              bilibiliPlaceholder: "UID・ユーザー名・空間 URL",
             },
           }
         : {
             saveSuccess: "设置保存成功！",
+            loadFailed: "加载个人资料失败",
+            needLogin: "请先登录后再管理账户设置。",
+            login: "去登录",
             title: "账户设置",
             subtitle: "管理您的个人信息和偏好设置",
             saving: "保存中...",
@@ -213,6 +246,8 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
             },
             profile: {
               title: "基本信息",
+              email: "邮箱",
+              emailPlaceholder: "your@email.com",
               firstName: "名字",
               firstNamePlaceholder: "请输入名字",
               lastName: "姓氏",
@@ -278,17 +313,24 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
             },
             social: {
               title: "社交媒体链接",
-              weibo: "微博",
+              github: "GitHub",
+              wechatQr: "微信二维码",
+              wechatQrDetail: "上传二维码图片，便于访客添加您的微信",
+              douyin: "抖音",
+              douyinPlaceholder: "抖音号或主页链接",
+              bilibili: "哔哩哔哩",
+              bilibiliPlaceholder: "UID、用户名或空间链接",
             },
           };
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [fetchFailed, setFetchFailed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
 
   const [formData, setFormData] = useState({
     // 基本信息
+    email: "",
     firstName: "",
     lastName: "",
     phone: "",
@@ -315,92 +357,131 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
     emailVisibility: "private",
     activityVisibility: "public",
 
-    // 社交媒体
+    // 社交媒体（social_links JSON：github / wechatQr / douyin / bilibili）
     github: "",
-    twitter: "",
-    linkedin: "",
-    weibo: "",
+    wechatQr: "",
+    douyin: "",
+    bilibili: "",
   });
 
+  const { isAuthenticated, isLoading: authLoading, patchUser } = useAuth();
+
+  /** 微信二维码上传组件文案（与 FeaturedImageUpload 约定一致） */
+  const wechatQrUploadLabels = useMemo(
+    () =>
+      lang === "en-US"
+        ? {
+            title: t.social.wechatQr,
+            hint: "JPEG, PNG, GIF or WebP, max 10MB",
+            emptyDropHint: "Click or drag to upload",
+            uploadButton: "Upload",
+            removeButton: "Remove",
+            uploading: "Uploading...",
+            needLogin: "Please sign in first",
+            uploadFailed: "Upload failed",
+          }
+        : lang === "ja-JP"
+          ? {
+              title: t.social.wechatQr,
+              hint: "JPEG / PNG / GIF / WebP、最大 10MB",
+              emptyDropHint: "クリックまたはドラッグでアップロード",
+              uploadButton: "アップロード",
+              removeButton: "削除",
+              uploading: "アップロード中...",
+              needLogin: "先にログインしてください",
+              uploadFailed: "アップロードに失敗しました",
+            }
+          : {
+              title: t.social.wechatQr,
+              hint: "支持 JPEG、PNG、GIF、WebP，最大 10MB",
+              emptyDropHint: "点击或拖拽图片到此处上传",
+              uploadButton: "上传图片",
+              removeButton: "移除",
+              uploading: "上传中…",
+              needLogin: "请先登录",
+              uploadFailed: "上传失败",
+            },
+    [lang, t.social.wechatQr]
+  );
+
+  const applyProfileToForm = useCallback((data: UserProfile) => {
+    const n = asRecord(data.notifications);
+    const p = asRecord(data.privacy);
+    const sl = asRecord(data.socialLinks);
+    setFormData({
+      email: data.email ?? "",
+      firstName: data.firstName ?? "",
+      lastName: data.lastName ?? "",
+      phone: data.phone ?? "",
+      website: data.website ?? "",
+      location: data.location ?? "",
+      timezone: data.timezone || "Asia/Shanghai",
+      language: data.language || "zh-CN",
+      dateFormat: data.dateFormat || "YYYY-MM-DD",
+      timeFormat: data.timeFormat || "24h",
+      theme: data.theme || "system",
+      emailNotifications: Boolean(n.email ?? true),
+      pushNotifications: Boolean(n.push ?? true),
+      smsNotifications: Boolean(n.sms ?? false),
+      commentNotifications: Boolean(n.comment ?? true),
+      likeNotifications: Boolean(n.like ?? true),
+      followNotifications: Boolean(n.follow ?? true),
+      profileVisibility: String(p.profileVisibility ?? "public"),
+      emailVisibility: String(p.emailVisibility ?? "private"),
+      activityVisibility: String(p.activityVisibility ?? "public"),
+      github: typeof sl.github === "string" ? sl.github : "",
+      wechatQr: typeof sl.wechatQr === "string" ? sl.wechatQr : "",
+      douyin: typeof sl.douyin === "string" ? sl.douyin : "",
+      bilibili: typeof sl.bilibili === "string" ? sl.bilibili : "",
+    });
+  }, []);
+
   useEffect(() => {
-    const fetchProfile = async () => {
+    if (authLoading) return;
+
+    const load = async () => {
+      if (!isAuthenticated) {
+        setLoading(false);
+        setProfile(null);
+        setFetchFailed(false);
+        return;
+      }
+
+      const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+      if (!token) {
+        setLoading(false);
+        setProfile(null);
+        setFetchFailed(false);
+        return;
+      }
+
+      setLoading(true);
+      setFetchFailed(false);
       try {
-        // 这里应该调用真实的API
-        // const response = await fetch('/api/profile');
-        // const data = await response.json();
-
-        // 模拟数据
-        setTimeout(() => {
-          const mockProfile: UserProfile = {
-            id: 1,
-            userId: 1,
-            firstName: "张",
-            lastName: "三",
-            phone: "+86 138 0013 8000",
-            website: "https://example.com",
-            location: "北京市",
-            timezone: "Asia/Shanghai",
-            language: "zh-CN",
-            dateFormat: "YYYY-MM-DD",
-            timeFormat: "24h",
-            theme: "system",
-            notifications: {
-              email: true,
-              push: true,
-              sms: false,
-              comment: true,
-              like: true,
-              follow: true,
-            },
-            privacy: {
-              profileVisibility: "public",
-              emailVisibility: "private",
-              activityVisibility: "public",
-            },
-            socialLinks: {
-              github: "https://github.com/username",
-              twitter: "https://twitter.com/username",
-              linkedin: "https://linkedin.com/in/username",
-              weibo: "https://weibo.com/username",
-            },
-          };
-
-          setProfile(mockProfile);
-          setFormData({
-            firstName: mockProfile.firstName || "",
-            lastName: mockProfile.lastName || "",
-            phone: mockProfile.phone || "",
-            website: mockProfile.website || "",
-            location: mockProfile.location || "",
-            timezone: mockProfile.timezone || "Asia/Shanghai",
-            language: mockProfile.language || "zh-CN",
-            dateFormat: mockProfile.dateFormat || "YYYY-MM-DD",
-            timeFormat: mockProfile.timeFormat || "24h",
-            theme: mockProfile.theme || "system",
-            emailNotifications: mockProfile.notifications?.email || true,
-            pushNotifications: mockProfile.notifications?.push || true,
-            smsNotifications: mockProfile.notifications?.sms || false,
-            commentNotifications: mockProfile.notifications?.comment || true,
-            likeNotifications: mockProfile.notifications?.like || true,
-            followNotifications: mockProfile.notifications?.follow || true,
-            profileVisibility: mockProfile.privacy?.profileVisibility || "public",
-            emailVisibility: mockProfile.privacy?.emailVisibility || "private",
-            activityVisibility: mockProfile.privacy?.activityVisibility || "public",
-            github: mockProfile.socialLinks?.github || "",
-            twitter: mockProfile.socialLinks?.twitter || "",
-            linkedin: mockProfile.socialLinks?.linkedin || "",
-            weibo: mockProfile.socialLinks?.weibo || "",
-          });
-          setLoading(false);
-        }, 1000);
-      } catch (error) {
-        console.error("获取个人资料失败:", error);
+        const res = await fetch("/api/profile", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const json = (await res.json()) as ApiResponse<UserProfile>;
+        if (!json.success || !json.data) {
+          message.error(json.message || t.loadFailed);
+          setProfile(null);
+          setFetchFailed(true);
+          return;
+        }
+        setProfile(json.data);
+        applyProfileToForm(json.data);
+      } catch (e) {
+        console.error(e);
+        message.error(t.loadFailed);
+        setProfile(null);
+        setFetchFailed(true);
+      } finally {
         setLoading(false);
       }
     };
 
-    fetchProfile();
-  }, []);
+    void load();
+  }, [authLoading, isAuthenticated, applyProfileToForm, t.loadFailed]);
 
   const handleInputChange = (field: string, value: any) => {
     setFormData((prev) => ({
@@ -410,21 +491,74 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
   };
 
   const handleSave = async () => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+    if (!token || !isAuthenticated) {
+      message.warning(t.needLogin);
+      return;
+    }
+
+    const body: UpdateProfileRequest = {
+      email: formData.email.trim(),
+      firstName: formData.firstName.trim(),
+      lastName: formData.lastName.trim(),
+      phone: formData.phone.trim(),
+      website: formData.website.trim(),
+      location: formData.location.trim(),
+      timezone: formData.timezone,
+      language: formData.language,
+      dateFormat: formData.dateFormat,
+      timeFormat: formData.timeFormat,
+      theme: formData.theme,
+      notifications: {
+        email: formData.emailNotifications,
+        push: formData.pushNotifications,
+        sms: formData.smsNotifications,
+        comment: formData.commentNotifications,
+        like: formData.likeNotifications,
+        follow: formData.followNotifications,
+      },
+      privacy: {
+        profileVisibility: formData.profileVisibility,
+        emailVisibility: formData.emailVisibility,
+        activityVisibility: formData.activityVisibility,
+      },
+      socialLinks: buildSocialLinksPayload(formData),
+    };
+
     setSaving(true);
     try {
-      // 这里应该调用真实的API
-      // await fetch('/api/profile', {
-      //   method: 'PUT',
-      //   body: JSON.stringify(formData)
-      // });
+      // GET 在无 user_profiles 行时 id 为 0，需 POST 创建后再用 PUT 更新
+      const isNew = !profile || profile.id === 0;
+      const res = await fetch("/api/profile", {
+        method: isNew ? "POST" : "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+      const json = (await res.json()) as ApiResponse<unknown>;
+      if (!json.success) {
+        message.error(json.message || "Error");
+        return;
+      }
+      message.success(json.message || t.saveSuccess);
 
-      // 模拟保存
-      setTimeout(() => {
-        setSaving(false);
-        alert(t.saveSuccess);
-      }, 1000);
+      const refresh = await fetch("/api/profile", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const refreshed = (await refresh.json()) as ApiResponse<UserProfile>;
+      if (refreshed.success && refreshed.data) {
+        setProfile(refreshed.data);
+        applyProfileToForm(refreshed.data);
+        if (refreshed.data.email) {
+          patchUser({ email: refreshed.data.email });
+        }
+      }
     } catch (error) {
       console.error("保存设置失败:", error);
+      message.error(t.loadFailed);
+    } finally {
       setSaving(false);
     }
   };
@@ -436,6 +570,32 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
     { id: "privacy", label: t.tabs.privacy, icon: Shield },
     { id: "social", label: t.tabs.social, icon: Globe },
   ];
+
+  if (!authLoading && !isAuthenticated) {
+    return (
+      <Card className={PROFILE_GLASS_CARD}>
+        <CardBody className="flex flex-col items-center gap-4 p-10 text-center">
+          <p className="text-default-600">{t.needLogin}</p>
+          <Button color="primary" as={Link} href={`/${lang}/auth/login`}>
+            {t.login}
+          </Button>
+        </CardBody>
+      </Card>
+    );
+  }
+
+  if (!loading && isAuthenticated && fetchFailed) {
+    return (
+      <Card className={PROFILE_GLASS_CARD}>
+        <CardBody className="flex flex-col items-center gap-4 p-10 text-center">
+          <p className="text-default-600">{t.loadFailed}</p>
+          <Button color="primary" variant="flat" onPress={() => window.location.reload()}>
+            {lang === "en-US" ? "Retry" : lang === "ja-JP" ? "再試行" : "重试"}
+          </Button>
+        </CardBody>
+      </Card>
+    );
+  }
 
   if (loading) {
     return (
@@ -511,6 +671,15 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
               <CardBody className="p-6">
                 <h3 className="mb-6 text-lg font-semibold text-foreground">{t.profile.title}</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Input
+                    type="email"
+                    label={t.profile.email}
+                    placeholder={t.profile.emailPlaceholder}
+                    value={formData.email}
+                    onChange={(e) => handleInputChange("email", e.target.value)}
+                    startContent={<Mail className="h-4 w-4 text-default-400" />}
+                    className="md:col-span-2"
+                  />
                   <Input
                     label={t.profile.firstName}
                     placeholder={t.profile.firstNamePlaceholder}
@@ -751,38 +920,41 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
             </Card>
           )}
 
-          {/* 社交媒体 */}
+          {/* 社交媒体：GitHub 链接 + 微信二维码上传 + 抖音 / B 站账号 */}
           {activeTab === "social" && (
             <Card className={PROFILE_GLASS_CARD}>
               <CardBody className="p-6">
                 <h3 className="mb-6 text-lg font-semibold text-foreground">{t.social.title}</h3>
                 <div className="space-y-6">
                   <Input
-                    label="GitHub"
+                    label={t.social.github}
                     placeholder="https://github.com/username"
                     value={formData.github}
                     onChange={(e) => handleInputChange("github", e.target.value)}
+                    startContent={<Github className="h-4 w-4 text-default-400" />}
+                  />
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-foreground">{t.social.wechatQr}</p>
+                    <p className="text-xs text-default-500">{t.social.wechatQrDetail}</p>
+                    <FeaturedImageUpload
+                      scope="profile"
+                      value={formData.wechatQr}
+                      onChange={(url) => handleInputChange("wechatQr", url)}
+                      labels={wechatQrUploadLabels}
+                    />
+                  </div>
+                  <Input
+                    label={t.social.douyin}
+                    placeholder={t.social.douyinPlaceholder}
+                    value={formData.douyin}
+                    onChange={(e) => handleInputChange("douyin", e.target.value)}
                     startContent={<Globe className="h-4 w-4 text-default-400" />}
                   />
                   <Input
-                    label="Twitter"
-                    placeholder="https://twitter.com/username"
-                    value={formData.twitter}
-                    onChange={(e) => handleInputChange("twitter", e.target.value)}
-                    startContent={<Globe className="h-4 w-4 text-default-400" />}
-                  />
-                  <Input
-                    label="LinkedIn"
-                    placeholder="https://linkedin.com/in/username"
-                    value={formData.linkedin}
-                    onChange={(e) => handleInputChange("linkedin", e.target.value)}
-                    startContent={<Globe className="h-4 w-4 text-default-400" />}
-                  />
-                  <Input
-                    label={t.social.weibo}
-                    placeholder="https://weibo.com/username"
-                    value={formData.weibo}
-                    onChange={(e) => handleInputChange("weibo", e.target.value)}
+                    label={t.social.bilibili}
+                    placeholder={t.social.bilibiliPlaceholder}
+                    value={formData.bilibili}
+                    onChange={(e) => handleInputChange("bilibili", e.target.value)}
                     startContent={<Globe className="h-4 w-4 text-default-400" />}
                   />
                 </div>

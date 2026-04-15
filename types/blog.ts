@@ -67,7 +67,8 @@ export interface ApiResponse<T = any> {
 /**
  * 用户角色枚举
  */
-export type UserRole = "admin" | "author" | "user";
+/** super_admin 仅见于内存 Root JWT，不落库 */
+export type UserRole = "super_admin" | "admin" | "author" | "user";
 
 /**
  * 用户状态枚举
@@ -127,6 +128,28 @@ export interface LoginResponse {
   user: Omit<User, "password">;
   token: string;
   refreshToken: string;
+}
+
+/** 超级管理员「账户管理」列表行（数据库用户，不含密码） */
+export type AdminManagedUserRow = Omit<User, "password">;
+
+/** PATCH /api/admin/users/:id 请求体（至少一项） */
+export interface AdminUserPatchBody {
+  role?: "admin" | "author" | "user";
+  status?: "active" | "inactive" | "banned";
+}
+
+/** GET /api/admin/users/:id 详情：用户表 + 可选 user_profiles 摘要 */
+export interface AdminUserDetail extends AdminManagedUserRow {
+  profile: {
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    website?: string;
+    location?: string;
+    timezone?: string;
+    language?: string;
+  } | null;
 }
 
 // ==================== 分类相关类型 ====================
@@ -504,6 +527,8 @@ export interface CategoryQueryParams extends PaginationParams {
  */
 export interface UserProfile extends BaseEntity {
   userId: number;
+  /** 登录邮箱：普通用户来自 users.email；超级管理员（user_id=0）来自 user_profiles.email 或默认占位 */
+  email?: string;
   firstName?: string;
   lastName?: string;
   phone?: string;
@@ -517,6 +542,20 @@ export interface UserProfile extends BaseEntity {
   notifications?: Record<string, any>;
   privacy?: Record<string, any>;
   socialLinks?: Record<string, any>;
+}
+
+/**
+ * 个人资料中的社交媒体（存于 user_profiles.social_links JSON）
+ * 不含已废弃字段：twitter、linkedin、weibo
+ */
+export interface ProfileSocialLinks {
+  github?: string;
+  /** 微信二维码图片 URL（通常由 /api/uploads/image?scope=profile 上传） */
+  wechatQr?: string;
+  /** 抖音号或主页链接 */
+  douyin?: string;
+  /** 哔哩哔哩 UID、用户名或空间链接 */
+  bilibili?: string;
 }
 
 /**
@@ -592,6 +631,8 @@ export interface ProfileStats {
  * 个人资料更新请求接口
  */
 export interface UpdateProfileRequest {
+  /** 修改登录邮箱；保存时校验不能与「其他」用户重复（users 表） */
+  email?: string;
   firstName?: string;
   lastName?: string;
   phone?: string;

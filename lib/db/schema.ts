@@ -269,6 +269,8 @@ export const userProfiles = mysqlTable(
   {
     id: int("id").primaryKey().autoincrement(),
     userId: int("user_id").notNull(), // 关联用户ID
+    /** 仅内存超级管理员（user_id=0）使用；普通用户邮箱以 users.email 为准 */
+    email: varchar("email", { length: 100 }),
     firstName: varchar("first_name", { length: 50 }), // 名字
     lastName: varchar("last_name", { length: 50 }), // 姓氏
     phone: varchar("phone", { length: 20 }), // 电话号码

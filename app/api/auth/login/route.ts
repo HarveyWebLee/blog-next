@@ -1,15 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
+import { resolveSuperAdminLogin } from "@/lib/config/super-admin";
 import { db } from "@/lib/db/config";
 import { users } from "@/lib/db/schema";
-import { generateAccessToken, generateRefreshToken, hashPassword, verifyPassword } from "@/lib/utils";
+import { generateAccessToken, generateRefreshToken, verifyPassword } from "@/lib/utils";
 import { ApiResponse, LoginRequest, LoginResponse } from "@/types/blog";
 
 export async function POST(request: NextRequest) {
   try {
     const body: LoginRequest = await request.json();
-    const { username, password } = body;
+    const usernameRaw = body.username;
+    const passwordRaw = body.password;
+    const username = typeof usernameRaw === "string" ? usernameRaw.trim() : String(usernameRaw ?? "").trim();
+    const password = typeof passwordRaw === "string" ? passwordRaw : String(passwordRaw ?? "");
 
     // 验证输入
     if (!username || !password) {
@@ -23,20 +27,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 查找用户（支持用户名或邮箱登录）
-    const user = await db
-      .select()
-      .from(users)
-      .where(
-        and(
-          eq(users.status, "active"),
-          // 支持用户名或邮箱登录
-          username.includes("@") ? eq(users.email, username) : eq(users.username, username)
-        )
-      )
-      .limit(1);
+    // ① 内存态超级管理员（不访问数据库；用于 DB 不可用时的应急）
+    const superAdminResult = await resolveSuperAdminLogin(username, password);
+    if (superAdminResult === "bad_credentials") {
+      return NextResponse.json<ApiResponse>(
+        {
+          success: false,
+          message: "用户名或密码错误",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 401 }
+      );
+    }
+    if (typeof superAdminResult === "object") {
+      const response: LoginResponse = {
+        user: superAdminResult.user,
+        token: superAdminResult.accessToken,
+        refreshToken: superAdminResult.refreshToken,
+      };
+      return NextResponse.json<ApiResponse<LoginResponse>>({
+        success: true,
+        message: "登录成功",
+        data: response,
+        timestamp: new Date().toISOString(),
+      });
+    }
 
-    if (user.length === 0) {
+    // ② 数据库用户：先按用户名/邮箱命中行，再验密码；非 active 时明确提示（与刷新令牌逻辑一致）
+    const identifier = username.includes("@") ? eq(users.email, username) : eq(users.username, username);
+    const userRows = await db.select().from(users).where(identifier).limit(1);
+
+    if (userRows.length === 0) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
@@ -47,9 +68,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const userData = user[0];
+    const userData = userRows[0];
 
-    // 验证密码
     const isPasswordValid = await verifyPassword(password, userData.password);
     if (!isPasswordValid) {
       return NextResponse.json<ApiResponse>(
@@ -59,6 +79,17 @@ export async function POST(request: NextRequest) {
           timestamp: new Date().toISOString(),
         },
         { status: 401 }
+      );
+    }
+
+    if (userData.status !== "active") {
+      return NextResponse.json<ApiResponse>(
+        {
+          success: false,
+          message: "账户已停用或受限，无法登录。如有疑问请联系管理员。",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 403 }
       );
     }
 

@@ -33,8 +33,22 @@ export async function verifyPassword(password: string, hashedPassword: string): 
  * @param payload 载荷数据
  * @returns JWT令牌
  */
-export function generateAccessToken(payload: { userId: number; username: string; role: string }): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN } as jwt.SignOptions);
+export function generateAccessToken(payload: {
+  userId: number;
+  username: string;
+  role: string;
+  /** 内存态超级管理员等场景；仅在为 true 时写入 JWT，避免多余字段 */
+  isRoot?: boolean;
+}): string {
+  const body: Record<string, unknown> = {
+    userId: payload.userId,
+    username: payload.username,
+    role: payload.role,
+  };
+  if (payload.isRoot === true) {
+    body.isRoot = true;
+  }
+  return jwt.sign(body, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN } as jwt.SignOptions);
 }
 
 /**
@@ -42,8 +56,24 @@ export function generateAccessToken(payload: { userId: number; username: string;
  * @param payload 载荷数据
  * @returns JWT刷新令牌
  */
-export function generateRefreshToken(payload: { userId: number; username: string }): string {
-  return jwt.sign(payload, JWT_REFRESH_SECRET, { expiresIn: JWT_REFRESH_EXPIRES_IN } as jwt.SignOptions);
+export function generateRefreshToken(payload: {
+  userId: number;
+  username: string;
+  /** 与 access 对齐，便于刷新时重建内存 Root 会话 */
+  role?: string;
+  isRoot?: boolean;
+}): string {
+  const body: Record<string, unknown> = {
+    userId: payload.userId,
+    username: payload.username,
+  };
+  if (payload.role != null) {
+    body.role = payload.role;
+  }
+  if (payload.isRoot === true) {
+    body.isRoot = true;
+  }
+  return jwt.sign(body, JWT_REFRESH_SECRET, { expiresIn: JWT_REFRESH_EXPIRES_IN } as jwt.SignOptions);
 }
 
 /**

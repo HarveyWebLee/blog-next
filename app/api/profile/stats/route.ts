@@ -10,37 +10,23 @@ import { and, count, eq, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { comments, posts, userActivities, userFavorites, userFollows, userNotifications, users } from "@/lib/db/schema";
-import { verifyToken } from "@/lib/utils/auth";
+import { requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, ProfileStats } from "@/types/blog";
 
 export async function GET(request: NextRequest) {
   try {
-    // 验证用户身份
-    const token = request.headers.get("authorization")?.replace("Bearer ", "");
-    if (!token) {
+    const auth = requireAuthUser(request);
+    if (!auth.ok) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "未提供认证令牌",
+          message: auth.reason === "missing" ? "未提供认证令牌" : "无效的认证令牌",
           timestamp: new Date().toISOString(),
         },
         { status: 401 }
       );
     }
-
-    const decoded = verifyToken(token);
-    if (!decoded) {
-      return NextResponse.json<ApiResponse>(
-        {
-          success: false,
-          message: "无效的认证令牌",
-          timestamp: new Date().toISOString(),
-        },
-        { status: 401 }
-      );
-    }
-
-    const userId = decoded.userId;
+    const userId = auth.user.userId;
 
     // 并行获取各种统计信息
     const [

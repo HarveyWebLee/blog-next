@@ -12,35 +12,23 @@ import { and, desc, eq } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { categories, posts, userFavorites, users } from "@/lib/db/schema";
-import { verifyToken } from "@/lib/utils/auth";
+import { requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, FavoritePostRequest, PaginatedResponseData, PostData, UserFavorite } from "@/types/blog";
 
 export async function GET(request: NextRequest) {
   try {
-    // 验证用户身份
-    const token = request.headers.get("authorization")?.replace("Bearer ", "");
-    if (!token) {
+    const auth = requireAuthUser(request);
+    if (!auth.ok) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "未提供认证令牌",
+          message: auth.reason === "missing" ? "未提供认证令牌" : "无效的认证令牌",
           timestamp: new Date().toISOString(),
         },
         { status: 401 }
       );
     }
-
-    const decoded = verifyToken(token);
-    if (!decoded) {
-      return NextResponse.json<ApiResponse>(
-        {
-          success: false,
-          message: "无效的认证令牌",
-          timestamp: new Date().toISOString(),
-        },
-        { status: 401 }
-      );
-    }
+    const decoded = auth.user;
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
@@ -182,30 +170,18 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // 验证用户身份
-    const token = request.headers.get("authorization")?.replace("Bearer ", "");
-    if (!token) {
+    const auth = requireAuthUser(request);
+    if (!auth.ok) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "未提供认证令牌",
+          message: auth.reason === "missing" ? "未提供认证令牌" : "无效的认证令牌",
           timestamp: new Date().toISOString(),
         },
         { status: 401 }
       );
     }
-
-    const decoded = verifyToken(token);
-    if (!decoded) {
-      return NextResponse.json<ApiResponse>(
-        {
-          success: false,
-          message: "无效的认证令牌",
-          timestamp: new Date().toISOString(),
-        },
-        { status: 401 }
-      );
-    }
+    const decoded = auth.user;
 
     const body: FavoritePostRequest = await request.json();
     const { postId } = body;
@@ -283,30 +259,18 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    // 验证用户身份
-    const token = request.headers.get("authorization")?.replace("Bearer ", "");
-    if (!token) {
+    const auth = requireAuthUser(request);
+    if (!auth.ok) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "未提供认证令牌",
+          message: auth.reason === "missing" ? "未提供认证令牌" : "无效的认证令牌",
           timestamp: new Date().toISOString(),
         },
         { status: 401 }
       );
     }
-
-    const decoded = verifyToken(token);
-    if (!decoded) {
-      return NextResponse.json<ApiResponse>(
-        {
-          success: false,
-          message: "无效的认证令牌",
-          timestamp: new Date().toISOString(),
-        },
-        { status: 401 }
-      );
-    }
+    const decoded = auth.user;
 
     const { searchParams } = new URL(request.url);
     const postId = searchParams.get("postId");

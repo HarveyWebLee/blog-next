@@ -1,33 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
 import { Avatar, Button, Card, CardBody } from "@heroui/react";
 import { Edit, Globe, Mail, MapPin, Phone } from "lucide-react";
 
 import { PROFILE_GLASS_CARD } from "@/components/profile/profile-ui-presets";
+import { useAuth } from "@/lib/contexts/auth-context";
+import { message } from "@/lib/utils";
+import type { ApiResponse, UserProfile } from "@/types/blog";
 
 interface ProfileOverviewProps {
   lang: string;
 }
 
-interface UserProfile {
-  id: number;
-  userId: number;
-  firstName?: string;
-  lastName?: string;
-  phone?: string;
-  website?: string;
-  location?: string;
-  timezone?: string;
-  language: string;
-  dateFormat: string;
-  timeFormat: string;
-  theme: string;
-  notifications?: Record<string, any>;
-  privacy?: Record<string, any>;
-  socialLinks?: Record<string, any>;
-  createdAt: Date;
-  updatedAt: Date;
+/** 展示用：支持的社交键（与设置页写入的 social_links 一致） */
+const SOCIAL_KEYS = ["github", "wechatQr", "douyin", "bilibili"] as const;
+
+function isHttpUrl(s: string) {
+  return /^https?:\/\//i.test(s.trim());
 }
 
 export default function ProfileOverview({ lang }: ProfileOverviewProps) {
@@ -44,6 +36,12 @@ export default function ProfileOverview({ lang }: ProfileOverviewProps) {
           timezone: "Timezone",
           theme: "Theme",
           social: "Social",
+          github: "GitHub",
+          wechatQr: "WeChat QR",
+          douyin: "Douyin",
+          bilibili: "Bilibili",
+          needLogin: "Please sign in to view your profile.",
+          login: "Sign in",
         }
       : lang === "ja-JP"
         ? {
@@ -57,6 +55,12 @@ export default function ProfileOverview({ lang }: ProfileOverviewProps) {
             timezone: "タイムゾーン",
             theme: "テーマ",
             social: "ソーシャル",
+            github: "GitHub",
+            wechatQr: "WeChat QR",
+            douyin: "抖音",
+            bilibili: "bilibili",
+            needLogin: "プロフィールを表示するにはログインしてください。",
+            login: "ログイン",
           }
         : {
             loadFailed: "无法加载个人资料",
@@ -69,59 +73,74 @@ export default function ProfileOverview({ lang }: ProfileOverviewProps) {
             timezone: "时区",
             theme: "主题",
             social: "社交媒体",
+            github: "GitHub",
+            wechatQr: "微信二维码",
+            douyin: "抖音",
+            bilibili: "哔哩哔哩",
+            needLogin: "请先登录后查看个人资料。",
+            login: "去登录",
           };
+
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+
+  const load = useCallback(async () => {
+    if (!isAuthenticated) {
+      setProfile(null);
+      setLoading(false);
+      setFailed(false);
+      return;
+    }
+    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+    if (!token) {
+      setProfile(null);
+      setLoading(false);
+      setFailed(false);
+      return;
+    }
+    setLoading(true);
+    setFailed(false);
+    try {
+      const res = await fetch("/api/profile", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = (await res.json()) as ApiResponse<UserProfile>;
+      if (!json.success || !json.data) {
+        message.error(json.message || t.loadFailed);
+        setProfile(null);
+        setFailed(true);
+        return;
+      }
+      setProfile(json.data);
+    } catch (e) {
+      console.error(e);
+      message.error(t.loadFailed);
+      setProfile(null);
+      setFailed(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [isAuthenticated, t.loadFailed]);
 
   useEffect(() => {
-    // 模拟获取用户资料
-    const fetchProfile = async () => {
-      try {
-        // 这里应该调用真实的API
-        // const response = await fetch('/api/profile');
-        // const data = await response.json();
+    if (authLoading) return;
+    void load();
+  }, [authLoading, load]);
 
-        // 模拟数据
-        setTimeout(() => {
-          setProfile({
-            id: 1,
-            userId: 1,
-            firstName: "张",
-            lastName: "三",
-            phone: "+86 138 0013 8000",
-            website: "https://example.com",
-            location: "北京市",
-            timezone: "Asia/Shanghai",
-            language: "zh-CN",
-            dateFormat: "YYYY-MM-DD",
-            timeFormat: "24h",
-            theme: "system",
-            notifications: {
-              email: true,
-              push: true,
-              sms: false,
-            },
-            privacy: {
-              profileVisibility: "public",
-              emailVisibility: "private",
-            },
-            socialLinks: {
-              github: "https://github.com/username",
-              twitter: "https://twitter.com/username",
-            },
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          });
-          setLoading(false);
-        }, 1000);
-      } catch (error) {
-        console.error("获取个人资料失败:", error);
-        setLoading(false);
-      }
-    };
-
-    fetchProfile();
-  }, []);
+  if (!authLoading && !isAuthenticated) {
+    return (
+      <Card className={PROFILE_GLASS_CARD}>
+        <CardBody className="flex flex-col items-center gap-4 p-8 text-center">
+          <p className="text-default-500">{t.needLogin}</p>
+          <Button color="primary" as={Link} href={`/${lang}/auth/login`}>
+            {t.login}
+          </Button>
+        </CardBody>
+      </Card>
+    );
+  }
 
   if (loading) {
     return (
@@ -141,7 +160,7 @@ export default function ProfileOverview({ lang }: ProfileOverviewProps) {
     );
   }
 
-  if (!profile) {
+  if (failed || !profile) {
     return (
       <Card className={PROFILE_GLASS_CARD}>
         <CardBody className="p-6 text-center">
@@ -151,22 +170,36 @@ export default function ProfileOverview({ lang }: ProfileOverviewProps) {
     );
   }
 
+  const labelForKey = (k: string) => {
+    if (k === "github") return t.github;
+    if (k === "wechatQr") return t.wechatQr;
+    if (k === "douyin") return t.douyin;
+    if (k === "bilibili") return t.bilibili;
+    return k;
+  };
+
+  const socialLinks = profile.socialLinks || {};
+  const socialEntries = SOCIAL_KEYS.map((k) => {
+    const v = socialLinks[k];
+    return typeof v === "string" && v.trim() ? ([k, v.trim()] as const) : null;
+  }).filter(Boolean) as [string, string][];
+
   return (
     <Card className={PROFILE_GLASS_CARD}>
       <CardBody className="p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-center gap-4">
             <Avatar
-              src="/images/avatar.jpeg"
-              name={`${profile.firstName}${profile.lastName}`}
+              src={user?.avatar || "/images/avatar.jpeg"}
+              name={`${profile.firstName ?? ""}${profile.lastName ?? ""}`.trim() || user?.username || "?"}
               size="lg"
               className="h-16 w-16"
             />
             <div>
               <h2 className="text-xl font-semibold text-foreground">
-                {profile.firstName} {profile.lastName}
+                {[profile.firstName, profile.lastName].filter(Boolean).join(" ") || user?.displayName || user?.username}
               </h2>
-              <p className="text-default-500">{t.username}</p>
+              <p className="text-default-500">{user?.username ?? t.username}</p>
               <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-default-500">
                 {profile.location && (
                   <div className="flex items-center gap-1">
@@ -195,6 +228,8 @@ export default function ProfileOverview({ lang }: ProfileOverviewProps) {
             variant="flat"
             className="shrink-0 border border-primary/20 bg-primary/10 text-primary backdrop-blur-xl"
             startContent={<Edit className="h-4 w-4" />}
+            as={Link}
+            href={`/${lang}/profile/settings`}
           >
             {t.edit}
           </Button>
@@ -205,10 +240,12 @@ export default function ProfileOverview({ lang }: ProfileOverviewProps) {
           <div className="space-y-3">
             <h3 className="text-sm font-medium text-foreground">{t.contact}</h3>
             <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm text-default-600">
-                <Mail className="h-4 w-4 shrink-0 text-default-400" />
-                <span>user@example.com</span>
-              </div>
+              {user?.email && (
+                <div className="flex items-center gap-2 text-sm text-default-600">
+                  <Mail className="h-4 w-4 shrink-0 text-default-400" />
+                  <span>{user.email}</span>
+                </div>
+              )}
               {profile.phone && (
                 <div className="flex items-center gap-2 text-sm text-default-600">
                   <Phone className="h-4 w-4 shrink-0 text-default-400" />
@@ -237,25 +274,45 @@ export default function ProfileOverview({ lang }: ProfileOverviewProps) {
           </div>
         </div>
 
-        {/* 社交媒体链接 */}
-        {profile.socialLinks && Object.keys(profile.socialLinks).length > 0 && (
+        {/* 社交媒体：二维码图片 + 可点击链接或纯文本 */}
+        {socialEntries.length > 0 ? (
           <div className="mt-6">
             <h3 className="mb-3 text-sm font-medium text-foreground">{t.social}</h3>
-            <div className="flex flex-wrap gap-3">
-              {Object.entries(profile.socialLinks).map(([platform, url]) => (
-                <a
-                  key={platform}
-                  href={url as string}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-primary hover:underline"
-                >
-                  {platform}
-                </a>
-              ))}
+            <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap">
+              {socialEntries.map(([key, val]) =>
+                key === "wechatQr" ? (
+                  <div key={key} className="flex flex-col gap-1">
+                    <span className="text-xs text-default-500">{labelForKey(key)}</span>
+                    <Image
+                      src={val}
+                      alt=""
+                      width={112}
+                      height={112}
+                      unoptimized
+                      className="h-28 w-28 rounded-lg border border-default-200 object-cover dark:border-white/10"
+                    />
+                  </div>
+                ) : isHttpUrl(val) ? (
+                  <a
+                    key={key}
+                    href={val}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-primary hover:underline"
+                  >
+                    {labelForKey(key)}
+                  </a>
+                ) : (
+                  <div key={key} className="text-sm text-default-700">
+                    <span className="font-medium text-foreground">{labelForKey(key)}</span>
+                    <span className="mx-1.5 text-default-400">·</span>
+                    <span>{val}</span>
+                  </div>
+                )
+              )}
             </div>
           </div>
-        )}
+        ) : null}
       </CardBody>
     </Card>
   );

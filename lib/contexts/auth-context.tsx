@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, ReactNode, useContext, useEffect, useState } from "react";
+import React, { createContext, ReactNode, useCallback, useContext, useEffect, useState } from "react";
 
 import { LoginRequest, LoginResponse, User } from "@/types/blog";
 
@@ -11,6 +11,8 @@ interface AuthContextType {
   login: (credentials: LoginRequest) => Promise<{ success: boolean; message: string }>;
   logout: () => void;
   refreshToken: () => Promise<boolean>;
+  /** 个人资料等更新后同步本地 user（如邮箱变更），避免仅 localStorage 与界面不一致 */
+  patchUser: (partial: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -50,7 +52,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
     initializeAuth();
   }, []);
 
-  const login = async (credentials: LoginRequest): Promise<{ success: boolean; message: string }> => {
+  const patchUser = useCallback((partial: Partial<User>) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, ...partial };
+      localStorage.setItem("user", JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  const logout = useCallback(() => {
+    localStorage.removeItem("user");
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    setUser(null);
+    setIsAuthenticated(false);
+  }, []);
+
+  const login = useCallback(async (credentials: LoginRequest): Promise<{ success: boolean; message: string }> => {
     try {
       setIsLoading(true);
 
@@ -85,20 +104,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const logout = () => {
-    // 清除本地存储
-    localStorage.removeItem("user");
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-
-    // 重置状态
-    setUser(null);
-    setIsAuthenticated(false);
-  };
-
-  const refreshToken = async (): Promise<boolean> => {
+  const refreshToken = useCallback(async (): Promise<boolean> => {
     try {
       const storedRefreshToken = localStorage.getItem("refreshToken");
       if (!storedRefreshToken) {
@@ -132,7 +140,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       logout();
       return false;
     }
-  };
+  }, [logout]);
 
   const value: AuthContextType = {
     user,
@@ -141,6 +149,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     login,
     logout,
     refreshToken,
+    patchUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

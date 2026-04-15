@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@heroui/react";
-import { Bell, BookOpen, FolderTree, Heart, Menu, Settings, Tags, User } from "lucide-react";
+import { Bell, BookOpen, FolderTree, Heart, Menu, Settings, Tags, User, Users } from "lucide-react";
 
 import { PROFILE_PAGE_BG } from "@/components/profile/profile-ui-presets";
+import { useAuth } from "@/lib/contexts/auth-context";
 import ProfileSidebar from "./profile-sidebar";
 
 interface ProfileLayoutProps {
@@ -20,57 +21,76 @@ interface ProfileLayoutProps {
  */
 export default function ProfileLayout({ children, lang, dict: _dict }: ProfileLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { user } = useAuth();
 
-  const labels =
-    lang === "en-US"
-      ? {
-          overview: "Overview",
-          posts: "My Posts",
-          favorites: "My Favorites",
-          notifications: "Notifications",
-          settings: "Settings",
-          categoryManage: "Category Management",
-          tagManage: "Tag Management",
-          pageTitle: "Profile",
-          pageSubtitle: "Account and content hub",
-          openMenu: "Menu",
-        }
-      : lang === "ja-JP"
+  const { labels, navigationItems } = useMemo(() => {
+    const L =
+      lang === "en-US"
         ? {
-            overview: "概要",
-            posts: "自分の記事",
-            favorites: "お気に入り",
-            notifications: "通知",
-            settings: "アカウント設定",
-            categoryManage: "カテゴリー管理",
-            tagManage: "タグ管理",
-            pageTitle: "プロフィール",
-            pageSubtitle: "アカウントとコンテンツ",
-            openMenu: "メニュー",
+            overview: "Overview",
+            posts: "My Posts",
+            favorites: "My Favorites",
+            notifications: "Notifications",
+            settings: "Settings",
+            accountsAdmin: "Accounts",
+            categoryManage: "Category Management",
+            tagManage: "Tag Management",
+            pageTitle: "Profile",
+            pageSubtitle: "Account and content hub",
+            openMenu: "Menu",
           }
-        : {
-            overview: "概览",
-            posts: "我的文章",
-            favorites: "我的收藏",
-            notifications: "通知中心",
-            settings: "账户设置",
-            categoryManage: "分类管理",
-            tagManage: "标签管理",
-            pageTitle: "个人中心",
-            pageSubtitle: "账户与内容入口",
-            openMenu: "目录",
-          };
+        : lang === "ja-JP"
+          ? {
+              overview: "概要",
+              posts: "自分の記事",
+              favorites: "お気に入り",
+              notifications: "通知",
+              settings: "アカウント設定",
+              accountsAdmin: "アカウント管理",
+              categoryManage: "カテゴリー管理",
+              tagManage: "タグ管理",
+              pageTitle: "プロフィール",
+              pageSubtitle: "アカウントとコンテンツ",
+              openMenu: "メニュー",
+            }
+          : {
+              overview: "概览",
+              posts: "我的文章",
+              favorites: "我的收藏",
+              notifications: "通知中心",
+              settings: "账户设置",
+              accountsAdmin: "账户管理",
+              categoryManage: "分类管理",
+              tagManage: "标签管理",
+              pageTitle: "个人中心",
+              pageSubtitle: "账户与内容入口",
+              openMenu: "目录",
+            };
 
-  // 仅保留已存在路由的入口，避免指向未实现的页面
-  const navigationItems = [
-    { key: "overview", label: labels.overview, icon: User, href: "/profile" },
-    { key: "posts", label: labels.posts, icon: BookOpen, href: "/profile/posts" },
-    { key: "favorites", label: labels.favorites, icon: Heart, href: "/profile/favorites" },
-    { key: "notifications", label: labels.notifications, icon: Bell, href: "/profile/notifications" },
-    { key: "settings", label: labels.settings, icon: Settings, href: "/profile/settings" },
-    { key: "category-manage", label: labels.categoryManage, icon: FolderTree, href: "/categories/manage" },
-    { key: "tag-manage", label: labels.tagManage, icon: Tags, href: "/tags/manage" },
-  ];
+    const base: {
+      key: string;
+      label: string;
+      icon: React.ComponentType<{ className?: string }>;
+      href: string;
+    }[] = [
+      { key: "overview", label: L.overview, icon: User, href: "/profile" },
+      { key: "posts", label: L.posts, icon: BookOpen, href: "/profile/posts" },
+      { key: "favorites", label: L.favorites, icon: Heart, href: "/profile/favorites" },
+      { key: "notifications", label: L.notifications, icon: Bell, href: "/profile/notifications" },
+      { key: "settings", label: L.settings, icon: Settings, href: "/profile/settings" },
+      { key: "category-manage", label: L.categoryManage, icon: FolderTree, href: "/categories/manage" },
+      { key: "tag-manage", label: L.tagManage, icon: Tags, href: "/tags/manage" },
+    ];
+    if (user?.role === "super_admin") {
+      base.splice(5, 0, {
+        key: "accounts",
+        label: L.accountsAdmin,
+        icon: Users,
+        href: "/profile/accounts",
+      });
+    }
+    return { labels: L, navigationItems: base };
+  }, [lang, user?.role]);
 
   return (
     <div className={PROFILE_PAGE_BG}>

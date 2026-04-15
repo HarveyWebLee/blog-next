@@ -5,17 +5,11 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
-import { verifyToken } from "@/lib/utils/auth";
+import { requireAuthUser } from "@/lib/utils/request-auth";
 
 export async function profileAuthMiddleware(request: NextRequest) {
-  const token = request.headers.get("authorization")?.replace("Bearer ", "");
-
-  if (!token) {
-    return NextResponse.redirect(new URL("/auth/login", request.url));
-  }
-
-  const decoded = verifyToken(token);
-  if (!decoded) {
+  const auth = requireAuthUser(request);
+  if (!auth.ok) {
     return NextResponse.redirect(new URL("/auth/login", request.url));
   }
 
