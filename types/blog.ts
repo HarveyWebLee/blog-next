@@ -255,7 +255,10 @@ export interface EmailSubscription extends BaseEntity {
  */
 export interface CreateSubscriptionRequest {
   email: string;
+  /** 兼容旧前端；服务端以 JWT 为准，忽略未授权请求中的 userId */
   userId?: number;
+  /** 未登录访客订阅时必填：与邮件「订阅更新验证码」对应 */
+  verificationCode?: string;
 }
 
 // ==================== 文章相关类型 ====================
@@ -529,16 +532,13 @@ export interface UserProfile extends BaseEntity {
   userId: number;
   /** 登录邮箱：普通用户来自 users.email；超级管理员（user_id=0）来自 user_profiles.email 或默认占位 */
   email?: string;
+  /** 头像 URL：普通用户来自 users.avatar；内存超级管理员可为空 */
+  avatar?: string;
   firstName?: string;
   lastName?: string;
   phone?: string;
   website?: string;
   location?: string;
-  timezone?: string;
-  language: string;
-  dateFormat: string;
-  timeFormat: string;
-  theme: string;
   notifications?: Record<string, any>;
   privacy?: Record<string, any>;
   socialLinks?: Record<string, any>;
@@ -556,16 +556,6 @@ export interface ProfileSocialLinks {
   douyin?: string;
   /** 哔哩哔哩 UID、用户名或空间链接 */
   bilibili?: string;
-}
-
-/**
- * 用户偏好设置接口
- */
-export interface UserPreference extends BaseEntity {
-  userId: number;
-  key: string;
-  value?: string;
-  category: string;
 }
 
 /**
@@ -633,28 +623,18 @@ export interface ProfileStats {
 export interface UpdateProfileRequest {
   /** 修改登录邮箱；保存时校验不能与「其他」用户重复（users 表） */
   email?: string;
+  /** 修改邮箱时必填：/api/auth/send-verification-code(type=change_email) 发送的验证码 */
+  emailVerificationCode?: string;
+  /** 头像 URL（通常由 /api/uploads/image?scope=profile 上传后回填） */
+  avatar?: string;
   firstName?: string;
   lastName?: string;
   phone?: string;
   website?: string;
   location?: string;
-  timezone?: string;
-  language?: string;
-  dateFormat?: string;
-  timeFormat?: string;
-  theme?: string;
   notifications?: Record<string, any>;
   privacy?: Record<string, any>;
   socialLinks?: Record<string, any>;
-}
-
-/**
- * 偏好设置更新请求接口
- */
-export interface UpdatePreferenceRequest {
-  key: string;
-  value?: string;
-  category?: string;
 }
 
 /**

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { and, eq, gt } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
-import { emailVerifications, users } from "@/lib/db/schema";
+import { emailSubscriptions, emailVerifications, users } from "@/lib/db/schema";
 import { isValidEmail } from "@/lib/utils";
 import { generateVerificationCode, sendVerificationEmail } from "@/lib/utils/email";
 import { ApiResponse } from "@/types/blog";
@@ -15,7 +15,9 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { type = "register" } = body;
-    const email = typeof body.email === "string" ? body.email.trim() : "";
+    const rawEmail = typeof body.email === "string" ? body.email.trim() : "";
+    /** 订阅类验证码统一小写，与订阅表 email 一致 */
+    const email = type === "subscription" || type === "subscription_unsubscribe" ? rawEmail.toLowerCase() : rawEmail;
 
     // 与注册接口文案对齐：先区分「未填」与「格式不符」
     if (!email) {
@@ -41,7 +43,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 验证类型
-    if (!["register", "reset_password", "change_email"].includes(type)) {
+    if (!["register", "reset_password", "change_email", "subscription", "subscription_unsubscribe"].includes(type)) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
@@ -50,6 +52,44 @@ export async function POST(request: NextRequest) {
         },
         { status: 400 }
       );
+    }
+
+    // 访客订阅：已在有效订阅中则无需再发验证码
+    if (type === "subscription") {
+      const [activeSub] = await db
+        .select()
+        .from(emailSubscriptions)
+        .where(and(eq(emailSubscriptions.email, email), eq(emailSubscriptions.isActive, true)))
+        .limit(1);
+      if (activeSub) {
+        return NextResponse.json<ApiResponse>(
+          {
+            success: false,
+            message: "该邮箱已处于订阅状态，无需重复订阅",
+            timestamp: new Date().toISOString(),
+          },
+          { status: 409 }
+        );
+      }
+    }
+
+    // 访客退订：必须存在有效订阅才发验证码，避免对任意邮箱滥发
+    if (type === "subscription_unsubscribe") {
+      const [activeSub] = await db
+        .select()
+        .from(emailSubscriptions)
+        .where(and(eq(emailSubscriptions.email, email), eq(emailSubscriptions.isActive, true)))
+        .limit(1);
+      if (!activeSub) {
+        return NextResponse.json<ApiResponse>(
+          {
+            success: false,
+            message: "该邮箱当前未订阅，无法发送退订验证码",
+            timestamp: new Date().toISOString(),
+          },
+          { status: 400 }
+        );
+      }
     }
 
     // 如果是注册类型，检查邮箱是否已存在
@@ -108,16 +148,17 @@ export async function POST(request: NextRequest) {
         )
       );
 
-    // 保存新的验证码
+    // 保存新的验证码（与 schema 中 mysqlEnum 取值一致）
+    const verificationType = type as (typeof emailVerifications.$inferInsert)["type"];
     await db.insert(emailVerifications).values({
       email,
       code,
-      type,
+      type: verificationType,
       expiresAt,
     });
 
     // 发送邮件
-    const emailSent = await sendVerificationEmail(email, code, type);
+    const emailSent = await sendVerificationEmail(email, code, verificationType);
 
     if (!emailSent) {
       return NextResponse.json<ApiResponse>(

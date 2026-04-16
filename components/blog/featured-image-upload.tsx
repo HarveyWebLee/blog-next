@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@heroui/button";
 import { Spinner } from "@heroui/spinner";
 import clsx from "clsx";
@@ -21,6 +21,16 @@ export type FeaturedImageUploadLabels = {
   uploading: string;
   needLogin: string;
   uploadFailed: string;
+  /** 头像裁剪：标题 */
+  cropTitle?: string;
+  /** 头像裁剪：说明文案 */
+  cropHint?: string;
+  /** 头像裁剪：缩放滑杆标签 */
+  cropZoom?: string;
+  /** 头像裁剪：取消按钮 */
+  cropCancel?: string;
+  /** 头像裁剪：确认按钮 */
+  cropConfirm?: string;
 };
 
 type Props = {
@@ -32,6 +42,20 @@ type Props = {
 };
 
 const ACCEPT_MIME = /^image\/(jpeg|png|gif|webp)$/i;
+const PROFILE_CROP_EXPORT_SIZE = 512;
+
+type CropState = {
+  x: number;
+  y: number;
+  scale: number;
+};
+
+const CROP_MIN_SCALE = 0.1;
+const CROP_MAX_SCALE = 8;
+
+function clampScale(v: number): number {
+  return Math.min(CROP_MAX_SCALE, Math.max(CROP_MIN_SCALE, v));
+}
 
 /**
  * 特色图片：登录用户仅能通过本组件上传到 MinIO；支持替换（自动删旧对象）与移除。
@@ -44,10 +68,126 @@ export function FeaturedImageUpload({ value, onChange, scope = "article", labels
   const [isDragging, setIsDragging] = useState(false);
   /** 最近一次本组件上传得到的对象键，或从当前 value 解析出的可删键 */
   const trackedKeyRef = useRef<string | null>(null);
+  /** 头像裁剪态：仅 scope=profile 使用 */
+  const [cropSource, setCropSource] = useState<string | null>(null);
+  const [cropImageMeta, setCropImageMeta] = useState<{ width: number; height: number } | null>(null);
+  const [cropState, setCropState] = useState<CropState>({ x: 0, y: 0, scale: 1 });
+  const [cropViewportSize, setCropViewportSize] = useState(340);
+  const [isDraggingCrop, setIsDraggingCrop] = useState(false);
+  const dragStartRef = useRef<{ x: number; y: number; originX: number; originY: number } | null>(null);
+  const cropStageRef = useRef<HTMLDivElement>(null);
+  const lastCropObjectUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     trackedKeyRef.current = value ? extractObjectKeyFromPathStyleUrl(value) : null;
   }, [value]);
+
+  useEffect(() => {
+    if (!cropSource) return;
+    if (lastCropObjectUrlRef.current && lastCropObjectUrlRef.current !== cropSource) {
+      URL.revokeObjectURL(lastCropObjectUrlRef.current);
+    }
+    lastCropObjectUrlRef.current = cropSource;
+    const img = new Image();
+    img.onload = () => {
+      const minSide = Math.min(img.width, img.height);
+      const baseScale = PROFILE_CROP_EXPORT_SIZE / minSide;
+      setCropImageMeta({ width: img.width, height: img.height });
+      setCropState({ x: 0, y: 0, scale: Math.max(baseScale, 1) });
+    };
+    img.src = cropSource;
+  }, [cropSource]);
+
+  useEffect(() => {
+    if (!cropSource || !cropStageRef.current) return;
+    const element = cropStageRef.current;
+    const updateSize = () => {
+      const rect = element.getBoundingClientRect();
+      const size = Math.max(1, Math.round(Math.min(rect.width, rect.height)));
+      setCropViewportSize(size);
+    };
+    updateSize();
+    const observer = new ResizeObserver(() => updateSize());
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [cropSource]);
+
+  useEffect(() => {
+    return () => {
+      if (lastCropObjectUrlRef.current) {
+        URL.revokeObjectURL(lastCropObjectUrlRef.current);
+        lastCropObjectUrlRef.current = null;
+      }
+    };
+  }, []);
+
+  /**
+   * React 合成 onWheel 在浏览器里常以 passive 注册，preventDefault 不生效，页面仍会滚动。
+   * 必须用原生 addEventListener(..., { passive: false }) 才能拦住默认滚动。
+   */
+  useLayoutEffect(() => {
+    if (scope !== "profile" || !cropSource) return;
+    const el = cropStageRef.current;
+    if (!el) return;
+
+    const onWheelNative = (e: WheelEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const rect = el.getBoundingClientRect();
+      const anchorX = e.clientX - rect.left - rect.width / 2;
+      const anchorY = e.clientY - rect.top - rect.height / 2;
+      const factor = e.deltaY < 0 ? 1.08 : 0.92;
+      setCropState((prev) => {
+        const nextScale = clampScale(prev.scale * factor);
+        if (nextScale === prev.scale) return prev;
+        const ratio = nextScale / prev.scale;
+        return {
+          x: anchorX - (anchorX - prev.x) * ratio,
+          y: anchorY - (anchorY - prev.y) * ratio,
+          scale: nextScale,
+        };
+      });
+    };
+
+    el.addEventListener("wheel", onWheelNative, { passive: false });
+    return () => el.removeEventListener("wheel", onWheelNative);
+  }, [cropSource, scope]);
+
+  const cropTexts = useMemo(
+    () => ({
+      title:
+        labels.cropTitle || (scope === "profile" ? (labels.title.includes("Avatar") ? "Avatar Crop" : "头像裁剪") : ""),
+      hint:
+        labels.cropHint ||
+        (scope === "profile"
+          ? labels.title.includes("Avatar")
+            ? "Drag to move and use zoom to fit your square avatar."
+            : "拖拽调整位置，并通过缩放生成正方形头像。"
+          : ""),
+      zoom: labels.cropZoom || (labels.title.includes("Avatar") ? "Zoom" : "缩放"),
+      cancel: labels.cropCancel || (labels.title.includes("Avatar") ? "Cancel" : "取消"),
+      confirm: labels.cropConfirm || (labels.title.includes("Avatar") ? "Confirm Crop" : "确认裁剪"),
+    }),
+    [labels, scope]
+  );
+
+  const cropFitScale = useMemo(() => {
+    if (!cropImageMeta || cropViewportSize <= 0) return 1;
+    return cropViewportSize / Math.min(cropImageMeta.width, cropImageMeta.height);
+  }, [cropImageMeta, cropViewportSize]);
+
+  const setCropScaleAtAnchor = useCallback((nextScaleRaw: number, anchorX: number, anchorY: number) => {
+    setCropState((prev) => {
+      const nextScale = clampScale(nextScaleRaw);
+      if (nextScale === prev.scale) return prev;
+      const ratio = nextScale / prev.scale;
+      return {
+        x: anchorX - (anchorX - prev.x) * ratio,
+        y: anchorY - (anchorY - prev.y) * ratio,
+        scale: nextScale,
+      };
+    });
+  }, []);
 
   const getToken = () => (typeof window !== "undefined" ? localStorage.getItem("accessToken") : null);
 
@@ -97,10 +237,28 @@ export function FeaturedImageUpload({ value, onChange, scope = "article", labels
     [labels.hint, labels.needLogin, labels.uploadFailed, onChange, scope]
   );
 
+  const openProfileCropper = useCallback(
+    async (file: File) => {
+      if (!ACCEPT_MIME.test(file.type)) {
+        message.warning(labels.hint);
+        return;
+      }
+      const url = URL.createObjectURL(file);
+      setCropSource(url);
+      setCropImageMeta(null);
+      setCropState({ x: 0, y: 0, scale: 1 });
+    },
+    [labels.hint]
+  );
+
   const handleFileInput = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
+    if (scope === "profile") {
+      await openProfileCropper(file);
+      return;
+    }
     await processUploadFile(file);
   };
 
@@ -122,7 +280,97 @@ export function FeaturedImageUpload({ value, onChange, scope = "article", labels
     setIsDragging(false);
     if (uploading) return;
     const file = e.dataTransfer.files?.[0];
-    if (file) await processUploadFile(file);
+    if (!file) return;
+    if (scope === "profile") {
+      await openProfileCropper(file);
+      return;
+    }
+    await processUploadFile(file);
+  };
+
+  const handleCropPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!cropImageMeta) return;
+    const target = e.currentTarget;
+    target.setPointerCapture(e.pointerId);
+    dragStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      originX: cropState.x,
+      originY: cropState.y,
+    };
+    setIsDraggingCrop(true);
+  };
+
+  const handleCropPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const drag = dragStartRef.current;
+    if (!drag || !cropImageMeta) return;
+    const dx = e.clientX - drag.x;
+    const dy = e.clientY - drag.y;
+    // 注意：不要在 setState 回调中再次读取 dragStartRef.current，避免 pointerup 后被置空导致空引用
+    const nextX = drag.originX + dx;
+    const nextY = drag.originY + dy;
+    setCropState((prev) => ({ ...prev, x: nextX, y: nextY }));
+  };
+
+  const handleCropPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.currentTarget.releasePointerCapture(e.pointerId);
+    dragStartRef.current = null;
+    setIsDraggingCrop(false);
+  };
+
+  const closeCropper = () => {
+    if (cropSource) URL.revokeObjectURL(cropSource);
+    lastCropObjectUrlRef.current = null;
+    setCropSource(null);
+    setCropImageMeta(null);
+    setCropState({ x: 0, y: 0, scale: 1 });
+    setIsDraggingCrop(false);
+    dragStartRef.current = null;
+  };
+
+  const confirmCropAndUpload = async () => {
+    if (!cropSource || !cropImageMeta || !cropStageRef.current) return;
+    const rect = cropStageRef.current.getBoundingClientRect();
+    const stageSize = Math.round(Math.min(rect.width, rect.height));
+    if (stageSize <= 0) return;
+
+    const image = new Image();
+    image.src = cropSource;
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error("crop image load failed"));
+    });
+
+    // 视图坐标 -> 原图坐标：导出换算与渲染共用同一套尺度（fitScale * 用户缩放）
+    const renderScale = cropFitScale * cropState.scale;
+    const sSize = stageSize / renderScale;
+    const sx = cropImageMeta.width / 2 - sSize / 2 - cropState.x / renderScale;
+    const sy = cropImageMeta.height / 2 - sSize / 2 - cropState.y / renderScale;
+    const maxStartX = Math.max(0, cropImageMeta.width - sSize);
+    const maxStartY = Math.max(0, cropImageMeta.height - sSize);
+    const safeSx = Math.min(maxStartX, Math.max(0, sx));
+    const safeSy = Math.min(maxStartY, Math.max(0, sy));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = PROFILE_CROP_EXPORT_SIZE;
+    canvas.height = PROFILE_CROP_EXPORT_SIZE;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      message.error(labels.uploadFailed);
+      return;
+    }
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(image, safeSx, safeSy, sSize, sSize, 0, 0, PROFILE_CROP_EXPORT_SIZE, PROFILE_CROP_EXPORT_SIZE);
+
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.92));
+    if (!blob) {
+      message.error(labels.uploadFailed);
+      return;
+    }
+    const croppedFile = new File([blob], `avatar-${Date.now()}.jpg`, { type: "image/jpeg" });
+    await processUploadFile(croppedFile);
+    closeCropper();
   };
 
   const handleRemove = async () => {
@@ -228,7 +476,12 @@ export function FeaturedImageUpload({ value, onChange, scope = "article", labels
                 <p className="text-sm font-medium text-foreground">
                   {uploading ? labels.uploading : labels.uploadButton}
                 </p>
-                <p className="mt-1 text-xs text-default-400">{uploading ? "" : labels.emptyDropHint}</p>
+                <p className="mt-1 text-xs text-default-400">
+                  {uploading ? "" : labels.emptyDropHint}
+                  {scope === "profile"
+                    ? ` · ${labels.title.includes("Avatar") ? "Square image recommended" : "建议上传正方形图片"}`
+                    : ""}
+                </p>
               </div>
             </button>
           </div>
@@ -283,6 +536,71 @@ export function FeaturedImageUpload({ value, onChange, scope = "article", labels
             </div>
           </div>
         )}
+
+        {scope === "profile" && cropSource ? (
+          <div className="rounded-xl border border-default-200/80 bg-background/70 p-3 dark:border-default-200/20">
+            <div className="mb-3">
+              <p className="text-sm font-semibold text-foreground">{cropTexts.title}</p>
+              <p className="mt-1 text-xs text-default-500">{cropTexts.hint}</p>
+            </div>
+
+            <div
+              ref={cropStageRef}
+              className={clsx(
+                "relative mx-auto aspect-square w-full max-w-[340px] overflow-hidden overscroll-contain rounded-xl border border-default-300/70 bg-default-100/60",
+                isDraggingCrop ? "cursor-grabbing" : "cursor-grab"
+              )}
+              onPointerDown={handleCropPointerDown}
+              onPointerMove={handleCropPointerMove}
+              onPointerUp={handleCropPointerUp}
+              onPointerCancel={handleCropPointerUp}
+            >
+              {cropImageMeta ? (
+                // eslint-disable-next-line @next/next/no-img-element -- 裁剪阶段使用本地 objectURL
+                <img
+                  src={cropSource}
+                  alt=""
+                  draggable={false}
+                  className="pointer-events-none absolute left-1/2 top-1/2 max-w-none select-none"
+                  style={{
+                    width: `${cropImageMeta.width * cropFitScale}px`,
+                    height: `${cropImageMeta.height * cropFitScale}px`,
+                    transform: `translate(-50%, -50%) translate(${cropState.x}px, ${cropState.y}px) scale(${cropState.scale})`,
+                    transformOrigin: "center center",
+                  }}
+                />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Spinner size="md" color="primary" />
+                </div>
+              )}
+              <div className="pointer-events-none absolute inset-0 ring-2 ring-white/70 dark:ring-black/40" />
+            </div>
+
+            <div className="mt-3 space-y-3">
+              <label className="block text-xs text-default-500">
+                {cropTexts.zoom}
+                <input
+                  type="range"
+                  min={CROP_MIN_SCALE}
+                  max={CROP_MAX_SCALE}
+                  step={0.005}
+                  value={cropState.scale}
+                  onChange={(e) => setCropScaleAtAnchor(Number(e.target.value), 0, 0)}
+                  className="mt-1 w-full"
+                />
+              </label>
+              <div className="flex items-center gap-2">
+                <Button type="button" variant="bordered" onPress={closeCropper} isDisabled={uploading}>
+                  {cropTexts.cancel}
+                </Button>
+                <Button type="button" color="primary" onPress={confirmCropAndUpload} isLoading={uploading}>
+                  {cropTexts.confirm}
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );

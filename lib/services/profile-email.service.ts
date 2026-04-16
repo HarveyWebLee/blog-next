@@ -2,11 +2,11 @@
  * 个人资料中修改邮箱：与 users 表全局唯一（不含当前用户自身）。
  */
 
-import { and, ne, sql } from "drizzle-orm";
+import { and, eq, gt, ne, sql } from "drizzle-orm";
 
 import { RESERVED_SUPER_ADMIN_USER_ID } from "@/lib/config/super-admin";
 import { db } from "@/lib/db/config";
-import { users } from "@/lib/db/schema";
+import { emailVerifications, userProfiles, users } from "@/lib/db/schema";
 import { isValidEmailFormat } from "@/lib/utils/email-format";
 
 export function normalizeProfileEmail(raw: string): string {
@@ -45,6 +45,18 @@ export async function getProfileEmailConflictMessage(
   if (rows.length > 0) {
     return "该邮箱已被其他账号使用";
   }
+
+  // 超级管理员邮箱（user_profiles.user_id=0 的 email）同样属于全局唯一标识，普通账号不可占用
+  const superAdminProfile = await db
+    .select({ email: userProfiles.email })
+    .from(userProfiles)
+    .where(eq(userProfiles.userId, RESERVED_SUPER_ADMIN_USER_ID))
+    .limit(1);
+  const superAdminEmail = superAdminProfile[0]?.email?.trim().toLowerCase() || "";
+  if (superAdminEmail && superAdminEmail === email && excludeUserId !== RESERVED_SUPER_ADMIN_USER_ID) {
+    return "该邮箱已被超级管理员使用，请更换邮箱";
+  }
+
   return null;
 }
 
@@ -67,4 +79,49 @@ export async function resolveProfileEmailUpdateOrError(
     return { ok: false, message: msg };
   }
   return { ok: true, normalized: normalizeProfileEmail(trimmed) };
+}
+
+/**
+ * 邮箱变更验证码校验：
+ * - 仅在邮箱发生变更时需要；
+ * - 验证通过后会把验证码置为已使用，避免重复提交复用同一验证码。
+ */
+export async function verifyProfileEmailCodeOrError(params: {
+  oldEmail?: string;
+  newEmail?: string;
+  code?: string;
+}): Promise<{ ok: true } | { ok: false; message: string }> {
+  const oldNormalized = params.oldEmail ? normalizeProfileEmail(params.oldEmail) : "";
+  const newNormalized = params.newEmail ? normalizeProfileEmail(params.newEmail) : "";
+
+  // 邮箱未变更时，无需验证码
+  if (!newNormalized || oldNormalized === newNormalized) {
+    return { ok: true };
+  }
+
+  const code = params.code?.trim() ?? "";
+  if (!code) {
+    return { ok: false, message: "修改邮箱需要先验证邮箱验证码" };
+  }
+
+  const rows = await db
+    .select({ id: emailVerifications.id })
+    .from(emailVerifications)
+    .where(
+      and(
+        eq(emailVerifications.email, newNormalized),
+        eq(emailVerifications.code, code),
+        eq(emailVerifications.type, "change_email"),
+        eq(emailVerifications.isUsed, false),
+        gt(emailVerifications.expiresAt, new Date())
+      )
+    )
+    .limit(1);
+
+  if (rows.length === 0) {
+    return { ok: false, message: "邮箱验证码无效或已过期" };
+  }
+
+  await db.update(emailVerifications).set({ isUsed: true }).where(eq(emailVerifications.id, rows[0].id));
+  return { ok: true };
 }

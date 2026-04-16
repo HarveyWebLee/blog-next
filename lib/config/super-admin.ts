@@ -34,16 +34,12 @@ export function getSyntheticSuperAdminUserProfile(username: string): UserProfile
     id: 0,
     userId: RESERVED_SUPER_ADMIN_USER_ID,
     email: `${username}@superadmin.local`,
+    avatar: undefined,
     firstName: undefined,
     lastName: undefined,
     phone: undefined,
     website: undefined,
     location: undefined,
-    timezone: undefined,
-    language: "zh-CN",
-    dateFormat: "YYYY-MM-DD",
-    timeFormat: "24h",
-    theme: "system",
     notifications: {},
     privacy: {},
     socialLinks: {},
@@ -58,23 +54,21 @@ export function getSyntheticSuperAdminUserProfile(username: string): UserProfile
 export function mergeSuperAdminProfileFromRow(row: UserProfileRow | undefined, username: string): UserProfile {
   const base = getSyntheticSuperAdminUserProfile(username);
   if (!row) return base;
+  const socialLinks = parseProfileJson(row.socialLinks, {}) as UserProfile["socialLinks"];
+  const avatar = typeof socialLinks?.avatar === "string" ? socialLinks.avatar.trim() : "";
   return {
     id: row.id,
     userId: RESERVED_SUPER_ADMIN_USER_ID,
     email: row.email?.trim() || base.email,
+    avatar: avatar || undefined,
     firstName: row.firstName ?? undefined,
     lastName: row.lastName ?? undefined,
     phone: row.phone ?? undefined,
     website: row.website ?? undefined,
     location: row.location ?? undefined,
-    timezone: row.timezone ?? undefined,
-    language: row.language || base.language,
-    dateFormat: row.dateFormat || base.dateFormat,
-    timeFormat: row.timeFormat || base.timeFormat,
-    theme: row.theme || base.theme,
     notifications: parseProfileJson(row.notifications, {}) as UserProfile["notifications"],
     privacy: parseProfileJson(row.privacy, {}) as UserProfile["privacy"],
-    socialLinks: parseProfileJson(row.socialLinks, {}) as UserProfile["socialLinks"],
+    socialLinks,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -116,6 +110,11 @@ function readEnv() {
   const username = (process.env.SUPER_ADMIN_USERNAME ?? "").trim();
   const { hash: passwordBcrypt, source: bcryptSource } = resolvePasswordBcryptFromEnv();
   return { enabled, username, passwordBcrypt, bcryptSource };
+}
+
+/** 读取超级管理员配置用户名（未配置时返回空字符串） */
+export function getSuperAdminConfiguredUsername(): string {
+  return readEnv().username;
 }
 
 /** 是否启用内存超级管理员（三项均需配置且开关为 true） */

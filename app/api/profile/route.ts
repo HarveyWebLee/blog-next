@@ -13,7 +13,7 @@ import { eq } from "drizzle-orm";
 import { mergeSuperAdminProfileFromRow } from "@/lib/config/super-admin";
 import { db } from "@/lib/db/config";
 import { userProfiles, users } from "@/lib/db/schema";
-import { resolveProfileEmailUpdateOrError } from "@/lib/services/profile-email.service";
+import { resolveProfileEmailUpdateOrError, verifyProfileEmailCodeOrError } from "@/lib/services/profile-email.service";
 import { isJwtInMemorySuperRoot } from "@/lib/utils/authz";
 import { requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, UpdateProfileRequest, UserProfile } from "@/types/blog";
@@ -72,16 +72,12 @@ export async function GET(request: NextRequest) {
         id: profileData?.id || 0,
         userId: userData.id,
         email: userData.email,
+        avatar: userData.avatar ?? undefined,
         firstName: profileData?.firstName ?? undefined,
         lastName: profileData?.lastName ?? undefined,
         phone: profileData?.phone ?? undefined,
         website: profileData?.website ?? undefined,
         location: profileData?.location ?? undefined,
-        timezone: profileData?.timezone ?? undefined,
-        language: profileData?.language || "zh-CN",
-        dateFormat: profileData?.dateFormat || "YYYY-MM-DD",
-        timeFormat: profileData?.timeFormat || "24h",
-        theme: profileData?.theme || "system",
         notifications: profileData?.notifications ? JSON.parse(profileData.notifications) : {},
         privacy: profileData?.privacy ? JSON.parse(profileData.privacy) : {},
         socialLinks: profileData?.socialLinks ? JSON.parse(profileData.socialLinks) : {},
@@ -134,6 +130,36 @@ export async function POST(request: NextRequest) {
       );
     }
     const emailNormalized = emailResolved.normalized;
+    const avatarNormalized = body.avatar?.trim() || undefined;
+
+    // 若本次要改邮箱，需先通过 change_email 验证码校验
+    if (emailNormalized !== undefined) {
+      const currentEmail = isJwtInMemorySuperRoot(decoded)
+        ? (
+            await db
+              .select({ email: userProfiles.email })
+              .from(userProfiles)
+              .where(eq(userProfiles.userId, decoded.userId))
+              .limit(1)
+          )[0]?.email
+        : (await db.select({ email: users.email }).from(users).where(eq(users.id, decoded.userId)).limit(1))[0]?.email;
+
+      const verification = await verifyProfileEmailCodeOrError({
+        oldEmail: currentEmail ?? undefined,
+        newEmail: emailNormalized,
+        code: body.emailVerificationCode,
+      });
+      if (!verification.ok) {
+        return NextResponse.json<ApiResponse>(
+          {
+            success: false,
+            message: verification.message,
+            timestamp: new Date().toISOString(),
+          },
+          { status: 400 }
+        );
+      }
+    }
 
     // 检查是否已存在个人资料（含超级管理员 user_id=0）
     const existingProfile = await db
@@ -153,6 +179,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const socialLinksRaw = body.socialLinks ? { ...body.socialLinks } : {};
+    const socialLinksWithAvatar =
+      isJwtInMemorySuperRoot(decoded) && avatarNormalized !== undefined
+        ? { ...socialLinksRaw, avatar: avatarNormalized }
+        : socialLinksRaw;
+
     const [insertResult] = await db.insert(userProfiles).values({
       userId: decoded.userId,
       email: isJwtInMemorySuperRoot(decoded) && emailNormalized !== undefined ? emailNormalized : null,
@@ -161,18 +193,19 @@ export async function POST(request: NextRequest) {
       phone: body.phone,
       website: body.website,
       location: body.location,
-      timezone: body.timezone,
-      language: body.language || "zh-CN",
-      dateFormat: body.dateFormat || "YYYY-MM-DD",
-      timeFormat: body.timeFormat || "24h",
-      theme: body.theme || "system",
       notifications: body.notifications ? JSON.stringify(body.notifications) : null,
       privacy: body.privacy ? JSON.stringify(body.privacy) : null,
-      socialLinks: body.socialLinks ? JSON.stringify(body.socialLinks) : null,
+      socialLinks: Object.keys(socialLinksWithAvatar).length > 0 ? JSON.stringify(socialLinksWithAvatar) : null,
     });
 
     if (!isJwtInMemorySuperRoot(decoded) && emailNormalized !== undefined) {
       await db.update(users).set({ email: emailNormalized, updatedAt: new Date() }).where(eq(users.id, decoded.userId));
+    }
+    if (!isJwtInMemorySuperRoot(decoded) && avatarNormalized !== undefined) {
+      await db
+        .update(users)
+        .set({ avatar: avatarNormalized, updatedAt: new Date() })
+        .where(eq(users.id, decoded.userId));
     }
 
     return NextResponse.json<ApiResponse>(
@@ -227,6 +260,7 @@ export async function PUT(request: NextRequest) {
       );
     }
     const emailNormalized = emailResolved.normalized;
+    const avatarNormalized = body.avatar?.trim() || undefined;
 
     // 检查个人资料是否存在
     const existingProfile = await db
@@ -246,7 +280,46 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // 若本次要改邮箱，需先通过 change_email 验证码校验
+    if (emailNormalized !== undefined) {
+      const currentEmail = isJwtInMemorySuperRoot(decoded)
+        ? existingProfile[0]?.email
+        : (await db.select({ email: users.email }).from(users).where(eq(users.id, decoded.userId)).limit(1))[0]?.email;
+
+      const verification = await verifyProfileEmailCodeOrError({
+        oldEmail: currentEmail ?? undefined,
+        newEmail: emailNormalized,
+        code: body.emailVerificationCode,
+      });
+      if (!verification.ok) {
+        return NextResponse.json<ApiResponse>(
+          {
+            success: false,
+            message: verification.message,
+            timestamp: new Date().toISOString(),
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     // 更新个人资料（超级管理员邮箱仅存 user_profiles.email）
+    const existingSocialLinks = existingProfile[0]?.socialLinks;
+    let mergedSocialLinks: Record<string, unknown> = {};
+    if (existingSocialLinks) {
+      try {
+        mergedSocialLinks = JSON.parse(existingSocialLinks) as Record<string, unknown>;
+      } catch {
+        mergedSocialLinks = {};
+      }
+    }
+    if (body.socialLinks) {
+      mergedSocialLinks = { ...mergedSocialLinks, ...body.socialLinks };
+    }
+    if (isJwtInMemorySuperRoot(decoded) && avatarNormalized !== undefined) {
+      mergedSocialLinks.avatar = avatarNormalized;
+    }
+
     await db
       .update(userProfiles)
       .set({
@@ -255,14 +328,9 @@ export async function PUT(request: NextRequest) {
         phone: body.phone,
         website: body.website,
         location: body.location,
-        timezone: body.timezone,
-        language: body.language,
-        dateFormat: body.dateFormat,
-        timeFormat: body.timeFormat,
-        theme: body.theme,
         notifications: body.notifications ? JSON.stringify(body.notifications) : null,
         privacy: body.privacy ? JSON.stringify(body.privacy) : null,
-        socialLinks: body.socialLinks ? JSON.stringify(body.socialLinks) : null,
+        socialLinks: Object.keys(mergedSocialLinks).length > 0 ? JSON.stringify(mergedSocialLinks) : null,
         updatedAt: new Date(),
         ...(isJwtInMemorySuperRoot(decoded) && emailNormalized !== undefined ? { email: emailNormalized } : {}),
       })
@@ -270,6 +338,12 @@ export async function PUT(request: NextRequest) {
 
     if (!isJwtInMemorySuperRoot(decoded) && emailNormalized !== undefined) {
       await db.update(users).set({ email: emailNormalized, updatedAt: new Date() }).where(eq(users.id, decoded.userId));
+    }
+    if (!isJwtInMemorySuperRoot(decoded) && avatarNormalized !== undefined) {
+      await db
+        .update(users)
+        .set({ avatar: avatarNormalized, updatedAt: new Date() })
+        .where(eq(users.id, decoded.userId));
     }
 
     return NextResponse.json<ApiResponse>({

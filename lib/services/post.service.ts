@@ -311,6 +311,7 @@ export class PostService {
           // 关联数据
           authorName: users.displayName,
           authorUsername: users.username,
+          authorAvatar: users.avatar,
           categoryName: categories.name,
         })
         .from(posts)
@@ -347,6 +348,7 @@ export class PostService {
           id: row.authorId,
           username: row.authorUsername || "",
           displayName: row.authorName || "",
+          avatar: row.authorAvatar || undefined,
         } as any,
         category: row.categoryName
           ? ({

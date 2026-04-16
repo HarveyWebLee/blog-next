@@ -7,21 +7,11 @@ import { Button, Card, CardBody } from "@heroui/react";
 import { Bell, BookOpen, Eye, Heart, MessageSquare, Star, UserPlus, Users } from "lucide-react";
 
 import { PROFILE_GLASS_CARD } from "@/components/profile/profile-ui-presets";
+import { message } from "@/lib/utils";
+import type { ApiResponse, ProfileStats as ProfileStatsData } from "@/types/blog";
 
 interface ProfileStatsProps {
   lang: string;
-}
-
-interface StatsData {
-  totalPosts: number;
-  totalComments: number;
-  totalViews: number;
-  totalLikes: number;
-  totalFavorites: number;
-  totalFollowers: number;
-  totalFollowing: number;
-  unreadNotifications: number;
-  lastActivityAt?: Date;
 }
 
 /** 统计块配色：与博客 Chip 的 primary/secondary 系协调，避免彩虹色块 */
@@ -100,39 +90,39 @@ export default function ProfileStats({ lang }: ProfileStatsProps) {
               unreadNotifications: "未读通知",
             },
           };
-  const [stats, setStats] = useState<StatsData | null>(null);
+  const [stats, setStats] = useState<ProfileStatsData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchStats = async () => {
+      const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+      if (!token) {
+        setStats(null);
+        setLoading(false);
+        return;
+      }
       try {
-        // 这里应该调用真实的API
-        // const response = await fetch('/api/profile/stats');
-        // const data = await response.json();
-
-        // 模拟数据
-        setTimeout(() => {
-          setStats({
-            totalPosts: 12,
-            totalComments: 45,
-            totalViews: 1250,
-            totalLikes: 89,
-            totalFavorites: 23,
-            totalFollowers: 156,
-            totalFollowing: 78,
-            unreadNotifications: 3,
-            lastActivityAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2小时前
-          });
-          setLoading(false);
-        }, 1000);
+        const response = await fetch("/api/profile/stats", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const json = (await response.json()) as ApiResponse<ProfileStatsData>;
+        if (!json.success || !json.data) {
+          message.error(json.message || t.loadFailed);
+          setStats(null);
+          return;
+        }
+        setStats(json.data);
       } catch (error) {
         console.error("获取统计信息失败:", error);
+        message.error(t.loadFailed);
+        setStats(null);
+      } finally {
         setLoading(false);
       }
     };
 
-    fetchStats();
-  }, []);
+    void fetchStats();
+  }, [t.loadFailed]);
 
   if (loading) {
     return (
@@ -178,7 +168,7 @@ export default function ProfileStats({ lang }: ProfileStatsProps) {
           <h3 className="text-lg font-semibold text-foreground">{t.title}</h3>
           {stats.lastActivityAt && (
             <p className="text-sm text-default-500">
-              {t.lastActivity}: {stats.lastActivityAt.toLocaleString(lang)}
+              {t.lastActivity}: {new Date(stats.lastActivityAt).toLocaleString(lang)}
             </p>
           )}
         </div>
@@ -186,7 +176,7 @@ export default function ProfileStats({ lang }: ProfileStatsProps) {
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
           {statsItems.map((item) => {
             const Icon = item.icon;
-            const value = stats[item.key as keyof StatsData] as number;
+            const value = stats[item.key as keyof ProfileStatsData] as number;
             const wrap = toneIconWrap[item.tone];
 
             return (

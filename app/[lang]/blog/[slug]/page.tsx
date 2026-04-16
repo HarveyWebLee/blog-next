@@ -433,7 +433,12 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
               {/* 博客元信息 - 使用渐变色悬停效果 */}
               <div className="flex flex-wrap items-center gap-6 text-sm text-default-500 py-4 border-y border-divider animate-blog-slide-in-right delay-300">
                 <div className="meta-item flex items-center gap-2">
-                  <Avatar size="sm" name={post.author?.displayName || t.unknownAuthor} className="w-8 h-8 hover-lift" />
+                  <Avatar
+                    size="sm"
+                    src={post.author?.avatar || undefined}
+                    name={post.author?.displayName || t.unknownAuthor}
+                    className="w-8 h-8 hover-lift"
+                  />
                   <span className="font-medium">{post.author?.displayName || t.unknownAuthor}</span>
                 </div>
                 <div className="meta-item flex items-center gap-2">

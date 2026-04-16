@@ -86,7 +86,7 @@
   },
   "apiDocs": {
     "title": "API ドキュメント",
-    "description": "利用可能なすべてのエンドポイント、パラメータ説明、使用例を含む完全なAPIドキュメント",
+    "description": "app/api を走査したリファレンスとブラウザからの試験。",
     "searchPlaceholder": "APIエンドポイントを検索...",
     "noResults": "一致するAPIエンドポイントが見つかりません",
     "noData": "APIエンドポイントデータがありません",

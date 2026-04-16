@@ -46,7 +46,7 @@ export function generateVerificationCode(): string {
 export async function sendVerificationEmail(
   email: string,
   code: string,
-  type: "register" | "reset_password" | "change_email" = "register"
+  type: "register" | "reset_password" | "change_email" | "subscription" | "subscription_unsubscribe" = "register"
 ): Promise<boolean> {
   try {
     const transporter = createTransporter();
@@ -99,6 +99,38 @@ export async function sendVerificationEmail(
             </div>
             <p style="color: #999; font-size: 14px;">验证码有效期为10分钟，请及时使用。</p>
             <p style="color: #999; font-size: 14px;">如果这不是您的操作，请立即联系客服。</p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+            <p style="color: #999; font-size: 12px; text-align: center;">此邮件由系统自动发送，请勿回复。</p>
+          </div>
+        `;
+        break;
+      case "subscription":
+        subject = "【荒野博客】订阅更新验证码";
+        htmlContent = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #333; text-align: center;">确认订阅文章更新</h2>
+            <p style="color: #666; font-size: 16px;">您正在使用此邮箱订阅新文章邮件通知，验证码是：</p>
+            <div style="background: #f5f5f5; padding: 20px; text-align: center; margin: 20px 0;">
+              <span style="font-size: 32px; font-weight: bold; color: #2563eb; letter-spacing: 5px;">${code}</span>
+            </div>
+            <p style="color: #999; font-size: 14px;">验证码有效期为10分钟，验证通过后订阅才会生效。</p>
+            <p style="color: #999; font-size: 14px;">如非本人操作，请忽略本邮件。</p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+            <p style="color: #999; font-size: 12px; text-align: center;">此邮件由系统自动发送，请勿回复。</p>
+          </div>
+        `;
+        break;
+      case "subscription_unsubscribe":
+        subject = "【荒野博客】取消订阅验证码";
+        htmlContent = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #333; text-align: center;">确认取消订阅</h2>
+            <p style="color: #666; font-size: 16px;">您正在取消该邮箱的文章更新订阅，验证码是：</p>
+            <div style="background: #f5f5f5; padding: 20px; text-align: center; margin: 20px 0;">
+              <span style="font-size: 32px; font-weight: bold; color: #b45309; letter-spacing: 5px;">${code}</span>
+            </div>
+            <p style="color: #999; font-size: 14px;">验证码有效期为10分钟，验证通过后才会完成退订。</p>
+            <p style="color: #999; font-size: 14px;">如非本人操作，请忽略本邮件。</p>
             <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
             <p style="color: #999; font-size: 12px; text-align: center;">此邮件由系统自动发送，请勿回复。</p>
           </div>

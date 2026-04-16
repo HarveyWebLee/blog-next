@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { and, eq, gt } from "drizzle-orm";
 
+import { RESERVED_SUPER_ADMIN_USER_ID } from "@/lib/config/super-admin";
 import { db } from "@/lib/db/config";
-import { emailVerifications, users } from "@/lib/db/schema";
+import { emailVerifications, userProfiles, users } from "@/lib/db/schema";
 import { hashPassword, isValidEmail, validatePasswordStrength } from "@/lib/utils";
 import { ApiResponse } from "@/types/blog";
 
@@ -149,6 +150,24 @@ export async function POST(request: NextRequest) {
     const existingEmail = await db.select().from(users).where(eq(users.email, email)).limit(1);
 
     if (existingEmail.length > 0) {
+      return NextResponse.json<ApiResponse>(
+        {
+          success: false,
+          message: "邮箱已被注册",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 409 }
+      );
+    }
+
+    // 超级管理员资料中绑定的邮箱同样保留，不允许普通注册占用
+    const superAdminProfile = await db
+      .select({ email: userProfiles.email })
+      .from(userProfiles)
+      .where(eq(userProfiles.userId, RESERVED_SUPER_ADMIN_USER_ID))
+      .limit(1);
+    const superAdminEmail = superAdminProfile[0]?.email?.trim().toLowerCase() || "";
+    if (superAdminEmail && superAdminEmail === email.toLowerCase()) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,

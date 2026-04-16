@@ -1,6 +1,8 @@
 import fs from "fs";
 import path from "path";
 
+import { pickAuthHint, pickEndpointDescription, pickGroupDescription } from "@/lib/utils/api-docs-endpoint-meta";
+
 export interface ApiParameter {
   name: string;
   type: string;
@@ -41,6 +43,8 @@ export interface ApiEndpoint {
   method: string;
   path: string;
   description?: string;
+  /** 鉴权与调用注意（文档页展示） */
+  authHint?: string;
   parameters?: ApiParameter[];
   requestBody?: ApiRequestBody;
   responses?: ApiResponse[];
@@ -242,10 +246,13 @@ export class ApiScanner {
     // 提取示例信息
     const examples = this.extractExamples(content, method, apiPath);
 
+    const authHint = pickAuthHint(method, apiPath);
+
     return {
       method,
       path: apiPath,
       description,
+      authHint,
       parameters,
       requestBody,
       responses,
@@ -540,13 +547,16 @@ export class ApiScanner {
       notifications: "通知管理相关接口",
     };
 
-    return descriptions[groupName] || `${groupName}相关接口`;
+    return pickGroupDescription(groupName) ?? descriptions[groupName] ?? `${groupName}相关接口`;
   }
 
   /**
    * 获取端点描述（增强版）
    */
   private getEndpointDescription(method: string, apiPath: string): string | undefined {
+    const fromMeta = pickEndpointDescription(method, apiPath);
+    if (fromMeta) return fromMeta;
+
     const descriptions: Record<string, Record<string, string>> = {
       "/api/api-docs": {
         GET: "获取API文档",

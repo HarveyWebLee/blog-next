@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Avatar, Button, Card, CardBody } from "@heroui/react";
-import { Edit, Globe, Mail, MapPin, Phone } from "lucide-react";
+import { Edit, Github, Globe, Mail, MapPin, Phone } from "lucide-react";
 
 import { PROFILE_GLASS_CARD } from "@/components/profile/profile-ui-presets";
 import { useAuth } from "@/lib/contexts/auth-context";
@@ -31,17 +31,15 @@ export default function ProfileOverview({ lang }: ProfileOverviewProps) {
           website: "Website",
           edit: "Edit Profile",
           contact: "Contact",
-          preferences: "Preferences",
-          language: "Language",
-          timezone: "Timezone",
-          theme: "Theme",
           social: "Social",
           github: "GitHub",
           wechatQr: "WeChat QR",
           douyin: "Douyin",
           bilibili: "Bilibili",
+          openLink: "Open Link",
           needLogin: "Please sign in to view your profile.",
           login: "Sign in",
+          quickActions: ["View My Posts", "Manage Favorites", "View Notifications", "Activity Log"],
         }
       : lang === "ja-JP"
         ? {
@@ -50,17 +48,15 @@ export default function ProfileOverview({ lang }: ProfileOverviewProps) {
             website: "ウェブサイト",
             edit: "プロフィール編集",
             contact: "連絡先情報",
-            preferences: "環境設定",
-            language: "言語",
-            timezone: "タイムゾーン",
-            theme: "テーマ",
             social: "ソーシャル",
             github: "GitHub",
             wechatQr: "WeChat QR",
             douyin: "抖音",
             bilibili: "bilibili",
+            openLink: "リンクを開く",
             needLogin: "プロフィールを表示するにはログインしてください。",
             login: "ログイン",
+            quickActions: ["自分の記事を見る", "お気に入り管理", "通知を見る", "アクティビティログ"],
           }
         : {
             loadFailed: "无法加载个人资料",
@@ -68,17 +64,15 @@ export default function ProfileOverview({ lang }: ProfileOverviewProps) {
             website: "个人网站",
             edit: "编辑资料",
             contact: "联系信息",
-            preferences: "偏好设置",
-            language: "语言",
-            timezone: "时区",
-            theme: "主题",
             social: "社交媒体",
             github: "GitHub",
             wechatQr: "微信二维码",
             douyin: "抖音",
             bilibili: "哔哩哔哩",
+            openLink: "打开链接",
             needLogin: "请先登录后查看个人资料。",
             login: "去登录",
+            quickActions: ["查看我的文章", "管理收藏", "查看通知", "活动日志"],
           };
 
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
@@ -236,7 +230,7 @@ export default function ProfileOverview({ lang }: ProfileOverviewProps) {
         </div>
 
         {/* 联系信息 */}
-        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="mt-6">
           <div className="space-y-3">
             <h3 className="text-sm font-medium text-foreground">{t.contact}</h3>
             <div className="space-y-2">
@@ -254,62 +248,51 @@ export default function ProfileOverview({ lang }: ProfileOverviewProps) {
               )}
             </div>
           </div>
-
-          <div className="space-y-3">
-            <h3 className="text-sm font-medium text-foreground">{t.preferences}</h3>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-default-500">{t.language}</span>
-                <span className="text-foreground">{profile.language}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-default-500">{t.timezone}</span>
-                <span className="text-foreground">{profile.timezone}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-default-500">{t.theme}</span>
-                <span className="text-foreground capitalize">{profile.theme}</span>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* 社交媒体：二维码图片 + 可点击链接或纯文本 */}
         {socialEntries.length > 0 ? (
           <div className="mt-6">
             <h3 className="mb-3 text-sm font-medium text-foreground">{t.social}</h3>
-            <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap">
-              {socialEntries.map(([key, val]) =>
-                key === "wechatQr" ? (
-                  <div key={key} className="flex flex-col gap-1">
-                    <span className="text-xs text-default-500">{labelForKey(key)}</span>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {socialEntries.map(([key, val]) => (
+                <div key={key} className="rounded-xl border border-white/10 bg-white/5 p-3">
+                  <p className="mb-2 text-xs text-default-500">{labelForKey(key)}</p>
+                  {key === "wechatQr" ? (
                     <Image
                       src={val}
                       alt=""
-                      width={112}
-                      height={112}
+                      width={128}
+                      height={128}
                       unoptimized
-                      className="h-28 w-28 rounded-lg border border-default-200 object-cover dark:border-white/10"
+                      className="h-32 w-32 rounded-lg border border-default-200 object-cover dark:border-white/10"
                     />
-                  </div>
-                ) : isHttpUrl(val) ? (
-                  <a
-                    key={key}
-                    href={val}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-primary hover:underline"
-                  >
-                    {labelForKey(key)}
-                  </a>
-                ) : (
-                  <div key={key} className="text-sm text-default-700">
-                    <span className="font-medium text-foreground">{labelForKey(key)}</span>
-                    <span className="mx-1.5 text-default-400">·</span>
-                    <span>{val}</span>
-                  </div>
-                )
-              )}
+                  ) : key === "github" && isHttpUrl(val) ? (
+                    <div className="flex min-h-32 items-center justify-center">
+                      <a
+                        href={val}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={t.github}
+                        className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-primary/25 bg-primary/10 text-primary shadow-[0_0_0_rgba(59,130,246,0)] transition-all duration-300 hover:scale-110 hover:bg-primary/15 hover:shadow-[0_0_18px_rgba(59,130,246,0.35)]"
+                      >
+                        <Github className="h-7 w-7" />
+                      </a>
+                    </div>
+                  ) : isHttpUrl(val) ? (
+                    <a
+                      href={val}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center rounded-lg border border-primary/20 bg-primary/10 px-3 py-1.5 text-sm text-primary transition-colors hover:bg-primary/15"
+                    >
+                      {t.openLink}
+                    </a>
+                  ) : (
+                    <p className="truncate text-sm text-default-700">{val}</p>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         ) : null}

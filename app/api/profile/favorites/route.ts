@@ -8,7 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { and, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { categories, posts, userFavorites, users } from "@/lib/db/schema";
@@ -69,11 +69,11 @@ export async function GET(request: NextRequest) {
 
     // 获取总数
     const totalResult = await db
-      .select({ count: userFavorites.id })
+      .select({ count: count() })
       .from(userFavorites)
       .where(eq(userFavorites.userId, decoded.userId));
 
-    const total = totalResult.length;
+    const total = totalResult[0]?.count ?? 0;
     const totalPages = Math.ceil(total / limit);
 
     const responseData: PaginatedResponseData<UserFavorite> = {

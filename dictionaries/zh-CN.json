@@ -86,7 +86,7 @@
   },
   "apiDocs": {
     "title": "API 接口文档",
-    "description": "完整的API接口文档，包含所有可用的接口、参数说明和使用示例",
+    "description": "扫描 app/api 的接口说明与在线测试。",
     "searchPlaceholder": "搜索API接口...",
     "noResults": "没有找到匹配的API接口",
     "noData": "暂无API接口数据",

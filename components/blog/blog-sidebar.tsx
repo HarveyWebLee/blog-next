@@ -11,6 +11,7 @@ import { ArrowRight, Bookmark, Eye, FolderOpen, Hash, Mail, Tag, TrendingUp } fr
 
 import { useAuth } from "@/lib/contexts/auth-context";
 import { useCategories } from "@/lib/hooks/useCategories";
+import { useNewsletterGuestSubscription } from "@/lib/hooks/useNewsletterGuestSubscription";
 import { usePosts } from "@/lib/hooks/usePosts";
 import { useTags } from "@/lib/hooks/useTags";
 import { message } from "@/lib/utils";
@@ -32,8 +33,16 @@ export function BlogSidebar({ lang = "zh-CN" }: { lang?: string }) {
           subscribe: "Subscribe",
           unsubscribe: "Unsubscribe",
           subscribeSuccess: "Subscription successful",
+          subscribeFail: "Subscription failed",
           unsubscribeSuccess: "Unsubscribed",
+          unsubscribeFail: "Unsubscribe failed",
           invalidEmail: "Please enter a valid email",
+          codePlaceholder: "Email code",
+          sendCode: "Send code",
+          needSubscribeCode: "Enter the code from your email to finish subscribing",
+          needUnsubscribeCode: "Enter the code from your email to unsubscribe",
+          sendCodeOk: "Verification code sent. Check your inbox.",
+          sendCodeFail: "Failed to send verification code",
         }
       : lang === "ja-JP"
         ? {
@@ -50,8 +59,16 @@ export function BlogSidebar({ lang = "zh-CN" }: { lang?: string }) {
             subscribe: "購読する",
             unsubscribe: "購読解除",
             subscribeSuccess: "購読しました",
+            subscribeFail: "購読に失敗しました",
             unsubscribeSuccess: "購読を解除しました",
+            unsubscribeFail: "購読解除に失敗しました",
             invalidEmail: "有効なメールアドレスを入力してください",
+            codePlaceholder: "確認コード",
+            sendCode: "コードを送信",
+            needSubscribeCode: "メールの確認コードを入力してから購読を完了してください",
+            needUnsubscribeCode: "メールの確認コードを入力してから購読解除してください",
+            sendCodeOk: "確認コードを送信しました。メールをご確認ください",
+            sendCodeFail: "確認コードの送信に失敗しました",
           }
         : {
             categoryTitle: "文章分类",
@@ -67,13 +84,32 @@ export function BlogSidebar({ lang = "zh-CN" }: { lang?: string }) {
             subscribe: "订阅",
             unsubscribe: "取消订阅",
             subscribeSuccess: "订阅成功",
+            subscribeFail: "订阅失败",
             unsubscribeSuccess: "已取消订阅",
+            unsubscribeFail: "取消订阅失败",
             invalidEmail: "请输入有效的邮箱地址",
+            codePlaceholder: "邮箱验证码",
+            sendCode: "发送验证码",
+            needSubscribeCode: "请填写邮件中的验证码后再完成订阅",
+            needUnsubscribeCode: "请填写邮件中的验证码后再取消订阅",
+            sendCodeOk: "验证码已发送，请查收邮件",
+            sendCodeFail: "验证码发送失败",
           };
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
-  const [subscribeEmail, setSubscribeEmail] = useState("");
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  const guestNl = useNewsletterGuestSubscription(isAuthenticated, {
+    invalidEmail: t.invalidEmail,
+    needSubscribeCode: t.needSubscribeCode,
+    needUnsubscribeCode: t.needUnsubscribeCode,
+    sendCodeOk: t.sendCodeOk,
+    sendCodeFail: t.sendCodeFail,
+    subscribeSuccess: t.subscribeSuccess,
+    subscribeFail: t.subscribeFail,
+    unsubscribeSuccess: t.unsubscribeSuccess,
+    unsubscribeFail: t.unsubscribeFail,
+  });
   const { categories } = useCategories({ autoFetch: true, limit: 20 });
   const { tags } = useTags({ autoFetch: true, initialLimit: 20 });
   const { posts: hotPosts } = usePosts({
@@ -94,7 +130,7 @@ export function BlogSidebar({ lang = "zh-CN" }: { lang?: string }) {
   const loginEmail = useMemo(() => {
     if (!isAuthenticated) return "";
     return (user?.email || "").trim().toLowerCase();
-  }, [isAuthenticated, user?.email]);
+  }, [isAuthenticated, user]);
 
   useEffect(() => {
     const queryStatus = async () => {
@@ -116,8 +152,8 @@ export function BlogSidebar({ lang = "zh-CN" }: { lang?: string }) {
     queryStatus();
   }, [loginEmail]);
 
-  const handleSubscribe = async () => {
-    const targetEmail = (isAuthenticated ? loginEmail : subscribeEmail).trim().toLowerCase();
+  const handleAuthSubscribe = async () => {
+    const targetEmail = loginEmail.trim().toLowerCase();
     const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(targetEmail);
     if (!isEmailValid) {
       message.warning(t.invalidEmail);
@@ -126,54 +162,57 @@ export function BlogSidebar({ lang = "zh-CN" }: { lang?: string }) {
 
     try {
       setSubmitting(true);
+      const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : "";
       const response = await fetch("/api/subscriptions", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           email: targetEmail,
-          userId: isAuthenticated ? user?.id : undefined,
         }),
       });
       const result = await response.json();
 
       if (!result.success) {
-        message.error(result.message || "订阅失败");
+        message.error(result.message || t.subscribeFail);
         return;
       }
 
-      if (isAuthenticated) {
-        setIsSubscribed(true);
-      } else {
-        setSubscribeEmail("");
-      }
+      setIsSubscribed(true);
       message.success(t.subscribeSuccess);
     } catch (error) {
       console.error("订阅失败:", error);
-      message.error("订阅失败");
+      message.error(t.subscribeFail);
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleUnsubscribe = async () => {
+  const handleAuthUnsubscribe = async () => {
     if (!loginEmail) return;
     try {
       setSubmitting(true);
+      const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : "";
       const response = await fetch("/api/subscriptions", {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: loginEmail }),
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ email: loginEmail.trim().toLowerCase() }),
       });
       const result = await response.json();
       if (!result.success) {
-        message.error(result.message || "取消订阅失败");
+        message.error(result.message || t.unsubscribeFail);
         return;
       }
       setIsSubscribed(false);
       message.success(t.unsubscribeSuccess);
     } catch (error) {
       console.error("取消订阅失败:", error);
-      message.error("取消订阅失败");
+      message.error(t.unsubscribeFail);
     } finally {
       setSubmitting(false);
     }
@@ -320,19 +359,47 @@ export function BlogSidebar({ lang = "zh-CN" }: { lang?: string }) {
         </CardHeader>
         <CardBody className="pt-0 space-y-3">
           {!isAuthLoading && !isAuthenticated && (
-            <Input
-              type="email"
-              placeholder={t.emailPlaceholder}
-              value={subscribeEmail}
-              onValueChange={setSubscribeEmail}
-              variant="bordered"
-              size="sm"
-              classNames={{
-                input: "bg-white/10 dark:bg-black/10 backdrop-blur-xl",
-                inputWrapper:
-                  "bg-white/10 dark:bg-black/10 backdrop-blur-xl border-white/20 dark:border-white/10 hover:border-primary/50 focus-within:border-primary",
-              }}
-            />
+            <>
+              <Input
+                type="email"
+                placeholder={t.emailPlaceholder}
+                value={guestNl.subscribeEmail}
+                onValueChange={guestNl.setSubscribeEmail}
+                variant="bordered"
+                size="sm"
+                classNames={{
+                  input: "bg-white/10 dark:bg-black/10 backdrop-blur-xl",
+                  inputWrapper:
+                    "bg-white/10 dark:bg-black/10 backdrop-blur-xl border-white/20 dark:border-white/10 hover:border-primary/50 focus-within:border-primary",
+                }}
+              />
+              <Input
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                placeholder={t.codePlaceholder}
+                value={guestNl.subscribeCode}
+                onValueChange={guestNl.setSubscribeCode}
+                variant="bordered"
+                size="sm"
+                classNames={{
+                  input: "bg-white/10 dark:bg-black/10 backdrop-blur-xl",
+                  inputWrapper:
+                    "bg-white/10 dark:bg-black/10 backdrop-blur-xl border-white/20 dark:border-white/10 hover:border-primary/50 focus-within:border-primary",
+                }}
+              />
+              <Button
+                type="button"
+                size="sm"
+                variant="flat"
+                className="w-full font-medium"
+                isLoading={guestNl.sendingCode}
+                isDisabled={guestNl.cooldownSec > 0}
+                onPress={() => void guestNl.sendVerification(guestNl.guestIsSubscribed ? "unsubscribe" : "subscribe")}
+              >
+                {guestNl.cooldownSec > 0 ? `${guestNl.cooldownSec}s` : t.sendCode}
+              </Button>
+            </>
           )}
           <Button
             color="primary"
@@ -340,10 +407,25 @@ export function BlogSidebar({ lang = "zh-CN" }: { lang?: string }) {
             size="sm"
             className="w-full font-semibold tracking-wide"
             endContent={<Mail className="w-4 h-4" />}
-            isLoading={submitting}
-            onPress={isAuthenticated && isSubscribed ? handleUnsubscribe : handleSubscribe}
+            isLoading={isAuthenticated ? submitting : guestNl.submitting}
+            onPress={() => {
+              if (isAuthenticated) {
+                if (isSubscribed) void handleAuthUnsubscribe();
+                else void handleAuthSubscribe();
+              } else if (guestNl.guestIsSubscribed) {
+                void guestNl.submitGuestUnsubscribe();
+              } else {
+                void guestNl.submitGuestSubscribe();
+              }
+            }}
           >
-            {isAuthenticated && isSubscribed ? t.unsubscribe : t.subscribe}
+            {isAuthenticated
+              ? isSubscribed
+                ? t.unsubscribe
+                : t.subscribe
+              : guestNl.guestIsSubscribed
+                ? t.unsubscribe
+                : t.subscribe}
           </Button>
         </CardBody>
       </Card>

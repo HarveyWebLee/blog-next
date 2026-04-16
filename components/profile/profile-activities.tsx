@@ -2,24 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { Badge, Button, Card, CardBody } from "@heroui/react";
-import { BookOpen, Clock, Eye, Heart, MessageSquare, MoreHorizontal, UserPlus } from "lucide-react";
+import { BookOpen, Clock, Eye, Heart, MessageSquare, UserPlus } from "lucide-react";
 
 import { PROFILE_GLASS_CARD } from "@/components/profile/profile-ui-presets";
+import { message } from "@/lib/utils";
+import type { ApiResponse, PaginatedResponseData, UserActivity } from "@/types/blog";
 
 interface ProfileActivitiesProps {
   lang: string;
-}
-
-interface Activity {
-  id: number;
-  userId: number;
-  action: string;
-  description?: string;
-  metadata?: Record<string, any>;
-  ipAddress?: string;
-  userAgent?: string;
-  createdAt: Date;
-  updatedAt: Date;
 }
 
 const activityIcons = {
@@ -47,7 +37,7 @@ export default function ProfileActivities({ lang }: ProfileActivitiesProps) {
     lang === "en-US"
       ? {
           title: "Recent Activities",
-          viewAll: "View All",
+          total: "Total",
           loading: "Loading...",
           loadMore: "Load More",
           empty: "No activities yet",
@@ -67,7 +57,7 @@ export default function ProfileActivities({ lang }: ProfileActivitiesProps) {
       : lang === "ja-JP"
         ? {
             title: "最近のアクティビティ",
-            viewAll: "すべて表示",
+            total: "合計",
             loading: "読み込み中...",
             loadMore: "もっと見る",
             empty: "アクティビティはありません",
@@ -86,7 +76,7 @@ export default function ProfileActivities({ lang }: ProfileActivitiesProps) {
           }
         : {
             title: "最近活动",
-            viewAll: "查看全部",
+            total: "共",
             loading: "加载中...",
             loadMore: "加载更多",
             empty: "暂无活动记录",
@@ -103,90 +93,58 @@ export default function ProfileActivities({ lang }: ProfileActivitiesProps) {
             agoHour: "小时前",
             agoDay: "天前",
           };
-  const [activities, setActivities] = useState<Activity[]>([]);
+  const [activities, setActivities] = useState<UserActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [total, setTotal] = useState(0);
 
   useEffect(() => {
     const fetchActivities = async () => {
+      const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+      if (!token) {
+        setActivities([]);
+        setHasMore(false);
+        setLoading(false);
+        return;
+      }
       try {
-        // 这里应该调用真实的API
-        // const response = await fetch(`/api/profile/activities?page=${page}&limit=5`);
-        // const data = await response.json();
+        const response = await fetch(`/api/profile/activities?page=${page}&limit=5`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const json = (await response.json()) as ApiResponse<PaginatedResponseData<UserActivity>>;
+        if (!json.success || !json.data) {
+          message.error(json.message || t.empty);
+          if (page === 1) {
+            setActivities([]);
+            setHasMore(false);
+          }
+          return;
+        }
 
-        // 模拟数据
-        setTimeout(() => {
-          const mockActivities: Activity[] = [
-            {
-              id: 1,
-              userId: 1,
-              action: "post_created",
-              description: "创建了文章《如何学习React》",
-              metadata: { postId: 123, postTitle: "如何学习React" },
-              ipAddress: "192.168.1.1",
-              userAgent: "Mozilla/5.0...",
-              createdAt: new Date(Date.now() - 30 * 60 * 1000), // 30分钟前
-              updatedAt: new Date(Date.now() - 30 * 60 * 1000),
-            },
-            {
-              id: 2,
-              userId: 1,
-              action: "comment_created",
-              description: "在文章《Vue.js最佳实践》下发表了评论",
-              metadata: { postId: 122, commentId: 456 },
-              ipAddress: "192.168.1.1",
-              userAgent: "Mozilla/5.0...",
-              createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2小时前
-              updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-            },
-            {
-              id: 3,
-              userId: 1,
-              action: "post_liked",
-              description: "点赞了文章《TypeScript入门指南》",
-              metadata: { postId: 121, postTitle: "TypeScript入门指南" },
-              ipAddress: "192.168.1.1",
-              userAgent: "Mozilla/5.0...",
-              createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000), // 4小时前
-              updatedAt: new Date(Date.now() - 4 * 60 * 60 * 1000),
-            },
-            {
-              id: 4,
-              userId: 1,
-              action: "user_followed",
-              description: "关注了用户 @developer",
-              metadata: { followingId: 456, followingName: "developer" },
-              ipAddress: "192.168.1.1",
-              userAgent: "Mozilla/5.0...",
-              createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000), // 6小时前
-              updatedAt: new Date(Date.now() - 6 * 60 * 60 * 1000),
-            },
-            {
-              id: 5,
-              userId: 1,
-              action: "profile_updated",
-              description: "更新了个人资料",
-              metadata: { fields: ["bio", "location"] },
-              ipAddress: "192.168.1.1",
-              userAgent: "Mozilla/5.0...",
-              createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1天前
-              updatedAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
-            },
-          ];
+        const list = json.data.data.map((item) => ({
+          ...item,
+          createdAt: new Date(item.createdAt),
+          updatedAt: new Date(item.updatedAt),
+        }));
 
-          setActivities((prev) => (page === 1 ? mockActivities : [...prev, ...mockActivities]));
-          setHasMore(mockActivities.length === 5);
-          setLoading(false);
-        }, 1000);
+        setActivities((prev) => (page === 1 ? list : [...prev, ...list]));
+        setHasMore(json.data.pagination.hasNext);
+        setTotal(json.data.pagination.total);
       } catch (error) {
         console.error("获取活动日志失败:", error);
+        message.error(t.empty);
+        if (page === 1) {
+          setActivities([]);
+          setHasMore(false);
+        }
+      } finally {
         setLoading(false);
       }
     };
 
-    fetchActivities();
-  }, [page]);
+    void fetchActivities();
+  }, [page, t.empty]);
 
   const formatTimeAgo = (date: Date) => {
     const now = new Date();
@@ -232,18 +190,13 @@ export default function ProfileActivities({ lang }: ProfileActivitiesProps) {
   }
 
   return (
-    <Card className={PROFILE_GLASS_CARD}>
+    <Card id="recent-activities" className={PROFILE_GLASS_CARD}>
       <CardBody className="p-6">
         <div className="mb-6 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-foreground">{t.title}</h3>
-          <Button
-            variant="light"
-            size="sm"
-            className="text-default-600"
-            endContent={<MoreHorizontal className="h-4 w-4" />}
-          >
-            {t.viewAll}
-          </Button>
+          <Badge size="sm" variant="flat" color="default" className="bg-white/10 dark:bg-black/20">
+            {t.total} {total}
+          </Badge>
         </div>
 
         <div className="space-y-2">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { Button } from "@heroui/button";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Chip } from "@heroui/chip";
@@ -10,6 +10,7 @@ import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, useDisclosure
 import { AlertCircle, Check, CheckCircle, Clock, Code, Copy, Play, Send } from "lucide-react";
 
 import { ApiEndpoint } from "@/lib/utils/api-scanner";
+import { ApiDocsTesterContext } from "./api-docs-tester-context";
 
 interface ApiTesterProps {
   endpoint: ApiEndpoint;
@@ -25,10 +26,13 @@ interface TestResult {
 }
 
 export function ApiTester({ endpoint }: ApiTesterProps) {
+  const docsTester = useContext(ApiDocsTesterContext);
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<TestResult | null>(null);
   const [copiedItems, setCopiedItems] = useState<Set<string>>(new Set());
+  /** 每次打开模态时最多自动补一次 Authorization，避免覆盖用户手改 */
+  const authSeedDoneRef = useRef(false);
 
   // 请求参数状态
   const [pathParams, setPathParams] = useState<Record<string, string>>({});
@@ -37,6 +41,34 @@ export function ApiTester({ endpoint }: ApiTesterProps) {
     "Content-Type": "application/json",
   });
   const [requestBody, setRequestBody] = useState<string>("");
+
+  useEffect(() => {
+    if (!isOpen) {
+      authSeedDoneRef.current = false;
+      return;
+    }
+    const bearer = docsTester?.bearerToken?.trim();
+    if (!bearer || authSeedDoneRef.current) return;
+    setHeaders((prev) => {
+      const hasAuth = Object.keys(prev).some(
+        (k) => k.toLowerCase() === "authorization" && (prev[k] ?? "").trim().length > 0
+      );
+      if (hasAuth) return prev;
+      authSeedDoneRef.current = true;
+      return { ...prev, Authorization: `Bearer ${bearer}` };
+    });
+  }, [isOpen, docsTester?.bearerToken]);
+
+  const applyDocsBearer = () => {
+    const bearer = docsTester?.bearerToken?.trim();
+    if (!bearer) return;
+    setHeaders((prev) => {
+      const next = { ...prev };
+      const authKey = Object.keys(next).find((k) => k.toLowerCase() === "authorization");
+      if (authKey) delete next[authKey];
+      return { ...next, Authorization: `Bearer ${bearer}` };
+    });
+  };
 
   const copyToClipboard = async (text: string, itemId: string) => {
     try {
@@ -267,7 +299,14 @@ export function ApiTester({ endpoint }: ApiTesterProps) {
 
                       {/* 请求头 */}
                       <div>
-                        <h4 className="text-sm font-medium mb-2">请求头</h4>
+                        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                          <h4 className="text-sm font-medium">请求头</h4>
+                          {docsTester?.bearerToken ? (
+                            <Button size="sm" variant="flat" color="secondary" onPress={applyDocsBearer}>
+                              填入文档测试 Token
+                            </Button>
+                          ) : null}
+                        </div>
                         <div className="space-y-2">
                           {Object.entries(headers).map(([key, value], index) => (
                             <div key={index} className="flex gap-2">

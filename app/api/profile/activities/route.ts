@@ -7,7 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { desc, eq } from "drizzle-orm";
+import { and, count, desc, eq } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { userActivities } from "@/lib/db/schema";
@@ -36,11 +36,9 @@ export async function GET(request: NextRequest) {
     const offset = (page - 1) * limit;
 
     // 构建查询条件
-    let whereConditions = eq(userActivities.userId, decoded.userId);
-
-    if (action) {
-      whereConditions = eq(userActivities.action, action);
-    }
+    const whereConditions = action
+      ? and(eq(userActivities.userId, decoded.userId), eq(userActivities.action, action))
+      : eq(userActivities.userId, decoded.userId);
 
     // 获取活动日志
     const activities = await db
@@ -52,9 +50,8 @@ export async function GET(request: NextRequest) {
       .offset(offset);
 
     // 获取总数
-    const totalResult = await db.select({ count: userActivities.id }).from(userActivities).where(whereConditions);
-
-    const total = totalResult.length;
+    const totalResult = await db.select({ count: count() }).from(userActivities).where(whereConditions);
+    const total = totalResult[0]?.count ?? 0;
     const totalPages = Math.ceil(total / limit);
 
     const responseData: PaginatedResponseData<UserActivity> = {

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Button } from "@heroui/react";
-import { Bell, BookOpen, FolderTree, Heart, Menu, Settings, Tags, User, Users } from "lucide-react";
+import { Bell, BookOpen, FileCode2, FolderTree, Heart, Menu, Settings, Tags, User, Users } from "lucide-react";
 
 import { PROFILE_PAGE_BG } from "@/components/profile/profile-ui-presets";
 import { useAuth } from "@/lib/contexts/auth-context";
@@ -33,6 +33,7 @@ export default function ProfileLayout({ children, lang, dict: _dict }: ProfileLa
             notifications: "Notifications",
             settings: "Settings",
             accountsAdmin: "Accounts",
+            apiDocs: "API Docs",
             categoryManage: "Category Management",
             tagManage: "Tag Management",
             pageTitle: "Profile",
@@ -47,6 +48,7 @@ export default function ProfileLayout({ children, lang, dict: _dict }: ProfileLa
               notifications: "通知",
               settings: "アカウント設定",
               accountsAdmin: "アカウント管理",
+              apiDocs: "APIドキュメント",
               categoryManage: "カテゴリー管理",
               tagManage: "タグ管理",
               pageTitle: "プロフィール",
@@ -60,6 +62,7 @@ export default function ProfileLayout({ children, lang, dict: _dict }: ProfileLa
               notifications: "通知中心",
               settings: "账户设置",
               accountsAdmin: "账户管理",
+              apiDocs: "API 文档",
               categoryManage: "分类管理",
               tagManage: "标签管理",
               pageTitle: "个人中心",
@@ -87,6 +90,12 @@ export default function ProfileLayout({ children, lang, dict: _dict }: ProfileLa
         label: L.accountsAdmin,
         icon: Users,
         href: "/profile/accounts",
+      });
+      base.splice(6, 0, {
+        key: "api-docs",
+        label: L.apiDocs,
+        icon: FileCode2,
+        href: "/api-docs",
       });
     }
     return { labels: L, navigationItems: base };

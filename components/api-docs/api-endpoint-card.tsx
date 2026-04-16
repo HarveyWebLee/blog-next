@@ -52,13 +52,20 @@ export function ApiEndpointCard({ endpoint }: ApiEndpointCardProps) {
     <Card className="border-l-4 border-l-primary/20">
       <CardContent className="p-4">
         {/* 端点头部 */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Badge className={getMethodColor(endpoint.method)}>{endpoint.method}</Badge>
-            <code className="text-sm font-mono bg-muted px-2 py-1 rounded">{endpoint.path}</code>
-            {endpoint.description && <span className="text-sm text-muted-foreground">{endpoint.description}</span>}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 flex-1 space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge className={getMethodColor(endpoint.method)}>{endpoint.method}</Badge>
+              <code className="text-sm font-mono bg-muted px-2 py-1 rounded break-all">{endpoint.path}</code>
+            </div>
+            {endpoint.description && (
+              <span className="block text-sm text-muted-foreground">{endpoint.description}</span>
+            )}
+            {endpoint.authHint && (
+              <span className="block text-xs text-amber-700 dark:text-amber-400">鉴权：{endpoint.authHint}</span>
+            )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2 self-start sm:self-center">
             <ApiTester endpoint={endpoint} />
             <Button variant="ghost" size="sm" onClick={() => setIsExpanded(!isExpanded)} className="h-8 w-8 p-0">
               {isExpanded ? (

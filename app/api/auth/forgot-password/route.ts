@@ -19,8 +19,32 @@ async function sendPasswordResetEmail(email: string, resetToken: string) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { email } = body;
+    /**
+     * 兼容 API 文档调试器的空请求体场景：
+     * - Content-Type: application/json 但 body 为空时，request.json() 会抛 SyntaxError
+     * - 这里先按 text 读取，再按 JSON 解析；解析失败统一按空对象处理，走 400 参数校验
+     */
+    const rawBody = await request.text();
+    let body: Record<string, unknown> = {};
+    if (rawBody.trim()) {
+      try {
+        body = JSON.parse(rawBody) as Record<string, unknown>;
+      } catch {
+        return NextResponse.json<ApiResponse>(
+          {
+            success: false,
+            message: "请求体 JSON 格式不正确",
+            timestamp: new Date().toISOString(),
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    // 兼容 email 通过 query 传入，优先 body.email
+    const bodyEmail = typeof body.email === "string" ? body.email : "";
+    const queryEmail = request.nextUrl.searchParams.get("email") || "";
+    const email = (bodyEmail || queryEmail).trim();
 
     // 验证输入
     if (!email) {

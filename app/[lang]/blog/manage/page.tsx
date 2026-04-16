@@ -24,7 +24,6 @@ import {
   SortAsc,
   Trash2,
   TrendingUp,
-  User,
 } from "lucide-react";
 
 import { BlogNavigation } from "@/components/blog/blog-navigation";
@@ -582,7 +581,12 @@ export default function BlogManagePage() {
 
                           <div className="space-y-3">
                             <div className="flex items-center gap-2 text-sm text-default-400">
-                              <Avatar size="sm" name={post.author?.displayName || t.unknown} className="w-5 h-5" />
+                              <Avatar
+                                size="sm"
+                                src={post.author?.avatar || undefined}
+                                name={post.author?.displayName || t.unknown}
+                                className="w-5 h-5"
+                              />
                               <span>{post.author?.displayName || t.unknown}</span>
                             </div>
 
@@ -643,7 +647,12 @@ export default function BlogManagePage() {
 
                             <div className="flex flex-wrap items-center gap-4 text-sm text-default-400">
                               <div className="flex items-center gap-2">
-                                <Avatar size="sm" name={post.author?.displayName || t.unknown} className="w-4 h-4" />
+                                <Avatar
+                                  size="sm"
+                                  src={post.author?.avatar || undefined}
+                                  name={post.author?.displayName || t.unknown}
+                                  className="w-4 h-4"
+                                />
                                 <span>{post.author?.displayName || t.unknown}</span>
                               </div>
                               <div className="flex items-center gap-1">

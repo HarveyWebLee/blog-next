@@ -9,6 +9,7 @@ import { Input } from "@heroui/input";
 import { BookOpen, ClipboardList, FolderOpen, Hash, Home, Mail, Scale, Shield } from "lucide-react";
 
 import { useAuth } from "@/lib/contexts/auth-context";
+import { useNewsletterGuestSubscription } from "@/lib/hooks/useNewsletterGuestSubscription";
 import { message } from "@/lib/utils";
 import { Locale } from "@/types";
 
@@ -45,6 +46,12 @@ const copy = {
     unsubscribeSuccess: "已取消订阅",
     unsubscribeFail: "取消订阅失败",
     invalidEmail: "请输入有效的邮箱地址",
+    codePlaceholder: "邮箱验证码",
+    sendCode: "发送验证码",
+    needSubscribeCode: "请填写邮件中的验证码后再完成订阅",
+    needUnsubscribeCode: "请填写邮件中的验证码后再取消订阅",
+    sendCodeOk: "验证码已发送，请查收邮件",
+    sendCodeFail: "验证码发送失败",
     loggedInHint: "将使用当前账号邮箱接收通知。",
     rights: "保留所有权利。",
   },
@@ -71,6 +78,12 @@ const copy = {
     unsubscribeSuccess: "Unsubscribed",
     unsubscribeFail: "Unsubscribe failed",
     invalidEmail: "Please enter a valid email",
+    codePlaceholder: "Email code",
+    sendCode: "Send code",
+    needSubscribeCode: "Enter the code from your email to finish subscribing",
+    needUnsubscribeCode: "Enter the code from your email to unsubscribe",
+    sendCodeOk: "Verification code sent. Check your inbox.",
+    sendCodeFail: "Failed to send verification code",
     loggedInHint: "Notifications will use your account email.",
     rights: "All rights reserved.",
   },
@@ -97,6 +110,12 @@ const copy = {
     unsubscribeSuccess: "購読を解除しました",
     unsubscribeFail: "購読解除に失敗しました",
     invalidEmail: "有効なメールアドレスを入力してください",
+    codePlaceholder: "確認コード",
+    sendCode: "コードを送信",
+    needSubscribeCode: "メールの確認コードを入力してから購読を完了してください",
+    needUnsubscribeCode: "メールの確認コードを入力してから購読解除してください",
+    sendCodeOk: "確認コードを送信しました。メールをご確認ください",
+    sendCodeFail: "確認コードの送信に失敗しました",
     loggedInHint: "アカウントのメールアドレスで通知を受け取ります。",
     rights: "All rights reserved.",
   },
@@ -111,9 +130,20 @@ export function Footer() {
   const t = copy[locale];
 
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
-  const [subscribeEmail, setSubscribeEmail] = useState("");
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  const guestNl = useNewsletterGuestSubscription(isAuthenticated, {
+    invalidEmail: t.invalidEmail,
+    needSubscribeCode: t.needSubscribeCode,
+    needUnsubscribeCode: t.needUnsubscribeCode,
+    sendCodeOk: t.sendCodeOk,
+    sendCodeFail: t.sendCodeFail,
+    subscribeSuccess: t.subscribeSuccess,
+    subscribeFail: t.subscribeFail,
+    unsubscribeSuccess: t.unsubscribeSuccess,
+    unsubscribeFail: t.unsubscribeFail,
+  });
 
   const loginEmail = useMemo(() => {
     if (!isAuthenticated) return "";
@@ -139,8 +169,8 @@ export function Footer() {
     void queryStatus();
   }, [loginEmail]);
 
-  const handleSubscribe = async () => {
-    const targetEmail = (isAuthenticated ? loginEmail : subscribeEmail).trim().toLowerCase();
+  const handleAuthSubscribe = async () => {
+    const targetEmail = loginEmail.trim().toLowerCase();
     const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(targetEmail);
     if (!isEmailValid) {
       message.warning(t.invalidEmail);
@@ -149,12 +179,15 @@ export function Footer() {
 
     try {
       setSubmitting(true);
+      const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : "";
       const response = await fetch("/api/subscriptions", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           email: targetEmail,
-          userId: isAuthenticated ? user?.id : undefined,
         }),
       });
       const result = await response.json();
@@ -164,11 +197,7 @@ export function Footer() {
         return;
       }
 
-      if (isAuthenticated) {
-        setIsSubscribed(true);
-      } else {
-        setSubscribeEmail("");
-      }
+      setIsSubscribed(true);
       message.success(t.subscribeSuccess);
     } catch (error) {
       console.error("订阅失败:", error);
@@ -178,14 +207,18 @@ export function Footer() {
     }
   };
 
-  const handleUnsubscribe = async () => {
+  const handleAuthUnsubscribe = async () => {
     if (!loginEmail) return;
     try {
       setSubmitting(true);
+      const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : "";
       const response = await fetch("/api/subscriptions", {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: loginEmail }),
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ email: loginEmail.trim().toLowerCase() }),
       });
       const result = await response.json();
       if (!result.success) {
@@ -294,19 +327,49 @@ export function Footer() {
             <div className="rounded-2xl border border-white/20 bg-gradient-to-br from-primary/10 via-secondary/5 to-accent/10 p-4 backdrop-blur-xl dark:border-white/10">
               {!isAuthLoading && isAuthenticated && <p className="mb-3 text-xs text-default-500">{t.loggedInHint}</p>}
               {!isAuthLoading && !isAuthenticated && (
-                <Input
-                  type="email"
-                  placeholder={t.emailPlaceholder}
-                  value={subscribeEmail}
-                  onValueChange={setSubscribeEmail}
-                  variant="bordered"
-                  size="sm"
-                  classNames={{
-                    input: "bg-white/10 dark:bg-black/10",
-                    inputWrapper:
-                      "mb-3 bg-white/20 dark:bg-black/20 border-white/25 dark:border-white/10 hover:border-primary/40",
-                  }}
-                />
+                <>
+                  <Input
+                    type="email"
+                    placeholder={t.emailPlaceholder}
+                    value={guestNl.subscribeEmail}
+                    onValueChange={guestNl.setSubscribeEmail}
+                    variant="bordered"
+                    size="sm"
+                    classNames={{
+                      input: "bg-white/10 dark:bg-black/10",
+                      inputWrapper:
+                        "mb-3 bg-white/20 dark:bg-black/20 border-white/25 dark:border-white/10 hover:border-primary/40",
+                    }}
+                  />
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    placeholder={t.codePlaceholder}
+                    value={guestNl.subscribeCode}
+                    onValueChange={guestNl.setSubscribeCode}
+                    variant="bordered"
+                    size="sm"
+                    classNames={{
+                      input: "bg-white/10 dark:bg-black/10",
+                      inputWrapper:
+                        "mb-3 bg-white/20 dark:bg-black/20 border-white/25 dark:border-white/10 hover:border-primary/40",
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="flat"
+                    className="mb-3 w-full font-medium"
+                    isLoading={guestNl.sendingCode}
+                    isDisabled={guestNl.cooldownSec > 0}
+                    onPress={() =>
+                      void guestNl.sendVerification(guestNl.guestIsSubscribed ? "unsubscribe" : "subscribe")
+                    }
+                  >
+                    {guestNl.cooldownSec > 0 ? `${guestNl.cooldownSec}s` : t.sendCode}
+                  </Button>
+                </>
               )}
               <Button
                 color="primary"
@@ -314,10 +377,25 @@ export function Footer() {
                 size="sm"
                 className="w-full font-semibold"
                 endContent={<Mail className="h-4 w-4" />}
-                isLoading={submitting}
-                onPress={isAuthenticated && isSubscribed ? handleUnsubscribe : handleSubscribe}
+                isLoading={isAuthenticated ? submitting : guestNl.submitting}
+                onPress={() => {
+                  if (isAuthenticated) {
+                    if (isSubscribed) void handleAuthUnsubscribe();
+                    else void handleAuthSubscribe();
+                  } else if (guestNl.guestIsSubscribed) {
+                    void guestNl.submitGuestUnsubscribe();
+                  } else {
+                    void guestNl.submitGuestSubscribe();
+                  }
+                }}
               >
-                {isAuthenticated && isSubscribed ? t.unsubscribeBtn : t.subscribeBtn}
+                {isAuthenticated
+                  ? isSubscribed
+                    ? t.unsubscribeBtn
+                    : t.subscribeBtn
+                  : guestNl.guestIsSubscribed
+                    ? t.unsubscribeBtn
+                    : t.subscribeBtn}
               </Button>
             </div>
           </div>

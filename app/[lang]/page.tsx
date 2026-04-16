@@ -212,7 +212,7 @@ export default async function HomePage({ params }: { params: Promise<{ lang: Loc
         {/* 首屏：与博客列表页相同的整体渐变氛围 */}
         <section className="relative overflow-hidden">
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-primary/[0.07] via-transparent to-transparent dark:from-primary/10" />
-          <div className="container relative mx-auto px-4 pb-14 pt-12 sm:px-6 sm:pb-16 sm:pt-16 md:pb-20 md:pt-20">
+          <div className="container relative mx-auto px-4 pb-14 pt-12 sm:px-6 sm:pb-16 sm:pt-16 md:pb-20 md:pt-20 lg:px-8 2xl:px-12">
             <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
               <div className="mb-5 inline-flex items-center gap-2 rounded-full border-0 bg-white/10 px-3 py-1.5 text-xs font-medium text-foreground/80 shadow-none backdrop-blur-xl dark:bg-black/10 sm:text-sm">
                 <Sparkles className="h-3.5 w-3.5 text-amber-500" aria-hidden />
@@ -252,7 +252,7 @@ export default async function HomePage({ params }: { params: Promise<{ lang: Loc
         {/* 分类：移动端横向滑动，桌面端网格 */}
         {topics.length > 0 ? (
           <section className="py-10 sm:py-12 md:py-14">
-            <div className="container mx-auto px-4 sm:px-6">
+            <div className="container mx-auto px-4 sm:px-6 lg:px-8 2xl:px-12">
               <div className="mb-6 flex flex-col gap-2 sm:mb-8 md:flex-row md:items-end md:justify-between">
                 <div>
                   <h2 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
@@ -292,7 +292,7 @@ export default async function HomePage({ params }: { params: Promise<{ lang: Loc
 
         {/* 最新文章 */}
         <section className="py-10 sm:py-12 md:py-16">
-          <div className="container mx-auto px-4 sm:px-6">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8 2xl:px-12">
             <div className="mb-8 flex flex-col justify-between gap-4 sm:mb-10 sm:flex-row sm:items-end">
               <div>
                 <h2 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">{h.sectionLatest}</h2>
@@ -336,7 +336,7 @@ export default async function HomePage({ params }: { params: Promise<{ lang: Loc
 
         {/* 阅读体验：产品向说明，不涉及实现技术栈 */}
         <section className="py-10 sm:py-12 md:py-16">
-          <div className="container mx-auto px-4 sm:px-6">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8 2xl:px-12">
             <h2 className="mb-8 text-center text-xl font-semibold tracking-tight text-foreground sm:mb-10 sm:text-2xl">
               {h.valueTitle}
             </h2>
@@ -368,7 +368,7 @@ export default async function HomePage({ params }: { params: Promise<{ lang: Loc
 
         {/* 底部 CTA */}
         <section className="py-12 sm:py-14 md:py-16">
-          <div className="container mx-auto max-w-3xl px-4 text-center sm:px-6">
+          <div className="container mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8 2xl:px-12">
             <h2 className="mb-3 text-xl font-semibold text-foreground sm:text-2xl">{h.bottomTitle}</h2>
             <p className="mb-8 text-sm text-foreground/70 sm:text-base">{h.bottomDesc}</p>
             <Button variant="gradient" size="lg" asChild>

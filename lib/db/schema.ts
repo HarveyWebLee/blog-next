@@ -205,7 +205,15 @@ export const emailVerifications = mysqlTable(
     id: int("id").primaryKey().autoincrement(),
     email: varchar("email", { length: 100 }).notNull(), // 邮箱地址
     code: varchar("code", { length: 10 }).notNull(), // 验证码
-    type: mysqlEnum("type", ["register", "reset_password", "change_email"]).notNull(), // 验证码类型
+    type: mysqlEnum("type", [
+      "register",
+      "reset_password",
+      "change_email",
+      /** 访客邮件订阅：验证邮箱归属后再写入订阅表 */
+      "subscription",
+      /** 访客取消订阅：验证邮箱归属后再标记退订 */
+      "subscription_unsubscribe",
+    ]).notNull(), // 验证码类型
     isUsed: boolean("is_used").default(false), // 是否已使用
     expiresAt: timestamp("expires_at").notNull(), // 过期时间
     createdAt: timestamp("created_at").defaultNow().notNull(),

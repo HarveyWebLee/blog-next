@@ -86,7 +86,7 @@
   },
   "apiDocs": {
     "title": "API Documentation",
-    "description": "Complete API documentation with all available endpoints, parameter descriptions and usage examples",
+    "description": "Scanned app/api reference and in-browser tests.",
     "searchPlaceholder": "Search API endpoints...",
     "noResults": "No matching API endpoints found",
     "noData": "No API endpoint data available",

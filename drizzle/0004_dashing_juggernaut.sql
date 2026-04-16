@@ -1,0 +1,1 @@
+ALTER TABLE `email_verifications` MODIFY COLUMN `type` enum('register','reset_password','change_email','subscription','subscription_unsubscribe') NOT NULL;

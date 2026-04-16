@@ -29,6 +29,13 @@
       "when": 1776237019378,
       "tag": "0003_steep_pretty_boy",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1776300948876,
+      "tag": "0004_dashing_juggernaut",
+      "breakpoints": true
     }
   ]
 }

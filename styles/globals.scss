@@ -46,6 +46,56 @@
 }
 
 @layer base {
+  :root {
+    /* 全局滚动条（亮色） */
+    --app-scrollbar-size: 10px;
+    --app-scrollbar-track: rgb(148 163 184 / 0.16);
+    --app-scrollbar-thumb: rgb(100 116 139 / 0.55);
+    --app-scrollbar-thumb-hover: rgb(71 85 105 / 0.72);
+  }
+
+  .dark {
+    /* 全局滚动条（暗色） */
+    --app-scrollbar-track: rgb(255 255 255 / 0.08);
+    --app-scrollbar-thumb: rgb(148 163 184 / 0.5);
+    --app-scrollbar-thumb-hover: rgb(203 213 225 / 0.72);
+  }
+
+  /* Firefox */
+  * {
+    scrollbar-color: var(--app-scrollbar-thumb) var(--app-scrollbar-track);
+    scrollbar-width: thin;
+  }
+
+  /* Chromium / Safari / Edge */
+  *::-webkit-scrollbar {
+    height: var(--app-scrollbar-size);
+    width: var(--app-scrollbar-size);
+  }
+
+  *::-webkit-scrollbar-track {
+    background: var(--app-scrollbar-track);
+    border-radius: 999px;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: var(--app-scrollbar-thumb);
+    background-clip: padding-box;
+    border: 2px solid transparent;
+    border-radius: 999px;
+    transition: background-color 0.2s ease;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: var(--app-scrollbar-thumb-hover);
+    background-clip: padding-box;
+    border: 2px solid transparent;
+  }
+
+  *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
   body {
     @apply bg-background text-foreground;
   }

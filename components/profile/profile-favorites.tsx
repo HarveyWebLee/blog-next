@@ -12,45 +12,13 @@ import {
   PROFILE_GLASS_CARD_INTERACTIVE,
   PROFILE_NATIVE_CONTROL,
 } from "@/components/profile/profile-ui-presets";
+import { message } from "@/lib/utils";
+import { clientBearerHeaders } from "@/lib/utils/client-bearer-auth";
 import { stripMarkdownForExcerpt } from "@/lib/utils/markdown-plain";
+import type { ApiResponse, PaginatedResponseData, UserFavorite } from "@/types/blog";
 
 interface ProfileFavoritesProps {
   lang: string;
-}
-
-interface FavoritePost {
-  id: number;
-  userId: number;
-  postId: number;
-  createdAt: Date;
-  updatedAt: Date;
-  post: {
-    id: number;
-    title: string;
-    slug: string;
-    excerpt?: string;
-    featuredImage?: string;
-    viewCount: number;
-    likeCount: number;
-    publishedAt?: Date;
-    author: {
-      id: number;
-      username: string;
-      displayName?: string;
-      avatar?: string;
-    };
-    category?: {
-      id: number;
-      name: string;
-      slug: string;
-    };
-    tags?: Array<{
-      id: number;
-      name: string;
-      slug: string;
-      color?: string;
-    }>;
-  };
 }
 
 export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
@@ -62,6 +30,8 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
       ? {
           title: "My Favorites",
           subtitle: "Posts you have favorited",
+          loadFailed: "Failed to load favorites",
+          removeFailed: "Failed to unfavorite",
           total: "posts",
           search: "Search favorite posts...",
           allCategories: "All Categories",
@@ -78,6 +48,8 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
         ? {
             title: "お気に入り",
             subtitle: "お気に入りの記事一覧",
+            loadFailed: "お気に入りの取得に失敗しました",
+            removeFailed: "お気に入り解除に失敗しました",
             total: "件",
             search: "お気に入り記事を検索...",
             allCategories: "すべてのカテゴリー",
@@ -93,6 +65,8 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
         : {
             title: "我的收藏",
             subtitle: "您收藏的文章列表",
+            loadFailed: "获取收藏列表失败",
+            removeFailed: "取消收藏失败",
             total: "篇文章",
             search: "搜索收藏的文章...",
             allCategories: "全部分类",
@@ -105,7 +79,7 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
             emptyDesc: "开始收藏您喜欢的文章吧",
             browse: "浏览文章",
           };
-  const [favorites, setFavorites] = useState<FavoritePost[]>([]);
+  const [favorites, setFavorites] = useState<UserFavorite[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -113,128 +87,56 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
   useEffect(() => {
     const fetchFavorites = async () => {
       try {
-        // 这里应该调用真实的API
-        // const response = await fetch('/api/profile/favorites');
-        // const data = await response.json();
-
-        // 模拟数据
-        setTimeout(() => {
-          setFavorites([
-            {
-              id: 1,
-              userId: 1,
-              postId: 101,
-              createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-              updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-              post: {
-                id: 101,
-                title: "深入理解JavaScript闭包",
-                slug: "understanding-javascript-closures",
-                excerpt: "闭包是JavaScript中一个重要的概念，理解闭包对于编写高质量的JavaScript代码至关重要...",
-                featuredImage: "/images/placeholder.jpg",
-                viewCount: 2500,
-                likeCount: 156,
-                publishedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-                author: {
-                  id: 2,
-                  username: "developer",
-                  displayName: "开发者",
-                  avatar: "/images/avatar.jpeg",
-                },
-                category: {
-                  id: 1,
-                  name: "前端开发",
-                  slug: "frontend",
-                },
-                tags: [
-                  { id: 1, name: "JavaScript", slug: "javascript", color: "#f7df1e" },
-                  { id: 2, name: "闭包", slug: "closure", color: "#61dafb" },
-                ],
-              },
-            },
-            {
-              id: 2,
-              userId: 1,
-              postId: 102,
-              createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
-              updatedAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
-              post: {
-                id: 102,
-                title: "React性能优化最佳实践",
-                slug: "react-performance-optimization",
-                excerpt: "本文将介绍一些React性能优化的实用技巧，帮助您构建更高效的React应用...",
-                featuredImage: "/images/placeholder.jpg",
-                viewCount: 1800,
-                likeCount: 98,
-                publishedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-                author: {
-                  id: 3,
-                  username: "reactdev",
-                  displayName: "React开发者",
-                  avatar: "/images/avatar.jpeg",
-                },
-                category: {
-                  id: 1,
-                  name: "前端开发",
-                  slug: "frontend",
-                },
-                tags: [
-                  { id: 3, name: "React", slug: "react", color: "#61dafb" },
-                  { id: 4, name: "性能优化", slug: "performance", color: "#ff6b6b" },
-                ],
-              },
-            },
-            {
-              id: 3,
-              userId: 1,
-              postId: 103,
-              createdAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
-              updatedAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
-              post: {
-                id: 103,
-                title: "Node.js微服务架构设计",
-                slug: "nodejs-microservices-architecture",
-                excerpt: "微服务架构是现代应用开发的重要模式，本文将介绍如何使用Node.js构建微服务...",
-                featuredImage: "/images/placeholder.jpg",
-                viewCount: 1200,
-                likeCount: 67,
-                publishedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
-                author: {
-                  id: 4,
-                  username: "backenddev",
-                  displayName: "后端开发者",
-                  avatar: "/images/avatar.jpeg",
-                },
-                category: {
-                  id: 2,
-                  name: "后端开发",
-                  slug: "backend",
-                },
-                tags: [
-                  { id: 5, name: "Node.js", slug: "nodejs", color: "#339933" },
-                  { id: 6, name: "微服务", slug: "microservices", color: "#8b5cf6" },
-                ],
-              },
-            },
-          ]);
-          setLoading(false);
-        }, 1000);
+        const response = await fetch("/api/profile/favorites?page=1&limit=100", {
+          headers: {
+            ...clientBearerHeaders(),
+          },
+        });
+        const json = (await response.json()) as ApiResponse<PaginatedResponseData<UserFavorite>>;
+        if (!json.success || !json.data) {
+          message.error(json.message || t.loadFailed);
+          setFavorites([]);
+          return;
+        }
+        const list = json.data.data
+          .filter((item) => item.post)
+          .map((item) => ({
+            ...item,
+            createdAt: new Date(item.createdAt),
+            updatedAt: new Date(item.updatedAt),
+            post: item.post
+              ? {
+                  ...item.post,
+                  publishedAt: item.post.publishedAt ? new Date(item.post.publishedAt) : undefined,
+                  createdAt: new Date(item.post.createdAt),
+                  updatedAt: new Date(item.post.updatedAt),
+                }
+              : undefined,
+          })) as UserFavorite[];
+        setFavorites(list);
       } catch (error) {
         console.error("获取收藏列表失败:", error);
+        message.error(t.loadFailed);
+        setFavorites([]);
+      } finally {
         setLoading(false);
       }
     };
 
-    fetchFavorites();
-  }, []);
+    void fetchFavorites();
+  }, [t.loadFailed]);
 
   const filteredFavorites = favorites.filter((favorite) => {
     const matchesSearch =
-      favorite.post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      favorite.post.excerpt?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = categoryFilter === "all" || favorite.post.category?.slug === categoryFilter;
+      favorite.post?.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      favorite.post?.excerpt?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = categoryFilter === "all" || favorite.post?.category?.slug === categoryFilter;
     return matchesSearch && matchesCategory;
   });
+
+  const categoryOptions = Array.from(
+    new Set(favorites.map((favorite) => favorite.post?.category?.slug).filter((slug): slug is string => Boolean(slug)))
+  );
 
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat(lang, {
@@ -246,12 +148,23 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
 
   const handleRemoveFavorite = async (favoriteId: number) => {
     try {
-      // 这里应该调用真实的API
-      // await fetch(`/api/profile/favorites?id=${favoriteId}`, { method: 'DELETE' });
-
+      const favorite = favorites.find((item) => item.id === favoriteId);
+      if (!favorite) return;
+      const response = await fetch(`/api/profile/favorites?postId=${favorite.postId}`, {
+        method: "DELETE",
+        headers: {
+          ...clientBearerHeaders(),
+        },
+      });
+      const json = (await response.json()) as ApiResponse;
+      if (!json.success) {
+        message.error(json.message || t.removeFailed);
+        return;
+      }
       setFavorites((prev) => prev.filter((fav) => fav.id !== favoriteId));
     } catch (error) {
       console.error("取消收藏失败:", error);
+      message.error(t.removeFailed);
     }
   };
 
@@ -316,9 +229,11 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
                 className={`${PROFILE_NATIVE_CONTROL} min-w-[10rem]`}
               >
                 <option value="all">{t.allCategories}</option>
-                <option value="frontend">前端开发</option>
-                <option value="backend">后端开发</option>
-                <option value="design">设计</option>
+                {categoryOptions.map((slug) => (
+                  <option key={slug} value={slug}>
+                    {slug}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -327,134 +242,134 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
 
       {/* 收藏列表 */}
       <div className="space-y-4">
-        {filteredFavorites.map((favorite) => (
-          <Card key={favorite.id} className={PROFILE_GLASS_CARD_INTERACTIVE}>
-            <CardBody className="p-6">
-              <div className="flex items-start gap-4">
-                {/* 文章封面 */}
-                <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-default-100">
-                  {favorite.post.featuredImage ? (
-                    <Image
-                      src={favorite.post.featuredImage}
-                      alt={favorite.post.title}
-                      width={96}
-                      height={96}
-                      unoptimized
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-secondary/40 to-primary/35">
-                      <BookOpen className="h-8 w-8 text-white" />
-                    </div>
-                  )}
-                </div>
-
-                {/* 文章信息 */}
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <h3 className="mb-2 line-clamp-2 text-lg font-semibold text-foreground">{favorite.post.title}</h3>
-                      {favorite.post.excerpt && (
-                        <p className="mb-3 line-clamp-2 text-default-600">
-                          {stripMarkdownForExcerpt(favorite.post.excerpt)}
-                        </p>
-                      )}
-
-                      {/* 作者信息 */}
-                      <div className="mb-3 flex items-center gap-2">
-                        <Avatar
-                          src={favorite.post.author.avatar}
-                          name={favorite.post.author.displayName || favorite.post.author.username}
-                          size="sm"
-                        />
-                        <span className="text-sm text-default-600">
-                          {favorite.post.author.displayName || favorite.post.author.username}
-                        </span>
+        {filteredFavorites.map((favorite) => {
+          const post = favorite.post;
+          if (!post) return null;
+          return (
+            <Card key={favorite.id} className={PROFILE_GLASS_CARD_INTERACTIVE}>
+              <CardBody className="p-6">
+                <div className="flex items-start gap-4">
+                  {/* 文章封面 */}
+                  <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-default-100">
+                    {post.featuredImage ? (
+                      <Image
+                        src={post.featuredImage}
+                        alt={post.title}
+                        width={96}
+                        height={96}
+                        unoptimized
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-secondary/40 to-primary/35">
+                        <BookOpen className="h-8 w-8 text-white" />
                       </div>
+                    )}
+                  </div>
 
-                      {/* 文章元信息 */}
-                      <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-default-500">
-                        <div className="flex items-center space-x-1">
-                          <Eye className="w-4 h-4" />
-                          <span>{favorite.post.viewCount}</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <Heart className="w-4 h-4" />
-                          <span>{favorite.post.likeCount}</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <MessageSquare className="w-4 h-4" />
-                          <span>0</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <Calendar className="w-4 h-4" />
-                          <span>
-                            {favorite.post.publishedAt
-                              ? formatDate(favorite.post.publishedAt)
-                              : formatDate(favorite.createdAt)}
+                  {/* 文章信息 */}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <h3 className="mb-2 line-clamp-2 text-lg font-semibold text-foreground">{post.title}</h3>
+                        {post.excerpt && (
+                          <p className="mb-3 line-clamp-2 text-default-600">{stripMarkdownForExcerpt(post.excerpt)}</p>
+                        )}
+
+                        {/* 作者信息 */}
+                        <div className="mb-3 flex items-center gap-2">
+                          <Avatar
+                            src={post.author?.avatar}
+                            name={post.author?.displayName || post.author?.username || "?"}
+                            size="sm"
+                          />
+                          <span className="text-sm text-default-600">
+                            {post.author?.displayName || post.author?.username || "-"}
                           </span>
                         </div>
+
+                        {/* 文章元信息 */}
+                        <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-default-500">
+                          <div className="flex items-center space-x-1">
+                            <Eye className="w-4 h-4" />
+                            <span>{post.viewCount ?? 0}</span>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <Heart className="w-4 h-4" />
+                            <span>{post.likeCount ?? 0}</span>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <MessageSquare className="w-4 h-4" />
+                            <span>0</span>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <Calendar className="w-4 h-4" />
+                            <span>
+                              {post.publishedAt ? formatDate(post.publishedAt) : formatDate(favorite.createdAt)}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* 分类和标签 */}
+                        <div className="flex items-center space-x-2 mb-3">
+                          {post.category && (
+                            <Chip size="sm" variant="flat" color="primary">
+                              {post.category.name}
+                            </Chip>
+                          )}
+                          {post.tags?.slice(0, 3).map((tag) => (
+                            <Chip
+                              key={tag.id}
+                              size="sm"
+                              variant="flat"
+                              style={{ backgroundColor: tag.color + "20", color: tag.color }}
+                            >
+                              {tag.name}
+                            </Chip>
+                          ))}
+                          {post.tags && post.tags.length > 3 && (
+                            <Chip size="sm" variant="flat">
+                              +{post.tags.length - 3}
+                            </Chip>
+                          )}
+                        </div>
+
+                        {/* 收藏时间 */}
+                        <div className="text-xs text-default-500">
+                          {t.favoritedAt} {formatDate(favorite.createdAt)}
+                        </div>
                       </div>
 
-                      {/* 分类和标签 */}
-                      <div className="flex items-center space-x-2 mb-3">
-                        {favorite.post.category && (
-                          <Chip size="sm" variant="flat" color="primary">
-                            {favorite.post.category.name}
-                          </Chip>
-                        )}
-                        {favorite.post.tags?.slice(0, 3).map((tag) => (
-                          <Chip
-                            key={tag.id}
-                            size="sm"
-                            variant="flat"
-                            style={{ backgroundColor: tag.color + "20", color: tag.color }}
-                          >
-                            {tag.name}
-                          </Chip>
-                        ))}
-                        {favorite.post.tags && favorite.post.tags.length > 3 && (
-                          <Chip size="sm" variant="flat">
-                            +{favorite.post.tags.length - 3}
-                          </Chip>
-                        )}
+                      {/* 操作按钮 */}
+                      <div className="ml-0 flex shrink-0 flex-col gap-2 sm:ml-4">
+                        <Button
+                          as={Link}
+                          href={`/${routeLang}/blog/${post.slug}`}
+                          variant="flat"
+                          size="sm"
+                          color="primary"
+                          className="border border-primary/20 bg-primary/10 text-primary backdrop-blur-xl"
+                        >
+                          {t.readPost}
+                        </Button>
+                        <Button
+                          isIconOnly
+                          variant="light"
+                          size="sm"
+                          color="danger"
+                          aria-label={t.remove}
+                          onPress={() => handleRemoveFavorite(favorite.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
-
-                      {/* 收藏时间 */}
-                      <div className="text-xs text-default-500">
-                        {t.favoritedAt} {formatDate(favorite.createdAt)}
-                      </div>
-                    </div>
-
-                    {/* 操作按钮 */}
-                    <div className="ml-0 flex shrink-0 flex-col gap-2 sm:ml-4">
-                      <Button
-                        as={Link}
-                        href={`/${routeLang}/blog/${favorite.post.slug}`}
-                        variant="flat"
-                        size="sm"
-                        color="primary"
-                        className="border border-primary/20 bg-primary/10 text-primary backdrop-blur-xl"
-                      >
-                        {t.readPost}
-                      </Button>
-                      <Button
-                        isIconOnly
-                        variant="light"
-                        size="sm"
-                        color="danger"
-                        aria-label={t.remove}
-                        onPress={() => handleRemoveFavorite(favorite.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
                     </div>
                   </div>
                 </div>
-              </div>
-            </CardBody>
-          </Card>
-        ))}
+              </CardBody>
+            </Card>
+          );
+        })}
       </div>
 
       {/* 空状态 */}

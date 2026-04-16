@@ -21,12 +21,12 @@ export default async function ApiDocsPage({ params }: ApiDocsPageProps) {
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-foreground mb-4">{dict.apiDocs?.title || "API 接口文档"}</h1>
           <p className="text-lg text-muted-foreground">
-            {dict.apiDocs?.description || "完整的API接口文档，包含所有可用的接口、参数说明和使用示例"}
+            {dict.apiDocs?.description || "自动扫描 app/api 路由的接口说明与在线测试。"}
           </p>
         </div>
 
         <Suspense fallback={<PageLoading text="加载API文档中..." />}>
-          <ApiDocsClient />
+          <ApiDocsClient lang={lang} />
         </Suspense>
       </div>
     </div>

@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 
-import { resolveSuperAdminLogin } from "@/lib/config/super-admin";
+import {
+  getSuperAdminConfiguredUsername,
+  RESERVED_SUPER_ADMIN_USER_ID,
+  resolveSuperAdminLogin,
+} from "@/lib/config/super-admin";
 import { db } from "@/lib/db/config";
-import { users } from "@/lib/db/schema";
+import { userProfiles, users } from "@/lib/db/schema";
 import { generateAccessToken, generateRefreshToken, verifyPassword } from "@/lib/utils";
 import { ApiResponse, LoginRequest, LoginResponse } from "@/types/blog";
 
@@ -27,8 +31,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ① 内存态超级管理员（不访问数据库；用于 DB 不可用时的应急）
-    const superAdminResult = await resolveSuperAdminLogin(username, password);
+    // ① 内存态超级管理员（支持用户名登录；若绑定邮箱，也支持邮箱登录）
+    let superAdminLoginName = username;
+    if (username.includes("@")) {
+      const [superProfile] = await db
+        .select({ email: userProfiles.email })
+        .from(userProfiles)
+        .where(eq(userProfiles.userId, RESERVED_SUPER_ADMIN_USER_ID))
+        .limit(1);
+      const superEmail = superProfile?.email?.trim().toLowerCase() || "";
+      if (superEmail && superEmail === username.toLowerCase()) {
+        const configuredUsername = getSuperAdminConfiguredUsername();
+        if (configuredUsername) {
+          superAdminLoginName = configuredUsername;
+        }
+      }
+    }
+
+    const superAdminResult = await resolveSuperAdminLogin(superAdminLoginName, password);
     if (superAdminResult === "bad_credentials") {
       return NextResponse.json<ApiResponse>(
         {
@@ -40,8 +60,30 @@ export async function POST(request: NextRequest) {
       );
     }
     if (typeof superAdminResult === "object") {
+      const profileRows = await db
+        .select()
+        .from(userProfiles)
+        .where(eq(userProfiles.userId, superAdminResult.user.id))
+        .limit(1);
+      let persistedAvatar: string | undefined;
+      let persistedEmail: string | undefined;
+      if (profileRows[0]) {
+        persistedEmail = profileRows[0].email?.trim() || undefined;
+        try {
+          const social = profileRows[0].socialLinks
+            ? (JSON.parse(profileRows[0].socialLinks) as Record<string, unknown>)
+            : {};
+          persistedAvatar = typeof social.avatar === "string" ? social.avatar.trim() || undefined : undefined;
+        } catch {
+          persistedAvatar = undefined;
+        }
+      }
       const response: LoginResponse = {
-        user: superAdminResult.user,
+        user: {
+          ...superAdminResult.user,
+          ...(persistedEmail ? { email: persistedEmail } : {}),
+          ...(persistedAvatar ? { avatar: persistedAvatar } : {}),
+        },
         token: superAdminResult.accessToken,
         refreshToken: superAdminResult.refreshToken,
       };

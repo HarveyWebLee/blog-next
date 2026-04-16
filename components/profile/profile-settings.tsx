@@ -3,12 +3,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Button, Card, CardBody, Input, Select, SelectItem, Switch } from "@heroui/react";
-import { Bell, Clock, Github, Globe, Mail, MapPin, Palette, Phone, Save, Shield, User } from "lucide-react";
+import { Bell, Github, Globe, Mail, MapPin, Phone, Save, Shield, User } from "lucide-react";
 
 import { FeaturedImageUpload } from "@/components/blog/featured-image-upload";
 import { PROFILE_GLASS_CARD } from "@/components/profile/profile-ui-presets";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { message } from "@/lib/utils";
+import { isValidEmailFormat } from "@/lib/utils/email-format";
 import type { ApiResponse, UpdateProfileRequest, UserProfile } from "@/types/blog";
 
 interface ProfileSettingsProps {
@@ -45,20 +46,27 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
           needLogin: "Please sign in to manage account settings.",
           login: "Sign in",
           title: "Account Settings",
-          subtitle: "Manage your personal info and preferences",
+          subtitle: "Manage your personal info",
           saving: "Saving...",
           save: "Save Settings",
           tabs: {
             profile: "Basic Info",
-            preferences: "Preferences",
             notifications: "Notifications",
             privacy: "Privacy",
             social: "Social",
           },
           profile: {
             title: "Basic Info",
+            avatar: "Avatar",
+            avatarDetail: "Upload your profile avatar; it will sync to the top-right header after saving",
             email: "Email",
             emailPlaceholder: "your@email.com",
+            emailCode: "Email verification code",
+            emailCodePlaceholder: "Enter 6-digit code",
+            sendEmailCode: "Send code",
+            sendingEmailCode: "Sending...",
+            emailFormatError: "Please enter a valid email address",
+            needEmailCode: "Please verify the new email before saving",
             firstName: "First Name",
             firstNamePlaceholder: "Enter first name",
             lastName: "Last Name",
@@ -69,31 +77,6 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
             websitePlaceholder: "Enter website URL",
             location: "Location",
             locationPlaceholder: "Enter location",
-          },
-          preferences: {
-            title: "Preferences",
-            timezone: "Timezone",
-            timezonePlaceholder: "Select timezone",
-            language: "Language",
-            languagePlaceholder: "Select language",
-            dateFormat: "Date Format",
-            dateFormatPlaceholder: "Select date format",
-            timeFormat: "Time Format",
-            timeFormatPlaceholder: "Select time format",
-            theme: "Theme",
-            themePlaceholder: "Select theme",
-            tzBeijing: "Beijing",
-            tzNewYork: "New York",
-            tzLondon: "London",
-            tzTokyo: "Tokyo",
-            langZh: "Simplified Chinese",
-            langEn: "English",
-            langJa: "Japanese",
-            tf24: "24-hour",
-            tf12: "12-hour",
-            themeLight: "Light",
-            themeDark: "Dark",
-            themeSystem: "System",
           },
           notifications: {
             title: "Notification Settings",
@@ -140,20 +123,27 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
             needLogin: "アカウント設定を行うにはログインしてください。",
             login: "ログイン",
             title: "アカウント設定",
-            subtitle: "個人情報と設定を管理",
+            subtitle: "個人情報を管理",
             saving: "保存中...",
             save: "設定を保存",
             tabs: {
               profile: "基本情報",
-              preferences: "環境設定",
               notifications: "通知設定",
               privacy: "プライバシー",
               social: "ソーシャル",
             },
             profile: {
               title: "基本情報",
+              avatar: "アバター",
+              avatarDetail: "プロフィール画像をアップロードすると、保存後に右上ヘッダーへ反映されます",
               email: "メール",
               emailPlaceholder: "your@email.com",
+              emailCode: "メール認証コード",
+              emailCodePlaceholder: "6桁のコードを入力",
+              sendEmailCode: "コード送信",
+              sendingEmailCode: "送信中...",
+              emailFormatError: "有効なメールアドレスを入力してください",
+              needEmailCode: "新しいメールアドレスは認証後に保存できます",
               firstName: "名",
               firstNamePlaceholder: "名を入力",
               lastName: "姓",
@@ -164,31 +154,6 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
               websitePlaceholder: "ウェブサイトURLを入力",
               location: "所在地",
               locationPlaceholder: "所在地を入力",
-            },
-            preferences: {
-              title: "環境設定",
-              timezone: "タイムゾーン",
-              timezonePlaceholder: "タイムゾーンを選択",
-              language: "言語",
-              languagePlaceholder: "言語を選択",
-              dateFormat: "日付形式",
-              dateFormatPlaceholder: "日付形式を選択",
-              timeFormat: "時間形式",
-              timeFormatPlaceholder: "時間形式を選択",
-              theme: "テーマ",
-              themePlaceholder: "テーマを選択",
-              tzBeijing: "北京",
-              tzNewYork: "ニューヨーク",
-              tzLondon: "ロンドン",
-              tzTokyo: "東京",
-              langZh: "簡体字中国語",
-              langEn: "英語",
-              langJa: "日本語",
-              tf24: "24時間",
-              tf12: "12時間",
-              themeLight: "ライト",
-              themeDark: "ダーク",
-              themeSystem: "システムに従う",
             },
             notifications: {
               title: "通知設定",
@@ -234,20 +199,27 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
             needLogin: "请先登录后再管理账户设置。",
             login: "去登录",
             title: "账户设置",
-            subtitle: "管理您的个人信息和偏好设置",
+            subtitle: "管理您的个人信息",
             saving: "保存中...",
             save: "保存设置",
             tabs: {
               profile: "基本信息",
-              preferences: "偏好设置",
               notifications: "通知设置",
               privacy: "隐私设置",
               social: "社交媒体",
             },
             profile: {
               title: "基本信息",
+              avatar: "个人头像",
+              avatarDetail: "上传头像后，保存成功会同步更新页面右上角头像",
               email: "邮箱",
               emailPlaceholder: "your@email.com",
+              emailCode: "邮箱验证码",
+              emailCodePlaceholder: "请输入6位验证码",
+              sendEmailCode: "发送验证码",
+              sendingEmailCode: "发送中...",
+              emailFormatError: "请输入有效的邮箱地址",
+              needEmailCode: "修改邮箱后需先完成验证码校验",
               firstName: "名字",
               firstNamePlaceholder: "请输入名字",
               lastName: "姓氏",
@@ -258,31 +230,6 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
               websitePlaceholder: "请输入个人网站",
               location: "所在地",
               locationPlaceholder: "请输入所在地",
-            },
-            preferences: {
-              title: "偏好设置",
-              timezone: "时区",
-              timezonePlaceholder: "选择时区",
-              language: "语言",
-              languagePlaceholder: "选择语言",
-              dateFormat: "日期格式",
-              dateFormatPlaceholder: "选择日期格式",
-              timeFormat: "时间格式",
-              timeFormatPlaceholder: "选择时间格式",
-              theme: "主题",
-              themePlaceholder: "选择主题",
-              tzBeijing: "北京时间",
-              tzNewYork: "纽约时间",
-              tzLondon: "伦敦时间",
-              tzTokyo: "东京时间",
-              langZh: "简体中文",
-              langEn: "English",
-              langJa: "日本語",
-              tf24: "24小时制",
-              tf12: "12小时制",
-              themeLight: "浅色主题",
-              themeDark: "深色主题",
-              themeSystem: "跟随系统",
             },
             notifications: {
               title: "通知设置",
@@ -327,22 +274,18 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
+  const [sendingEmailCode, setSendingEmailCode] = useState(false);
 
   const [formData, setFormData] = useState({
     // 基本信息
+    avatar: "",
     email: "",
+    emailVerificationCode: "",
     firstName: "",
     lastName: "",
     phone: "",
     website: "",
     location: "",
-
-    // 偏好设置
-    timezone: "Asia/Shanghai",
-    language: "zh-CN",
-    dateFormat: "YYYY-MM-DD",
-    timeFormat: "24h",
-    theme: "system",
 
     // 通知设置
     emailNotifications: true,
@@ -410,16 +353,13 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
     const sl = asRecord(data.socialLinks);
     setFormData({
       email: data.email ?? "",
+      avatar: data.avatar ?? "",
+      emailVerificationCode: "",
       firstName: data.firstName ?? "",
       lastName: data.lastName ?? "",
       phone: data.phone ?? "",
       website: data.website ?? "",
       location: data.location ?? "",
-      timezone: data.timezone || "Asia/Shanghai",
-      language: data.language || "zh-CN",
-      dateFormat: data.dateFormat || "YYYY-MM-DD",
-      timeFormat: data.timeFormat || "24h",
-      theme: data.theme || "system",
       emailNotifications: Boolean(n.email ?? true),
       pushNotifications: Boolean(n.push ?? true),
       smsNotifications: Boolean(n.sms ?? false),
@@ -484,10 +424,20 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
   }, [authLoading, isAuthenticated, applyProfileToForm, t.loadFailed]);
 
   const handleInputChange = (field: string, value: any) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+    setFormData((prev) => {
+      if (field === "email") {
+        // 邮箱变化后，已输入验证码可能不再对应，主动清空避免误用
+        return {
+          ...prev,
+          email: value,
+          emailVerificationCode: "",
+        };
+      }
+      return {
+        ...prev,
+        [field]: value,
+      };
+    });
   };
 
   const handleSave = async () => {
@@ -497,18 +447,27 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
       return;
     }
 
+    const oldEmail = (profile?.email || "").trim().toLowerCase();
+    const newEmail = formData.email.trim().toLowerCase();
+    const isEmailChanged = !!newEmail && newEmail !== oldEmail;
+    if (!isValidEmailFormat(formData.email)) {
+      message.error(t.profile.emailFormatError);
+      return;
+    }
+    if (isEmailChanged && !formData.emailVerificationCode.trim()) {
+      message.warning(t.profile.needEmailCode);
+      return;
+    }
+
     const body: UpdateProfileRequest = {
+      avatar: formData.avatar.trim() || undefined,
       email: formData.email.trim(),
+      emailVerificationCode: isEmailChanged ? formData.emailVerificationCode.trim() : undefined,
       firstName: formData.firstName.trim(),
       lastName: formData.lastName.trim(),
       phone: formData.phone.trim(),
       website: formData.website.trim(),
       location: formData.location.trim(),
-      timezone: formData.timezone,
-      language: formData.language,
-      dateFormat: formData.dateFormat,
-      timeFormat: formData.timeFormat,
-      theme: formData.theme,
       notifications: {
         email: formData.emailNotifications,
         push: formData.pushNotifications,
@@ -551,9 +510,10 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
       if (refreshed.success && refreshed.data) {
         setProfile(refreshed.data);
         applyProfileToForm(refreshed.data);
-        if (refreshed.data.email) {
-          patchUser({ email: refreshed.data.email });
-        }
+        patchUser({
+          email: refreshed.data.email ?? body.email ?? undefined,
+          avatar: refreshed.data.avatar ?? body.avatar ?? undefined,
+        });
       }
     } catch (error) {
       console.error("保存设置失败:", error);
@@ -563,9 +523,47 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
     }
   };
 
+  const handleSendEmailCode = async () => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+    if (!token || !isAuthenticated) {
+      message.warning(t.needLogin);
+      return;
+    }
+
+    const email = formData.email.trim().toLowerCase();
+    if (!isValidEmailFormat(email)) {
+      message.error(t.profile.emailFormatError);
+      return;
+    }
+
+    setSendingEmailCode(true);
+    try {
+      const res = await fetch("/api/auth/send-verification-code", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, type: "change_email" }),
+      });
+      const json = (await res.json()) as ApiResponse<unknown>;
+      if (!json.success) {
+        message.error(json.message || "Error");
+        return;
+      }
+      message.success(
+        json.message || (lang === "en-US" ? "Code sent" : lang === "ja-JP" ? "コードを送信しました" : "验证码已发送")
+      );
+    } catch (error) {
+      console.error("发送邮箱验证码失败:", error);
+      message.error(t.loadFailed);
+    } finally {
+      setSendingEmailCode(false);
+    }
+  };
+
   const tabs = [
     { id: "profile", label: t.tabs.profile, icon: User },
-    { id: "preferences", label: t.tabs.preferences, icon: Palette },
     { id: "notifications", label: t.tabs.notifications, icon: Bell },
     { id: "privacy", label: t.tabs.privacy, icon: Shield },
     { id: "social", label: t.tabs.social, icon: Globe },
@@ -671,6 +669,49 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
               <CardBody className="p-6">
                 <h3 className="mb-6 text-lg font-semibold text-foreground">{t.profile.title}</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="md:col-span-2 space-y-2">
+                    <p className="text-sm font-medium text-foreground">{t.profile.avatar}</p>
+                    <p className="text-xs text-default-500">{t.profile.avatarDetail}</p>
+                    <FeaturedImageUpload
+                      scope="profile"
+                      value={formData.avatar}
+                      onChange={(url) => handleInputChange("avatar", url)}
+                      labels={
+                        lang === "en-US"
+                          ? {
+                              title: t.profile.avatar,
+                              hint: "JPEG, PNG, GIF or WebP, max 10MB",
+                              emptyDropHint: "Click or drag to upload",
+                              uploadButton: "Upload",
+                              removeButton: "Remove",
+                              uploading: "Uploading...",
+                              needLogin: "Please sign in first",
+                              uploadFailed: "Upload failed",
+                            }
+                          : lang === "ja-JP"
+                            ? {
+                                title: t.profile.avatar,
+                                hint: "JPEG / PNG / GIF / WebP、最大 10MB",
+                                emptyDropHint: "クリックまたはドラッグでアップロード",
+                                uploadButton: "アップロード",
+                                removeButton: "削除",
+                                uploading: "アップロード中...",
+                                needLogin: "先にログインしてください",
+                                uploadFailed: "アップロードに失敗しました",
+                              }
+                            : {
+                                title: t.profile.avatar,
+                                hint: "支持 JPEG、PNG、GIF、WebP，最大 10MB",
+                                emptyDropHint: "点击或拖拽图片到此处上传",
+                                uploadButton: "上传图片",
+                                removeButton: "移除",
+                                uploading: "上传中…",
+                                needLogin: "请先登录",
+                                uploadFailed: "上传失败",
+                              }
+                      }
+                    />
+                  </div>
                   <Input
                     type="email"
                     label={t.profile.email}
@@ -680,6 +721,24 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
                     startContent={<Mail className="h-4 w-4 text-default-400" />}
                     className="md:col-span-2"
                   />
+                  <div className="md:col-span-2 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto]">
+                    <Input
+                      label={t.profile.emailCode}
+                      placeholder={t.profile.emailCodePlaceholder}
+                      value={formData.emailVerificationCode}
+                      onChange={(e) => handleInputChange("emailVerificationCode", e.target.value)}
+                      startContent={<Shield className="h-4 w-4 text-default-400" />}
+                    />
+                    <Button
+                      color="primary"
+                      variant="flat"
+                      className="h-14 sm:self-end"
+                      isDisabled={sendingEmailCode}
+                      onPress={handleSendEmailCode}
+                    >
+                      {sendingEmailCode ? t.profile.sendingEmailCode : t.profile.sendEmailCode}
+                    </Button>
+                  </div>
                   <Input
                     label={t.profile.firstName}
                     placeholder={t.profile.firstNamePlaceholder}
@@ -716,70 +775,6 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
                     startContent={<MapPin className="h-4 w-4 text-default-400" />}
                     className="md:col-span-2"
                   />
-                </div>
-              </CardBody>
-            </Card>
-          )}
-
-          {/* 偏好设置 */}
-          {activeTab === "preferences" && (
-            <Card className={PROFILE_GLASS_CARD}>
-              <CardBody className="p-6">
-                <h3 className="mb-6 text-lg font-semibold text-foreground">{t.preferences.title}</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <Select
-                    label={t.preferences.timezone}
-                    placeholder={t.preferences.timezonePlaceholder}
-                    selectedKeys={[formData.timezone]}
-                    onChange={(e) => handleInputChange("timezone", e.target.value)}
-                    startContent={<Clock className="h-4 w-4 text-default-400" />}
-                  >
-                    <SelectItem key="Asia/Shanghai">{t.preferences.tzBeijing}</SelectItem>
-                    <SelectItem key="America/New_York">{t.preferences.tzNewYork}</SelectItem>
-                    <SelectItem key="Europe/London">{t.preferences.tzLondon}</SelectItem>
-                    <SelectItem key="Asia/Tokyo">{t.preferences.tzTokyo}</SelectItem>
-                  </Select>
-                  <Select
-                    label={t.preferences.language}
-                    placeholder={t.preferences.languagePlaceholder}
-                    selectedKeys={[formData.language]}
-                    onChange={(e) => handleInputChange("language", e.target.value)}
-                  >
-                    <SelectItem key="zh-CN">{t.preferences.langZh}</SelectItem>
-                    <SelectItem key="en-US">{t.preferences.langEn}</SelectItem>
-                    <SelectItem key="ja-JP">{t.preferences.langJa}</SelectItem>
-                  </Select>
-                  <Select
-                    label={t.preferences.dateFormat}
-                    placeholder={t.preferences.dateFormatPlaceholder}
-                    selectedKeys={[formData.dateFormat]}
-                    onChange={(e) => handleInputChange("dateFormat", e.target.value)}
-                  >
-                    <SelectItem key="YYYY-MM-DD">2024-01-01</SelectItem>
-                    <SelectItem key="MM/DD/YYYY">01/01/2024</SelectItem>
-                    <SelectItem key="DD/MM/YYYY">01/01/2024</SelectItem>
-                  </Select>
-                  <Select
-                    label={t.preferences.timeFormat}
-                    placeholder={t.preferences.timeFormatPlaceholder}
-                    selectedKeys={[formData.timeFormat]}
-                    onChange={(e) => handleInputChange("timeFormat", e.target.value)}
-                  >
-                    <SelectItem key="24h">{t.preferences.tf24}</SelectItem>
-                    <SelectItem key="12h">{t.preferences.tf12}</SelectItem>
-                  </Select>
-                  <Select
-                    label={t.preferences.theme}
-                    placeholder={t.preferences.themePlaceholder}
-                    selectedKeys={[formData.theme]}
-                    onChange={(e) => handleInputChange("theme", e.target.value)}
-                    startContent={<Palette className="h-4 w-4 text-default-400" />}
-                    className="md:col-span-2"
-                  >
-                    <SelectItem key="light">{t.preferences.themeLight}</SelectItem>
-                    <SelectItem key="dark">{t.preferences.themeDark}</SelectItem>
-                    <SelectItem key="system">{t.preferences.themeSystem}</SelectItem>
-                  </Select>
                 </div>
               </CardBody>
             </Card>

@@ -12,36 +12,14 @@ import {
   PROFILE_GLASS_CARD_INTERACTIVE,
   PROFILE_NATIVE_CONTROL,
 } from "@/components/profile/profile-ui-presets";
+import { useAuth } from "@/lib/contexts/auth-context";
+import { message } from "@/lib/utils";
+import { clientBearerHeaders } from "@/lib/utils/client-bearer-auth";
 import { stripMarkdownForExcerpt } from "@/lib/utils/markdown-plain";
+import type { ApiResponse, PaginatedResponseData, PostData } from "@/types/blog";
 
 interface ProfilePostsProps {
   lang: string;
-}
-
-interface Post {
-  id: number;
-  title: string;
-  slug: string;
-  excerpt?: string;
-  featuredImage?: string;
-  status: "draft" | "published" | "archived";
-  visibility: "public" | "private" | "password";
-  viewCount: number;
-  likeCount: number;
-  publishedAt?: Date;
-  createdAt: Date;
-  updatedAt: Date;
-  category?: {
-    id: number;
-    name: string;
-    slug: string;
-  };
-  tags?: Array<{
-    id: number;
-    name: string;
-    slug: string;
-    color?: string;
-  }>;
 }
 
 const statusColors = {
@@ -59,12 +37,14 @@ const visibilityColors = {
 export default function ProfilePosts({ lang }: ProfilePostsProps) {
   const params = useParams();
   const routeLang = typeof params?.lang === "string" ? params.lang : "zh-CN";
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
 
   const t =
     lang === "en-US"
       ? {
           pageTitle: "My Posts",
           pageDesc: "Manage your posts",
+          loadFailed: "Failed to load posts",
           write: "Write",
           search: "Search posts...",
           allStatus: "All Status",
@@ -83,6 +63,7 @@ export default function ProfilePosts({ lang }: ProfilePostsProps) {
         ? {
             pageTitle: "自分の記事",
             pageDesc: "記事コンテンツを管理",
+            loadFailed: "記事一覧の取得に失敗しました",
             write: "記事を書く",
             search: "記事を検索...",
             allStatus: "すべての状態",
@@ -100,6 +81,7 @@ export default function ProfilePosts({ lang }: ProfilePostsProps) {
         : {
             pageTitle: "我的文章",
             pageDesc: "管理您的文章内容",
+            loadFailed: "获取文章列表失败",
             write: "写文章",
             search: "搜索文章...",
             allStatus: "全部状态",
@@ -114,100 +96,50 @@ export default function ProfilePosts({ lang }: ProfilePostsProps) {
             noMatchDesc: "尝试调整搜索条件或筛选器",
             noPostsDesc: "开始创建您的第一篇文章吧",
           };
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [posts, setPosts] = useState<PostData[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
   useEffect(() => {
     const fetchPosts = async () => {
+      if (authLoading) return;
+      if (!isAuthenticated || !user?.id) {
+        setPosts([]);
+        setLoading(false);
+        return;
+      }
       try {
-        // 这里应该调用真实的API
-        // const response = await fetch('/api/profile/posts');
-        // const data = await response.json();
-
-        // 模拟数据
-        setTimeout(() => {
-          setPosts([
-            {
-              id: 1,
-              title: "如何学习React Hooks",
-              slug: "how-to-learn-react-hooks",
-              excerpt: "React Hooks是React 16.8引入的新特性，它让我们可以在函数组件中使用状态和其他React特性...",
-              featuredImage: "/images/placeholder.jpg",
-              status: "published",
-              visibility: "public",
-              viewCount: 1250,
-              likeCount: 89,
-              publishedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-              createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-              updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-              category: {
-                id: 1,
-                name: "前端开发",
-                slug: "frontend",
-              },
-              tags: [
-                { id: 1, name: "React", slug: "react", color: "#61dafb" },
-                { id: 2, name: "JavaScript", slug: "javascript", color: "#f7df1e" },
-              ],
-            },
-            {
-              id: 2,
-              title: "Vue.js 3.0 新特性详解",
-              slug: "vue-3-features",
-              excerpt: "Vue.js 3.0带来了许多令人兴奋的新特性，包括Composition API、更好的TypeScript支持等...",
-              featuredImage: "/images/placeholder.jpg",
-              status: "published",
-              visibility: "public",
-              viewCount: 890,
-              likeCount: 67,
-              publishedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-              createdAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
-              updatedAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
-              category: {
-                id: 1,
-                name: "前端开发",
-                slug: "frontend",
-              },
-              tags: [
-                { id: 3, name: "Vue", slug: "vue", color: "#4fc08d" },
-                { id: 4, name: "TypeScript", slug: "typescript", color: "#3178c6" },
-              ],
-            },
-            {
-              id: 3,
-              title: "Node.js 性能优化技巧",
-              slug: "nodejs-performance",
-              excerpt: "本文将介绍一些Node.js性能优化的实用技巧，帮助您构建更高效的应用程序...",
-              featuredImage: "/images/placeholder.jpg",
-              status: "draft",
-              visibility: "private",
-              viewCount: 0,
-              likeCount: 0,
-              createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-              updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-              category: {
-                id: 2,
-                name: "后端开发",
-                slug: "backend",
-              },
-              tags: [
-                { id: 5, name: "Node.js", slug: "nodejs", color: "#339933" },
-                { id: 6, name: "性能优化", slug: "performance", color: "#ff6b6b" },
-              ],
-            },
-          ]);
-          setLoading(false);
-        }, 1000);
+        const query = new URLSearchParams({
+          page: "1",
+          limit: "100",
+          authorId: String(user.id),
+          sortBy: "updatedAt",
+          sortOrder: "desc",
+        });
+        const response = await fetch(`/api/posts?${query.toString()}`, {
+          headers: {
+            ...clientBearerHeaders(),
+          },
+        });
+        const json = (await response.json()) as ApiResponse<PaginatedResponseData<PostData>>;
+        if (!json.success || !json.data) {
+          message.error(json.message || t.loadFailed);
+          setPosts([]);
+          return;
+        }
+        setPosts(json.data.data);
       } catch (error) {
         console.error("获取文章列表失败:", error);
+        message.error(t.loadFailed);
+        setPosts([]);
+      } finally {
         setLoading(false);
       }
     };
 
-    fetchPosts();
-  }, []);
+    void fetchPosts();
+  }, [authLoading, isAuthenticated, user?.id, t.loadFailed]);
 
   const filteredPosts = posts.filter((post) => {
     const matchesSearch =
@@ -217,12 +149,12 @@ export default function ProfilePosts({ lang }: ProfilePostsProps) {
     return matchesSearch && matchesStatus;
   });
 
-  const formatDate = (date: Date) => {
+  const formatDate = (date: Date | string) => {
     return new Intl.DateTimeFormat(lang, {
       year: "numeric",
       month: "short",
       day: "numeric",
-    }).format(date);
+    }).format(new Date(date));
   };
 
   if (loading) {

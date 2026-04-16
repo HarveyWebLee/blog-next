@@ -27,6 +27,15 @@ export type RequireSuperRootResult =
   | { ok: true; user: AuthJwtPayload }
   | { ok: false; status: 401 | 403; message: string };
 
+/**
+ * 浏览器端根据登录接口写回 localStorage 的 `user` 判断是否内存超级管理员会话。
+ * 与 {@link isJwtInMemorySuperRoot} 约定一致：id=0 且 role=super_admin（JWT 内另有 isRoot，此处以业务约定推断）。
+ */
+export function isInMemorySuperRootClientUser(user: { id: number; role: string } | null | undefined): boolean {
+  if (!user) return false;
+  return user.id === RESERVED_SUPER_ADMIN_USER_ID && user.role === "super_admin";
+}
+
 export function requireInMemorySuperRoot(request: NextRequest): RequireSuperRootResult {
   const auth = requireAuthUser(request);
   if (!auth.ok) {

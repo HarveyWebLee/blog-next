@@ -5,7 +5,7 @@ import { Button } from "@heroui/button";
 import { Card, CardBody, CardFooter, CardHeader } from "@heroui/card";
 import { Chip } from "@heroui/chip";
 import dayjs from "dayjs";
-import { ArrowRight, Calendar, Clock, Eye, Folder, Heart, MessageCircle, Tag, User } from "lucide-react";
+import { ArrowRight, Calendar, Clock, Eye, Folder, Heart, MessageCircle, Tag } from "lucide-react";
 
 import { stripMarkdownForExcerpt } from "@/lib/utils/markdown-plain";
 import { PostData } from "@/types/blog";
@@ -146,7 +146,8 @@ export function PostCard({ post, lang = "zh-CN", onView, onLike }: PostCardProps
                 <div className="flex items-center gap-2">
                   <Avatar
                     size="sm"
-                    icon={<User className="w-3 h-3" />}
+                    src={post.author?.avatar || undefined}
+                    name={post.author?.displayName || undefined}
                     className="w-6 h-6 backdrop-blur-xl bg-white/10 dark:bg-black/10"
                   />
                   <span className="truncate text-xs">{post.author.displayName}</span>
