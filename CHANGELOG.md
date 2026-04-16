@@ -1,3 +1,9 @@
+## [1.3.1](https://github.com/HarveyWebLee/blog-next/compare/v1.3.0...v1.3.1) (2026-04-16)
+
+### Performance Improvements
+
+- **feat:** 完善个人中心功能和项目样式优化 ([631e7b9](https://github.com/HarveyWebLee/blog-next/commit/631e7b9bda0e159c83d3a7c4c6a8993ba48bca99))
+
 # [1.3.0](https://github.com/HarveyWebLee/blog-next/compare/v1.2.6...v1.3.0) (2026-04-15)
 
 ### Features
