@@ -1,3 +1,9 @@
+## [1.3.2](https://github.com/HarveyWebLee/blog-next/compare/v1.3.1...v1.3.2) (2026-04-16)
+
+### Performance Improvements
+
+- **blog:** 增强博客管理功能与超级管理员权限 ([33c1d0f](https://github.com/HarveyWebLee/blog-next/commit/33c1d0fb8e4ecd491b0a6355e20062ed53c5ce00))
+
 ## [1.3.1](https://github.com/HarveyWebLee/blog-next/compare/v1.3.0...v1.3.1) (2026-04-16)
 
 ### Performance Improvements
