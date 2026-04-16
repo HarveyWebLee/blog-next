@@ -516,7 +516,7 @@ export default function ProfileAccountsAdmin({ lang }: { lang: string }) {
                   <p>
                     <span className="text-default-500">{t.colName}</span>：{detail.displayName || "—"}
                   </p>
-                  <p>
+                  <div>
                     {detail.emailVerified ? (
                       <Chip size="sm" color="success" variant="flat">
                         {t.emailVerified}
@@ -526,7 +526,7 @@ export default function ProfileAccountsAdmin({ lang }: { lang: string }) {
                         {t.emailUnverified}
                       </Chip>
                     )}
-                  </p>
+                  </div>
                   {detail.bio ? (
                     <p className="sm:col-span-2">
                       <span className="text-default-500">{t.fieldBio}</span>：{detail.bio}

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { postService } from "@/lib/services/post.service";
 import { createErrorResponse } from "@/lib/utils";
+import { isJwtInMemorySuperRoot } from "@/lib/utils/authz";
 import { getAuthUserFromRequest, type AuthJwtPayload } from "@/lib/utils/request-auth";
 import type { PostData } from "@/types/blog";
 
@@ -15,7 +16,10 @@ export function resolvePostAuthorId(post: PostData | null): number | null {
 }
 
 /**
- * 校验：已登录且当前用户为文章作者。仅作者可改删（不含管理员代操作）。
+ * 校验：已登录且当前用户可改删该文章。
+ * 规则：
+ * - 普通用户：仅作者本人可改删
+ * - 内存态超级管理员（id=0 + role=super_admin + isRoot=true）：可改删任意文章
  * @returns 成功时携带已加载的 post，失败时直接返回 HTTP 响应
  */
 export async function requirePostAuthorMutation(
@@ -46,10 +50,13 @@ export async function requirePostAuthorMutation(
     };
   }
 
-  if (user.userId !== authorId) {
+  const canManageAnyPost = isJwtInMemorySuperRoot(user);
+  if (!canManageAnyPost && user.userId !== authorId) {
     return {
       ok: false,
-      response: NextResponse.json(createErrorResponse("只有文章作者本人可以编辑或删除该文章"), { status: 403 }),
+      response: NextResponse.json(createErrorResponse("只有文章作者本人或超级管理员可以编辑或删除该文章"), {
+        status: 403,
+      }),
     };
   }
 

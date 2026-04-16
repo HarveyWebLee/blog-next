@@ -348,7 +348,7 @@ export default function CreateBlogPage() {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* 基本信息（含分类、标签） */}
-        <Card className="shadow-md border border-default-200/70 bg-gradient-to-r from-primary-50/95 to-secondary-50/95 backdrop-blur-sm dark:border-white/10 dark:bg-gradient-to-br dark:from-white/[0.05] dark:via-white/[0.02] dark:to-primary-500/[0.07]">
+        <Card className="shadow-md border border-default-200/70 bg-default-50/75 backdrop-blur-sm dark:border-white/10 dark:bg-gradient-to-br dark:from-white/[0.05] dark:via-white/[0.02] dark:to-primary-500/[0.07]">
           <CardHeader className="gap-0 pb-3">
             <div className="flex items-center gap-2.5">
               <div className="rounded-lg bg-primary/10 p-1.5">

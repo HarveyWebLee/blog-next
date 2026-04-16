@@ -67,8 +67,12 @@ export async function POST(request: NextRequest) {
         .limit(1);
       let persistedAvatar: string | undefined;
       let persistedEmail: string | undefined;
+      let persistedDisplayName: string | undefined;
       if (profileRows[0]) {
         persistedEmail = profileRows[0].email?.trim() || undefined;
+        const firstName = profileRows[0].firstName?.trim() || "";
+        const lastName = profileRows[0].lastName?.trim() || "";
+        persistedDisplayName = [firstName, lastName].filter(Boolean).join(" ").trim() || undefined;
         try {
           const social = profileRows[0].socialLinks
             ? (JSON.parse(profileRows[0].socialLinks) as Record<string, unknown>)
@@ -82,6 +86,7 @@ export async function POST(request: NextRequest) {
         user: {
           ...superAdminResult.user,
           ...(persistedEmail ? { email: persistedEmail } : {}),
+          ...(persistedDisplayName ? { displayName: persistedDisplayName } : {}),
           ...(persistedAvatar ? { avatar: persistedAvatar } : {}),
         },
         token: superAdminResult.accessToken,

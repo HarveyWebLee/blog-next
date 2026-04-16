@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { postService } from "@/lib/services/post.service";
 import { subscriptionService } from "@/lib/services/subscription.service";
 import { createErrorResponse, createSuccessResponse } from "@/lib/utils";
+import { isJwtInMemorySuperRoot } from "@/lib/utils/authz";
 import { getAuthUserFromRequest } from "@/lib/utils/request-auth";
 import { CreatePostRequest, PostQueryParams } from "@/types/blog";
 
@@ -54,13 +55,15 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // 按 authorId 筛选（管理后台「我的文章」）时：必须登录且只能查本人，防止窥探他人草稿
+    // 按 authorId 筛选（管理后台）时：必须登录。
+    // 普通用户只能查询本人；超级管理员可查询任意作者。
     if (queryParams.authorId != null && !Number.isNaN(queryParams.authorId)) {
       const viewer = getAuthUserFromRequest(request);
       if (!viewer) {
         return NextResponse.json(createErrorResponse("按作者筛选文章需先登录"), { status: 401 });
       }
-      if (viewer.userId !== queryParams.authorId) {
+      const canViewAnyAuthor = isJwtInMemorySuperRoot(viewer);
+      if (!canViewAnyAuthor && viewer.userId !== queryParams.authorId) {
         return NextResponse.json(createErrorResponse("无权查看其他作者的管理列表"), { status: 403 });
       }
     }

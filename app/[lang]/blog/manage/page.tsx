@@ -27,15 +27,43 @@ import {
 } from "lucide-react";
 
 import { BlogNavigation } from "@/components/blog/blog-navigation";
+import { RESERVED_SUPER_ADMIN_USER_ID } from "@/lib/config/super-admin";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { message } from "@/lib/utils";
+import { isInMemorySuperRootClientUser } from "@/lib/utils/authz";
 import { clientBearerHeaders } from "@/lib/utils/client-bearer-auth";
 import { stripMarkdownForExcerpt } from "@/lib/utils/markdown-plain";
-import { PostData, PostStatus, PostVisibility } from "@/types/blog";
+import { PostData, PostStatus, PostVisibility, User } from "@/types/blog";
 
-/** 仅文章作者本人可编辑/删除（与接口 authorId 校验一致） */
+/** 普通用户仅作者本人可编辑/删除；超级管理员可管理全部文章 */
 function isPostOwner(post: PostData, userId: number | undefined): boolean {
   return userId != null && post.authorId === userId;
+}
+
+/** 作者展示名优先级：displayName > username > 用户#ID（超级管理员按专属回退） */
+function resolveAuthorName(
+  post: PostData,
+  unknownText: string,
+  currentUser?: User | null,
+  superAdminText = "超级管理员"
+): string {
+  const displayName = post.author?.displayName?.trim();
+  if (displayName) return displayName;
+  const username = post.author?.username?.trim();
+  if (username) return username;
+  if (post.authorId === RESERVED_SUPER_ADMIN_USER_ID) {
+    const currentDisplayName = currentUser?.displayName?.trim();
+    if (currentDisplayName) return currentDisplayName;
+    const currentUsername = currentUser?.username?.trim();
+    if (currentUsername) return currentUsername;
+    return superAdminText;
+  }
+  return `${unknownText} #${post.authorId}`;
+}
+
+/** 作者头像：无自定义头像时使用统一默认头像 */
+function resolveAuthorAvatar(post: PostData): string {
+  return post.author?.avatar || "/images/avatar.jpeg";
 }
 
 export default function BlogManagePage() {
@@ -43,6 +71,7 @@ export default function BlogManagePage() {
   const params = useParams<{ lang: string }>();
   const lang = params.lang || "zh-CN";
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const isSuperAdmin = isInMemorySuperRootClientUser(user);
   const t =
     lang === "en-US"
       ? {
@@ -67,6 +96,12 @@ export default function BlogManagePage() {
           createFirst: "Create First Post",
           apply: "Apply",
           reset: "Reset",
+          selectAll: "Select All Current Page",
+          clearSelected: "Clear Selected",
+          batchDelete: "Batch Delete",
+          selectedCount: "selected",
+          batchDeleteConfirm: "Are you sure you want to delete the selected posts?",
+          batchDeletePartialFailed: "Some selected posts failed to delete.",
           list: "Post List",
           total: "posts",
           prev: "Previous",
@@ -79,6 +114,7 @@ export default function BlogManagePage() {
           edit: "Edit",
           view: "View",
           unknown: "Unknown",
+          superAdmin: "Super Admin",
           uncategorized: "Uncategorized",
           statusAll: "All Status",
           visibilityAll: "All Visibility",
@@ -112,6 +148,12 @@ export default function BlogManagePage() {
             createFirst: "最初の記事を作成",
             apply: "適用",
             reset: "リセット",
+            selectAll: "このページを全選択",
+            clearSelected: "選択解除",
+            batchDelete: "一括削除",
+            selectedCount: "件選択",
+            batchDeleteConfirm: "選択した記事を削除しますか？",
+            batchDeletePartialFailed: "一部の記事の削除に失敗しました。",
             list: "記事一覧",
             total: "件",
             prev: "前へ",
@@ -124,6 +166,7 @@ export default function BlogManagePage() {
             edit: "編集",
             view: "表示",
             unknown: "不明",
+            superAdmin: "スーパー管理者",
             uncategorized: "未分類",
             statusAll: "すべての状態",
             visibilityAll: "すべての公開範囲",
@@ -153,9 +196,15 @@ export default function BlogManagePage() {
             loading: "加载中...",
             empty: "暂无博客文章",
             emptyDesc: "开始创建您的第一篇博客文章吧！",
-            createFirst: "创建第一篇博客",
+            createFirst: "创建博客",
             apply: "应用过滤",
             reset: "重置",
+            selectAll: "全选当前页",
+            clearSelected: "清空选择",
+            batchDelete: "批量删除",
+            selectedCount: "已选",
+            batchDeleteConfirm: "确定要删除已选中的博客吗？",
+            batchDeletePartialFailed: "部分已选博客删除失败。",
             list: "博客列表",
             total: "篇文章",
             prev: "上一页",
@@ -168,6 +217,7 @@ export default function BlogManagePage() {
             edit: "编辑",
             view: "查看",
             unknown: "未知",
+            superAdmin: "超级管理员",
             uncategorized: "未分类",
             statusAll: "所有状态",
             visibilityAll: "所有可见性",
@@ -183,25 +233,36 @@ export default function BlogManagePage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<PostStatus | "all">("all");
   const [visibilityFilter, setVisibilityFilter] = useState<PostVisibility | "all">("all");
+  // 已应用的查询条件：仅在点击“应用过滤”后更新，避免每次输入/选择都触发请求
+  const [appliedSearchTerm, setAppliedSearchTerm] = useState("");
+  const [appliedStatusFilter, setAppliedStatusFilter] = useState<PostStatus | "all">("all");
+  const [appliedVisibilityFilter, setAppliedVisibilityFilter] = useState<PostVisibility | "all">("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [sortBy, setSortBy] = useState<"createdAt" | "updatedAt" | "title" | "viewCount">("createdAt");
+  const [appliedSortBy, setAppliedSortBy] = useState<"createdAt" | "updatedAt" | "title" | "viewCount">("createdAt");
+  const [applyVersion, setApplyVersion] = useState(0);
+  const [selectedPostIds, setSelectedPostIds] = useState<number[]>([]);
 
   const fetchPosts = useCallback(async () => {
-    if (!user?.id) return;
+    // 注意：超级管理员可能使用 id=0，不能用 !user?.id 判断，否则会误判为未登录并导致列表一直 loading
+    if (user?.id == null) return;
     try {
       setLoading(true);
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: "12",
-        authorId: String(user.id),
         sortOrder: "desc",
-        search: searchTerm,
-        ...(statusFilter !== "all" && { status: statusFilter }),
-        ...(visibilityFilter !== "all" && { visibility: visibilityFilter }),
-        sortBy: sortBy,
+        search: appliedSearchTerm,
+        ...(appliedStatusFilter !== "all" && { status: appliedStatusFilter }),
+        ...(appliedVisibilityFilter !== "all" && { visibility: appliedVisibilityFilter }),
+        sortBy: appliedSortBy,
       });
+      // 普通用户只看自己的文章；超级管理员可查看全站文章列表
+      if (!isSuperAdmin) {
+        params.set("authorId", String(user.id));
+      }
 
       const response = await fetch(`/api/posts?${params}`, {
         headers: {
@@ -211,8 +272,14 @@ export default function BlogManagePage() {
       const result = await response.json();
 
       if (result.success) {
-        setPosts(result.data.data);
+        const nextPosts = result.data.data as PostData[];
+        setPosts(nextPosts);
         setTotalPages(result.data.pagination.totalPages);
+        // 列表数据刷新后，仅保留当前页仍然可见且可管理的勾选项，避免“跨页幽灵选择”
+        const manageableIds = new Set(
+          nextPosts.filter((post) => isSuperAdmin || isPostOwner(post, user?.id)).map((post) => post.id)
+        );
+        setSelectedPostIds((prev) => prev.filter((id) => manageableIds.has(id)));
       } else if (response.status === 401 || response.status === 403) {
         message.error(result.message || "无权加载该列表，请重新登录");
       }
@@ -221,7 +288,16 @@ export default function BlogManagePage() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, searchTerm, statusFilter, visibilityFilter, sortBy, user?.id]);
+  }, [
+    currentPage,
+    appliedSearchTerm,
+    appliedStatusFilter,
+    appliedVisibilityFilter,
+    appliedSortBy,
+    applyVersion,
+    user?.id,
+    isSuperAdmin,
+  ]);
 
   useEffect(() => {
     if (isAuthLoading) return;
@@ -232,7 +308,7 @@ export default function BlogManagePage() {
     void fetchPosts();
   }, [fetchPosts, isAuthLoading, isAuthenticated, user, router, lang]);
 
-  // 删除博客（仅作者；接口与列表 authorId 筛选一致）
+  // 删除博客：普通用户仅可删除本人文章；超级管理员可删除任意文章
   const handleDelete = async (postId: number) => {
     if (!confirm(t.deleteConfirm)) return;
 
@@ -253,6 +329,55 @@ export default function BlogManagePage() {
     } catch (error) {
       console.error("删除博客失败:", error);
       message.error(t.deleteForbidden);
+    }
+  };
+
+  // 切换单个博客的选中状态，仅允许对当前用户可管理的博客进行勾选
+  const togglePostSelected = (post: PostData) => {
+    const canManage = isSuperAdmin || isPostOwner(post, user?.id);
+    if (!canManage) return;
+    setSelectedPostIds((prev) => (prev.includes(post.id) ? prev.filter((id) => id !== post.id) : [...prev, post.id]));
+  };
+
+  // 选中当前页可管理的全部博客
+  const selectAllCurrentPage = () => {
+    const ids = posts.filter((post) => isSuperAdmin || isPostOwner(post, user?.id)).map((post) => post.id);
+    setSelectedPostIds(ids);
+  };
+
+  // 清空勾选
+  const clearSelectedPosts = () => {
+    setSelectedPostIds([]);
+  };
+
+  // 批量删除：逐个调用既有删除接口，复用后端权限控制
+  const handleBatchDelete = async () => {
+    if (selectedPostIds.length === 0) return;
+    if (!confirm(t.batchDeleteConfirm)) return;
+    try {
+      setLoading(true);
+      const results = await Promise.all(
+        selectedPostIds.map(async (postId) => {
+          const response = await fetch(`/api/posts/${postId}`, {
+            method: "DELETE",
+            headers: {
+              ...clientBearerHeaders(),
+            },
+          });
+          return response.ok;
+        })
+      );
+      const failedCount = results.filter((ok) => !ok).length;
+      if (failedCount > 0) {
+        message.error(t.batchDeletePartialFailed);
+      }
+      setSelectedPostIds([]);
+      await fetchPosts();
+    } catch (error) {
+      console.error("批量删除博客失败:", error);
+      message.error(t.batchDeletePartialFailed);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -338,7 +463,6 @@ export default function BlogManagePage() {
           <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
             {t.title}
           </h1>
-          <p className="text-default-500 text-lg">{t.subtitle}</p>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3">
@@ -356,7 +480,7 @@ export default function BlogManagePage() {
       </div>
 
       {/* 搜索和过滤区域 */}
-      <Card className="mb-8 shadow-lg border-0 bg-gradient-to-r from-primary-50 to-secondary-50 dark:from-primary-900/20 dark:to-secondary-900/20">
+      <Card className="mb-8 shadow-sm border border-default-200/65 bg-default-50/50 dark:border-default-100/20 dark:bg-default-100/10">
         <CardHeader className="pb-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-primary/10">
@@ -428,7 +552,20 @@ export default function BlogManagePage() {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <Button color="primary" variant="flat" onPress={fetchPosts} size="lg">
+            <Button
+              color="primary"
+              variant="flat"
+              onPress={() => {
+                // 仅在点击“应用过滤”时，把表单值提交为查询条件并触发请求
+                setAppliedSearchTerm(searchTerm);
+                setAppliedStatusFilter(statusFilter);
+                setAppliedVisibilityFilter(visibilityFilter);
+                setAppliedSortBy(sortBy);
+                setCurrentPage(1);
+                setApplyVersion((v) => v + 1);
+              }}
+              size="lg"
+            >
               {t.apply}
             </Button>
             <Button
@@ -438,6 +575,13 @@ export default function BlogManagePage() {
                 setStatusFilter("all");
                 setVisibilityFilter("all");
                 setSortBy("createdAt");
+                // 重置时同步更新“已应用条件”，并立即按默认条件重新查询
+                setAppliedSearchTerm("");
+                setAppliedStatusFilter("all");
+                setAppliedVisibilityFilter("all");
+                setAppliedSortBy("createdAt");
+                setCurrentPage(1);
+                setApplyVersion((v) => v + 1);
               }}
               size="lg"
             >
@@ -458,7 +602,34 @@ export default function BlogManagePage() {
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            variant="bordered"
+            onPress={selectAllCurrentPage}
+            isDisabled={loading || posts.length === 0}
+          >
+            {t.selectAll}
+          </Button>
+          <Button size="sm" variant="light" onPress={clearSelectedPosts} isDisabled={selectedPostIds.length === 0}>
+            {t.clearSelected}
+          </Button>
+          <Button
+            size="sm"
+            color="danger"
+            variant="flat"
+            onPress={() => void handleBatchDelete()}
+            isDisabled={selectedPostIds.length === 0 || loading}
+          >
+            {t.batchDelete}
+          </Button>
+          {selectedPostIds.length > 0 ? (
+            <Chip size="sm" variant="flat" color="warning">
+              {lang === "zh-CN"
+                ? `${t.selectedCount} ${selectedPostIds.length} 项`
+                : `${selectedPostIds.length} ${t.selectedCount}`}
+            </Chip>
+          ) : null}
           <span className="text-sm text-default-500">{t.viewMode}</span>
           <div className="flex bg-default-100 rounded-lg p-1">
             <Button
@@ -511,8 +682,10 @@ export default function BlogManagePage() {
           ) : (
             <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" : "space-y-4"}>
               {posts.map((post) => {
-                const canManage = isPostOwner(post, user?.id);
+                const canManage = isSuperAdmin || isPostOwner(post, user?.id);
                 const viewHref = `/${lang}/blog/${post.slug}`;
+                const authorName = resolveAuthorName(post, t.unknown, user, t.superAdmin);
+                const authorAvatar = resolveAuthorAvatar(post);
                 return (
                   <Card
                     key={post.id}
@@ -524,6 +697,17 @@ export default function BlogManagePage() {
                       {viewMode === "grid" ? (
                         // 网格视图
                         <>
+                          <div className="mb-3">
+                            <label className="inline-flex items-center gap-2 text-xs text-default-500 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={selectedPostIds.includes(post.id)}
+                                onChange={() => togglePostSelected(post)}
+                                disabled={!canManage}
+                              />
+                              {canManage ? "选择" : "无权限"}
+                            </label>
+                          </div>
                           <div className="flex items-start justify-between gap-3 mb-4">
                             <div className="flex-1 min-w-0">
                               <h3 className="font-semibold text-lg line-clamp-2 mb-2">{post.title}</h3>
@@ -581,13 +765,8 @@ export default function BlogManagePage() {
 
                           <div className="space-y-3">
                             <div className="flex items-center gap-2 text-sm text-default-400">
-                              <Avatar
-                                size="sm"
-                                src={post.author?.avatar || undefined}
-                                name={post.author?.displayName || t.unknown}
-                                className="w-5 h-5"
-                              />
-                              <span>{post.author?.displayName || t.unknown}</span>
+                              <Avatar size="sm" src={authorAvatar} name={authorName} className="w-5 h-5" />
+                              <span>{authorName}</span>
                             </div>
 
                             <div className="grid grid-cols-2 gap-2 text-xs text-default-400">
@@ -631,6 +810,17 @@ export default function BlogManagePage() {
                         // 列表视图
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1 min-w-0">
+                            <div className="mb-3">
+                              <label className="inline-flex items-center gap-2 text-xs text-default-500 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedPostIds.includes(post.id)}
+                                  onChange={() => togglePostSelected(post)}
+                                  disabled={!canManage}
+                                />
+                                {canManage ? "选择" : "无权限"}
+                              </label>
+                            </div>
                             <div className="flex items-center gap-3 mb-3">
                               <h3 className="font-semibold text-lg line-clamp-1">{post.title}</h3>
                               <Chip size="sm" color={getStatusColor(post.status)} variant="flat">
@@ -647,13 +837,8 @@ export default function BlogManagePage() {
 
                             <div className="flex flex-wrap items-center gap-4 text-sm text-default-400">
                               <div className="flex items-center gap-2">
-                                <Avatar
-                                  size="sm"
-                                  src={post.author?.avatar || undefined}
-                                  name={post.author?.displayName || t.unknown}
-                                  className="w-4 h-4"
-                                />
-                                <span>{post.author?.displayName || t.unknown}</span>
+                                <Avatar size="sm" src={authorAvatar} name={authorName} className="w-4 h-4" />
+                                <span>{authorName}</span>
                               </div>
                               <div className="flex items-center gap-1">
                                 <Bookmark className="w-4 h-4" />

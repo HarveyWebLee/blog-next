@@ -401,10 +401,10 @@ export function FeaturedImageUpload({ value, onChange, scope = "article", labels
   return (
     <div
       className={clsx(
-        "relative overflow-hidden rounded-2xl border border-default-200/80",
-        "bg-gradient-to-br from-default-100/40 via-primary-50/30 to-secondary-50/25",
-        "p-4 shadow-sm backdrop-blur-sm sm:p-5",
-        "dark:border-white/10 dark:from-white/[0.04] dark:via-primary-500/[0.06] dark:to-secondary-500/[0.05]"
+        "relative overflow-hidden rounded-2xl border border-default-200/60",
+        "bg-content1/30",
+        "p-4 shadow-none backdrop-blur-[1px] sm:p-5",
+        "dark:border-white/10 dark:bg-gradient-to-br dark:from-white/[0.04] dark:via-primary-500/[0.06] dark:to-secondary-500/[0.05]"
       )}
     >
       {/* 与博客管理 Card 内区块一致的轻装饰角 */}

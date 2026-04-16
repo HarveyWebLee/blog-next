@@ -35,6 +35,7 @@ import { useAuth } from "@/lib/contexts/auth-context";
 import { useCategories } from "@/lib/hooks/useCategories";
 import { useTags } from "@/lib/hooks/useTags";
 import { message } from "@/lib/utils";
+import { isInMemorySuperRootClientUser } from "@/lib/utils/authz";
 import { clientBearerHeaders } from "@/lib/utils/client-bearer-auth";
 import {
   Category,
@@ -284,7 +285,7 @@ export default function EditBlogPage() {
     tagIds: [],
   });
 
-  // 获取博客数据：登录后拉取，并校验当前用户是否为作者（与接口 PUT 权限一致）
+  // 获取博客数据：登录后拉取。普通用户需是作者本人；超级管理员允许管理任意文章。
   useEffect(() => {
     if (isAuthLoading) return;
     if (!isAuthenticated || !user) {
@@ -302,7 +303,8 @@ export default function EditBlogPage() {
 
         if (result.success) {
           const postData = result.data as PostManageDetailData;
-          if (postData.posts.authorId !== user.id) {
+          const isSuperAdmin = isInMemorySuperRootClientUser(user);
+          if (!isSuperAdmin && postData.posts.authorId !== user.id) {
             setForbidden(true);
             setPost(null);
             return;
@@ -499,9 +501,6 @@ export default function EditBlogPage() {
             <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
               {t.editTitle}
             </h1>
-            <p className="text-default-500 text-lg mt-2">
-              {t.editDescPrefix} {post.posts.title}
-            </p>
           </div>
         </div>
 
@@ -517,7 +516,7 @@ export default function EditBlogPage() {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* 基本信息（含分类、标签，单卡片更紧凑） */}
-        <Card className="shadow-md border border-default-200/70 bg-gradient-to-r from-primary-50/95 to-secondary-50/95 backdrop-blur-sm dark:border-white/10 dark:bg-gradient-to-br dark:from-white/[0.05] dark:via-white/[0.02] dark:to-primary-500/[0.07]">
+        <Card className="shadow-md border border-default-200/70 bg-default-50/75 backdrop-blur-sm dark:border-white/10 dark:bg-gradient-to-br dark:from-white/[0.05] dark:via-white/[0.02] dark:to-primary-500/[0.07]">
           <CardHeader className="gap-0 pb-3">
             <div className="flex items-center gap-2.5">
               <div className="rounded-lg bg-primary/10 p-1.5">
