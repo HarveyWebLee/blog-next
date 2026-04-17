@@ -26,7 +26,6 @@ import { PostCard } from "@/components/blog/post-card";
 import PostsAPI from "@/lib/api/posts";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { usePosts } from "@/lib/hooks/usePosts";
-import { useTags } from "@/lib/hooks/useTags";
 import { PostData } from "@/types/blog";
 
 export type BlogPageContentProps = {
@@ -128,8 +127,6 @@ export function BlogPageContent({ lang, initialTagId }: BlogPageContentProps) {
     },
   });
 
-  const { tags } = useTags({ autoFetch: true, initialLimit: 100 });
-
   /**
    * 从地址栏进入 / 客户端路由切换时，将 URL 上的 tagId 与列表请求对齐。
    */
@@ -150,20 +147,15 @@ export function BlogPageContent({ lang, initialTagId }: BlogPageContentProps) {
   }, [initialTagId, params.tagId, filterByTag]);
 
   const activeTagId = params.tagId ?? undefined;
-  const activeTagMeta = useMemo(() => {
-    if (activeTagId == null || !Number.isFinite(activeTagId)) return null;
-    return tags.find((tg) => tg.id === activeTagId) ?? null;
-  }, [activeTagId, tags]);
 
   const tagHeading = useMemo(() => {
     if (activeTagId == null) return "";
     const name =
-      activeTagMeta?.name?.trim() ||
-      (lang === "en-US" ? `Tag #${activeTagId}` : lang === "ja-JP" ? `タグ #${activeTagId}` : `标签 #${activeTagId}`);
+      lang === "en-US" ? `Tag #${activeTagId}` : lang === "ja-JP" ? `タグ #${activeTagId}` : `标签 #${activeTagId}`;
     if (lang === "en-US") return `Posts tagged “${name}”`;
     if (lang === "ja-JP") return `「${name}」の記事一覧`;
     return `含「${name}」标签的文章`;
-  }, [activeTagId, activeTagMeta, lang]);
+  }, [activeTagId, lang]);
 
   const handleSearch = (value: string) => {
     setSearchValue(value);
@@ -302,24 +294,11 @@ export function BlogPageContent({ lang, initialTagId }: BlogPageContentProps) {
             <Card className="mb-6 border-0 bg-white/10 backdrop-blur-xl animate-fade-in-up dark:bg-black/10">
               <CardBody className="flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-start gap-3">
-                  <span
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-secondary/25 to-accent/20 text-secondary"
-                    style={
-                      activeTagMeta?.color
-                        ? {
-                            background: `linear-gradient(135deg, ${activeTagMeta.color}35, ${activeTagMeta.color}18)`,
-                            color: activeTagMeta.color,
-                          }
-                        : undefined
-                    }
-                  >
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-secondary/25 to-accent/20 text-secondary">
                     <Hash className="h-5 w-5" aria-hidden />
                   </span>
                   <div className="min-w-0">
                     <p className="text-lg font-semibold tracking-tight text-foreground">{tagHeading}</p>
-                    {activeTagMeta?.description ? (
-                      <p className="mt-1 line-clamp-2 text-sm text-default-500">{activeTagMeta.description}</p>
-                    ) : null}
                   </div>
                 </div>
                 <Button

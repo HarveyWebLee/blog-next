@@ -147,8 +147,12 @@ export default function LoginPage() {
         >
           <CardHeader className="text-center pb-2">
             <div className="w-full">
-              <h1 className="mb-2 text-2xl font-bold text-foreground">{t.welcome}</h1>
-              <p className="text-default-600 dark:text-default-400">{t.subtitle}</p>
+              <h1 className="mb-2 text-2xl font-bold text-foreground dark:text-white dark:drop-shadow-[0_1px_2px_rgba(0,0,0,0.55)]">
+                {t.welcome}
+              </h1>
+              <p className="text-default-600 dark:text-white/90 dark:drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
+                {t.subtitle}
+              </p>
             </div>
           </CardHeader>
 
@@ -158,15 +162,16 @@ export default function LoginPage() {
               <Input
                 name="username"
                 type="text"
-                label={<span className="text-default-700 dark:text-default-300">{t.usernameLabel}</span>}
+                label={<span className="text-default-700 dark:text-white/85">{t.usernameLabel}</span>}
                 placeholder={t.usernamePlaceholder}
-                startContent={<Mail className="h-4 w-4 text-default-500 dark:text-default-400" />}
+                startContent={<Mail className="h-4 w-4 text-default-500 dark:text-white/65" />}
                 variant="bordered"
                 size="lg"
                 classNames={{
-                  input: "text-sm text-foreground placeholder:text-default-400",
+                  input:
+                    "text-sm text-foreground placeholder:text-default-400 dark:text-white dark:placeholder:text-white/50",
                   inputWrapper:
-                    "border-default-300 bg-white/80 hover:border-primary data-[hover=true]:border-primary dark:border-default-400 dark:bg-transparent",
+                    "border-default-300 bg-white/80 hover:border-primary data-[hover=true]:border-primary dark:border-white/35 dark:bg-black/35 dark:data-[hover=true]:border-primary",
                 }}
                 isClearable
                 validate={(value) => {
@@ -183,7 +188,7 @@ export default function LoginPage() {
                 name="password"
                 // errorMessage="密码不能为空"
                 type={showPassword ? "text" : "password"}
-                label={<span className="text-default-700 dark:text-default-300">{t.passwordLabel}</span>}
+                label={<span className="text-default-700 dark:text-white/85">{t.passwordLabel}</span>}
                 placeholder={t.passwordPlaceholder}
                 validate={(value) => {
                   if (!value) {
@@ -195,7 +200,7 @@ export default function LoginPage() {
                   }
                   return null;
                 }}
-                startContent={<Lock className="h-4 w-4 text-default-500 dark:text-default-400" />}
+                startContent={<Lock className="h-4 w-4 text-default-500 dark:text-white/65" />}
                 endContent={
                   <button
                     type="button"
@@ -204,18 +209,19 @@ export default function LoginPage() {
                     aria-label={showPassword ? t.hidePassword : t.showPassword}
                   >
                     {showPassword ? (
-                      <EyeOff className="h-4 w-4 text-default-500 dark:text-default-400" />
+                      <EyeOff className="h-4 w-4 text-default-500 dark:text-white/65" />
                     ) : (
-                      <Eye className="h-4 w-4 text-default-500 dark:text-default-400" />
+                      <Eye className="h-4 w-4 text-default-500 dark:text-white/65" />
                     )}
                   </button>
                 }
                 variant="bordered"
                 size="lg"
                 classNames={{
-                  input: "text-sm text-foreground placeholder:text-default-400",
+                  input:
+                    "text-sm text-foreground placeholder:text-default-400 dark:text-white dark:placeholder:text-white/50",
                   inputWrapper:
-                    "border-default-300 bg-white/80 hover:border-primary data-[hover=true]:border-primary dark:border-default-400 dark:bg-transparent",
+                    "border-default-300 bg-white/80 hover:border-primary data-[hover=true]:border-primary dark:border-white/35 dark:bg-black/35 dark:data-[hover=true]:border-primary",
                 }}
               />
 
@@ -244,7 +250,7 @@ export default function LoginPage() {
               {/* 注册链接 */}
               <div className="w-full text-center">
                 <span className="text-sm">
-                  <span className="text-default-600 dark:text-default-400">{t.noAccount} </span>
+                  <span className="text-default-600 dark:text-white/85">{t.noAccount} </span>
                   <Link href={`/${lang}/auth/register`} className="font-medium text-primary hover:opacity-90">
                     {t.registerNow}
                   </Link>
@@ -256,7 +262,7 @@ export default function LoginPage() {
 
         {/* 底部信息 */}
         <div className="mt-8 text-center">
-          <p className="text-xs text-default-600 drop-shadow-sm dark:text-default-400 dark:drop-shadow-none">
+          <p className="text-xs text-default-600 drop-shadow-sm dark:text-white/80 dark:drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
             {t.agreementPrefix}{" "}
             <Link
               href={`/${lang}/terms?return=${encodeURIComponent(pathname)}`}
