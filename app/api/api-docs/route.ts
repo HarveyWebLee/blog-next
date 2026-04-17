@@ -16,7 +16,7 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
  * GET /api/api-docs
  * 获取所有API接口信息（支持自动发现新接口）
  *
- * 安全：仅内存超级管理员可访问，避免泄露全站路由结构给未授权用户。
+ * 安全：仅超级管理员可访问，避免泄露全站路由结构给未授权用户。
  */
 export async function GET(request: NextRequest) {
   const gate = requireInMemorySuperRoot(request);

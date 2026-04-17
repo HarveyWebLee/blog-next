@@ -1,11 +1,11 @@
 /**
- * 刷新访问令牌：支持数据库用户与内存态超级管理员（userId=0 + isRoot）。
+ * 刷新访问令牌：支持数据库用户与超级管理员 root 会话。
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 
-import { isSuperAdminEnabled, RESERVED_SUPER_ADMIN_USER_ID } from "@/lib/config/super-admin";
+import { ensureSuperAdminDbIdentity, isSuperAdminEnabled } from "@/lib/config/super-admin";
 import { db } from "@/lib/db/config";
 import { users } from "@/lib/db/schema";
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from "@/lib/utils/auth";
@@ -60,8 +60,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 内存超级管理员：不访问数据库
-    if (decoded.userId === RESERVED_SUPER_ADMIN_USER_ID && decoded.isRoot === true) {
+    // 超级管理员 root 会话：统一使用真实 DB userId 刷新
+    if (decoded.role === "super_admin" && decoded.isRoot === true) {
       if (!isSuperAdminEnabled()) {
         return NextResponse.json<ApiResponse>(
           {
@@ -72,15 +72,26 @@ export async function POST(request: NextRequest) {
           { status: 403 }
         );
       }
-      const username = decoded.username;
+      const ensured = await ensureSuperAdminDbIdentity();
+      if (!ensured) {
+        return NextResponse.json<ApiResponse>(
+          {
+            success: false,
+            message: "超级管理员身份不可用",
+            timestamp: new Date().toISOString(),
+          },
+          { status: 403 }
+        );
+      }
+      const username = ensured.username || decoded.username;
       const token = generateAccessToken({
-        userId: RESERVED_SUPER_ADMIN_USER_ID,
+        userId: ensured.userId,
         username,
         role: "super_admin",
         isRoot: true,
       });
       const newRefresh = generateRefreshToken({
-        userId: RESERVED_SUPER_ADMIN_USER_ID,
+        userId: ensured.userId,
         username,
         role: "super_admin",
         isRoot: true,

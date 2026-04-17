@@ -15,6 +15,7 @@
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
     "db:migrate": "drizzle-kit migrate --config=drizzle.config.ts",
+    "db:migrate:run": "tsx scripts/run-drizzle-migrate.ts",
     "db:push": "drizzle-kit push --config=drizzle.config.ts",
     "db:studio": "drizzle-kit studio --config=drizzle.config.ts --port=4984",
     "db:seed": "npx tsx scripts/seed.ts",

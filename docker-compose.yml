@@ -1,5 +1,9 @@
 # 荒野博客：MySQL + Redis + Next.js（生产向编排）
 #
+# 本地推荐（与 package.json 一致）：
+#   pnpm docker:up:deps  — 启动 MySQL / Redis / MinIO（本机 MySQL 即 blog-mysql 容器）
+#   pnpm docker:migrate  — 仅在 compose 网络内对 MySQL 跑 Drizzle 迁移（db-migrate 容器；DB_HOST=mysql）
+#
 # 准备：cp deploy/env.docker.example deploy/.env.docker 并修改密钥
 # 启动基础设施：docker compose --env-file deploy/.env.docker up -d mysql redis minio
 # MinIO 首次创建公开读 bucket（幂等）：docker compose --env-file deploy/.env.docker --profile minio-init run --rm minio-init
@@ -111,6 +115,7 @@ services:
       - minio-init
 
   # 一次性迁移任务（不随 up -d 默认启动，需 --profile migrate）
+  # 连接信息：env_file 读 deploy/.env.docker 的 DB_USER/DB_PASSWORD/DB_NAME 等；DB_HOST 固定为 mysql（勿在模板里写 localhost）
   db-migrate:
     build:
       context: .

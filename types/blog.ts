@@ -292,6 +292,12 @@ export interface PostData extends BaseEntity {
   allowComments: boolean;
   viewCount: number;
   likeCount: number;
+  /** 文章被收藏次数（按 user_favorites 聚合） */
+  favoriteCount?: number;
+  /** 当前登录用户是否已点赞（由列表/详情接口按请求身份回填） */
+  isLiked?: boolean;
+  /** 当前登录用户是否已收藏（由列表/详情接口按请求身份回填） */
+  isFavorited?: boolean;
   publishedAt: Date | null;
   author: User;
   category: Category | null;
@@ -530,9 +536,9 @@ export interface CategoryQueryParams extends PaginationParams {
  */
 export interface UserProfile extends BaseEntity {
   userId: number;
-  /** 登录邮箱：普通用户来自 users.email；超级管理员（user_id=0）来自 user_profiles.email 或默认占位 */
+  /** 登录邮箱：普通用户来自 users.email；超级管理员来自 user_profiles.email 或默认占位 */
   email?: string;
-  /** 头像 URL：普通用户来自 users.avatar；内存超级管理员可为空 */
+  /** 头像 URL：普通用户来自 users.avatar；超级管理员可为空 */
   avatar?: string;
   firstName?: string;
   lastName?: string;

@@ -3,6 +3,13 @@ import type { Config } from "drizzle-kit";
 import { defineConfig } from "drizzle-kit";
 
 /**
+ * Drizzle Kit 配置（generate / migrate / push / studio 均会读取）。
+ *
+ * - **宿主机**执行 `pnpm db:*`：下面会合并 `.env`、`.env.local` 等与 `process.env`，通常连 `127.0.0.1` + `MYSQL_PUBLISH_PORT`。
+ * - **`pnpm docker:migrate`（db-migrate 容器）**：镜像内无上述文件，**仅**使用 Compose 注入的 `process.env`（`env_file: deploy/.env.docker` + `DB_HOST=mysql`），与本地是否拷贝了 `deploy/.env.docker` 无关，由 compose 传入。
+ */
+
+/**
  * 读取环境变量文件
  */
 function loadEnvFile(filePath: string): Record<string, string> {

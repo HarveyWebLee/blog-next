@@ -1,20 +1,18 @@
 /**
- * 内存态超级管理员（配置 + 进程内校验登录；不依赖 users 表存在 id=0 行）。
- * 个人资料持久化约定：使用 `user_profiles.user_id = 0` 唯一一行（与 users 无 FK，可单独落库）。
- *
+ * 超级管理员（真实 DB 用户）配置与登录辅助。
  * 安全风险：若泄露 SUPER_ADMIN_* 等同于交出整站权限，生产务必强密码、限制网络、默认关闭。
  */
 
-import type { InferSelectModel } from "drizzle-orm";
+import { eq } from "drizzle-orm";
+import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 
-import { userProfiles } from "@/lib/db/schema";
+import { db } from "@/lib/db/config";
+import { userProfiles, users } from "@/lib/db/schema";
 import { generateAccessToken, generateRefreshToken, verifyPassword } from "@/lib/utils/auth";
 import type { User, UserProfile } from "@/types/blog";
 
-/** 与 JWT 约定：占用 userId=0；禁止在 users 表插入 id=0，个人资料见 user_profiles.user_id=0 */
-export const RESERVED_SUPER_ADMIN_USER_ID = 0;
-
 type UserProfileRow = InferSelectModel<typeof userProfiles>;
+type UserRow = InferSelectModel<typeof users>;
 
 function parseProfileJson(raw: string | null, fallback: Record<string, unknown>): Record<string, unknown> {
   if (!raw) return fallback;
@@ -32,7 +30,7 @@ export function getSyntheticSuperAdminUserProfile(username: string): UserProfile
   const now = new Date();
   return {
     id: 0,
-    userId: RESERVED_SUPER_ADMIN_USER_ID,
+    userId: -1,
     email: `${username}@superadmin.local`,
     avatar: undefined,
     firstName: undefined,
@@ -49,7 +47,7 @@ export function getSyntheticSuperAdminUserProfile(username: string): UserProfile
 }
 
 /**
- * 将 `user_profiles` 中 user_id=0 的行合并为前端 {@link UserProfile}（无行则仅返回默认）。
+ * 将超级管理员资料行合并为前端 {@link UserProfile}（无行则返回默认占位）。
  */
 export function mergeSuperAdminProfileFromRow(row: UserProfileRow | undefined, username: string): UserProfile {
   const base = getSyntheticSuperAdminUserProfile(username);
@@ -58,7 +56,7 @@ export function mergeSuperAdminProfileFromRow(row: UserProfileRow | undefined, u
   const avatar = typeof socialLinks?.avatar === "string" ? socialLinks.avatar.trim() : "";
   return {
     id: row.id,
-    userId: RESERVED_SUPER_ADMIN_USER_ID,
+    userId: row.userId,
     email: row.email?.trim() || base.email,
     avatar: avatar || undefined,
     firstName: row.firstName ?? undefined,
@@ -112,15 +110,96 @@ function readEnv() {
   return { enabled, username, passwordBcrypt, bcryptSource };
 }
 
+function buildSuperAdminPlaceholderEmail(username: string): string {
+  return `${username}@superadmin.local`;
+}
+
+/** 查询超级管理员用户 id（以 SUPER_ADMIN_USERNAME 命中 users.username） */
+export async function getSuperAdminProfileUserId(): Promise<number | null> {
+  const username = readEnv().username;
+  if (!username) return null;
+  const rows = await db.select({ id: users.id }).from(users).where(eq(users.username, username)).limit(1);
+  return rows[0]?.id ?? null;
+}
+
+async function ensureSuperAdminDbUser(username: string, passwordBcrypt: string): Promise<UserRow> {
+  const [existing] = await db.select().from(users).where(eq(users.username, username)).limit(1);
+  if (existing) {
+    // 与配置保持一致：超管账号始终可用（active + admin + 邮箱已验证）；密码哈希跟随 env。
+    const shouldUpdate =
+      existing.role !== "admin" ||
+      existing.status !== "active" ||
+      existing.emailVerified !== true ||
+      existing.password !== passwordBcrypt;
+    if (shouldUpdate) {
+      await db
+        .update(users)
+        .set({
+          role: "admin",
+          status: "active",
+          emailVerified: true,
+          password: passwordBcrypt,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, existing.id));
+      const [updated] = await db.select().from(users).where(eq(users.id, existing.id)).limit(1);
+      if (updated) return updated;
+    }
+    return existing;
+  }
+
+  const values: InferInsertModel<typeof users> = {
+    username,
+    email: buildSuperAdminPlaceholderEmail(username),
+    password: passwordBcrypt,
+    role: "admin",
+    status: "active",
+    emailVerified: true,
+  };
+  const [insertResult] = await db.insert(users).values(values);
+  const insertId = Number(insertResult.insertId);
+  const [created] = await db.select().from(users).where(eq(users.id, insertId)).limit(1);
+  if (!created) {
+    throw new Error("创建超级管理员数据库账号失败");
+  }
+  return created;
+}
+
+async function ensureSuperAdminProfileRow(dbUserId: number, username: string): Promise<void> {
+  const [profileForDbUser] = await db.select().from(userProfiles).where(eq(userProfiles.userId, dbUserId)).limit(1);
+  if (profileForDbUser) return;
+
+  await db.insert(userProfiles).values({
+    userId: dbUserId,
+    email: buildSuperAdminPlaceholderEmail(username),
+    notifications: "{}",
+    privacy: "{}",
+    socialLinks: "{}",
+  });
+}
+
 /** 读取超级管理员配置用户名（未配置时返回空字符串） */
 export function getSuperAdminConfiguredUsername(): string {
   return readEnv().username;
 }
 
-/** 是否启用内存超级管理员（三项均需配置且开关为 true） */
+/** 是否启用超级管理员登录（三项均需配置且开关为 true） */
 export function isSuperAdminEnabled(): boolean {
   const { enabled, username, passwordBcrypt } = readEnv();
   return enabled && username.length > 0 && passwordBcrypt.length > 0;
+}
+
+/**
+ * 在不校验口令的情况下，确保超管数据库身份存在并返回（供 refresh / 只读场景使用）。
+ */
+export async function ensureSuperAdminDbIdentity(): Promise<{ userId: number; username: string } | null> {
+  const { enabled, username, passwordBcrypt } = readEnv();
+  if (!enabled || !username || !passwordBcrypt) {
+    return null;
+  }
+  const dbUser = await ensureSuperAdminDbUser(username, passwordBcrypt);
+  await ensureSuperAdminProfileRow(dbUser.id, username);
+  return { userId: dbUser.id, username: dbUser.username };
 }
 
 /** 开发时便于发现 .env 中哈希被截断（正常应为 60 字符） */
@@ -169,27 +248,33 @@ export async function resolveSuperAdminLogin(
     return "bad_credentials";
   }
 
-  const now = new Date();
+  const dbUser = await ensureSuperAdminDbUser(username, passwordBcrypt);
+  await ensureSuperAdminProfileRow(dbUser.id, username);
+
+  const now = dbUser.createdAt ?? new Date();
   const user: Omit<User, "password"> = {
-    id: RESERVED_SUPER_ADMIN_USER_ID,
-    username,
-    email: `${username}@superadmin.local`,
+    id: dbUser.id,
+    username: dbUser.username,
+    email: dbUser.email,
+    displayName: dbUser.displayName ?? undefined,
+    avatar: dbUser.avatar ?? undefined,
+    bio: dbUser.bio ?? undefined,
     role: "super_admin",
-    status: "active",
-    emailVerified: true,
+    status: dbUser.status ?? "active",
+    emailVerified: dbUser.emailVerified ?? true,
     createdAt: now,
-    updatedAt: now,
+    updatedAt: dbUser.updatedAt ?? now,
   };
 
   const accessToken = generateAccessToken({
-    userId: RESERVED_SUPER_ADMIN_USER_ID,
-    username,
+    userId: dbUser.id,
+    username: dbUser.username,
     role: "super_admin",
     isRoot: true,
   });
   const refreshToken = generateRefreshToken({
-    userId: RESERVED_SUPER_ADMIN_USER_ID,
-    username,
+    userId: dbUser.id,
+    username: dbUser.username,
     role: "super_admin",
     isRoot: true,
   });

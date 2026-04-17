@@ -315,7 +315,8 @@ export default function ProfileAccountsAdmin({ lang }: { lang: string }) {
       }
       setDetail(json.data);
       const r = json.data.role;
-      setEditRole(r === "super_admin" ? "admin" : r === "admin" || r === "author" || r === "user" ? r : "user");
+      // 与详情一致保留 super_admin，避免误映射成 admin 后在保存时错误 PATCH 根账户
+      setEditRole(r === "super_admin" || r === "admin" || r === "author" || r === "user" ? r : "user");
       setEditStatus(json.data.status);
     } catch {
       message.error(t.loadFailed);
@@ -327,6 +328,8 @@ export default function ProfileAccountsAdmin({ lang }: { lang: string }) {
 
   const saveDetail = async () => {
     if (!detail) return;
+    // 根账户在详情中展示为超级管理员，不在此页修改角色/状态（与后端 PATCH 限制一致）
+    if (detail.role === "super_admin") return;
     setSaving(true);
     try {
       const body: { role?: UserRole; status?: UserStatus } = {};
@@ -527,6 +530,29 @@ export default function ProfileAccountsAdmin({ lang }: { lang: string }) {
                       </Chip>
                     )}
                   </div>
+                  {/* 根账户：只读展示角色与状态，不提供下拉修改 */}
+                  {detail.role === "super_admin" ? (
+                    <>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-default-500">{t.colRole}</span>
+                        <Chip size="sm" variant="flat">
+                          {t.roles[detail.role] ?? detail.role}
+                        </Chip>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-default-500">{t.colStatus}</span>
+                        <Chip
+                          size="sm"
+                          color={
+                            detail.status === "active" ? "success" : detail.status === "inactive" ? "warning" : "danger"
+                          }
+                          variant="flat"
+                        >
+                          {t.statuses[detail.status]}
+                        </Chip>
+                      </div>
+                    </>
+                  ) : null}
                   {detail.bio ? (
                     <p className="sm:col-span-2">
                       <span className="text-default-500">{t.fieldBio}</span>：{detail.bio}
@@ -562,32 +588,34 @@ export default function ProfileAccountsAdmin({ lang }: { lang: string }) {
                   )}
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Select
-                    label={t.colRole}
-                    selectedKeys={[editRole]}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      if (v === "admin" || v === "author" || v === "user") setEditRole(v);
-                    }}
-                  >
-                    {roleKeys.map((r) => (
-                      <SelectItem key={r}>{t.roles[r]}</SelectItem>
-                    ))}
-                  </Select>
-                  <Select
-                    label={t.colStatus}
-                    selectedKeys={[editStatus]}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      if (v === "active" || v === "inactive" || v === "banned") setEditStatus(v);
-                    }}
-                  >
-                    {statusKeys.map((s) => (
-                      <SelectItem key={s}>{t.statuses[s]}</SelectItem>
-                    ))}
-                  </Select>
-                </div>
+                {detail.role !== "super_admin" ? (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Select
+                      label={t.colRole}
+                      selectedKeys={[editRole]}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (v === "admin" || v === "author" || v === "user") setEditRole(v);
+                      }}
+                    >
+                      {roleKeys.map((r) => (
+                        <SelectItem key={r}>{t.roles[r]}</SelectItem>
+                      ))}
+                    </Select>
+                    <Select
+                      label={t.colStatus}
+                      selectedKeys={[editStatus]}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (v === "active" || v === "inactive" || v === "banned") setEditStatus(v);
+                      }}
+                    >
+                      {statusKeys.map((s) => (
+                        <SelectItem key={s}>{t.statuses[s]}</SelectItem>
+                      ))}
+                    </Select>
+                  </div>
+                ) : null}
               </div>
             )}
           </ModalBody>
@@ -598,7 +626,7 @@ export default function ProfileAccountsAdmin({ lang }: { lang: string }) {
             <Button
               color="primary"
               isLoading={saving}
-              isDisabled={!detail || detailLoading}
+              isDisabled={!detail || detailLoading || detail.role === "super_admin"}
               onPress={() => void saveDetail()}
             >
               {t.save}

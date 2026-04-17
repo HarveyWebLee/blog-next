@@ -4,7 +4,7 @@
 
 import { and, eq, gt, ne, sql } from "drizzle-orm";
 
-import { RESERVED_SUPER_ADMIN_USER_ID } from "@/lib/config/super-admin";
+import { getSuperAdminProfileUserId } from "@/lib/config/super-admin";
 import { db } from "@/lib/db/config";
 import { emailVerifications, userProfiles, users } from "@/lib/db/schema";
 import { isValidEmailFormat } from "@/lib/utils/email-format";
@@ -14,7 +14,7 @@ export function normalizeProfileEmail(raw: string): string {
 }
 
 /**
- * @param excludeUserId 当前登录用户的数据库 id；超级管理员为 0（users 中无此行，不排除任何 id）
+ * @param excludeUserId 当前登录用户的数据库 id
  * @returns 有冲突时返回错误文案，否则 null
  */
 export async function getProfileEmailConflictMessage(
@@ -29,31 +29,30 @@ export async function getProfileEmailConflictMessage(
     return "邮箱格式不正确";
   }
 
-  const rows =
-    excludeUserId === RESERVED_SUPER_ADMIN_USER_ID
-      ? await db
-          .select({ id: users.id })
-          .from(users)
-          .where(sql`LOWER(TRIM(${users.email})) = ${email}`)
-          .limit(1)
-      : await db
-          .select({ id: users.id })
-          .from(users)
-          .where(and(sql`LOWER(TRIM(${users.email})) = ${email}`, ne(users.id, excludeUserId)))
-          .limit(1);
+  const rows = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(and(sql`LOWER(TRIM(${users.email})) = ${email}`, ne(users.id, excludeUserId)))
+    .limit(1);
 
   if (rows.length > 0) {
     return "该邮箱已被其他账号使用";
   }
 
-  // 超级管理员邮箱（user_profiles.user_id=0 的 email）同样属于全局唯一标识，普通账号不可占用
-  const superAdminProfile = await db
-    .select({ email: userProfiles.email })
-    .from(userProfiles)
-    .where(eq(userProfiles.userId, RESERVED_SUPER_ADMIN_USER_ID))
-    .limit(1);
-  const superAdminEmail = superAdminProfile[0]?.email?.trim().toLowerCase() || "";
-  if (superAdminEmail && superAdminEmail === email && excludeUserId !== RESERVED_SUPER_ADMIN_USER_ID) {
+  // 超级管理员邮箱同样属于全局唯一标识，普通账号不可占用
+  const superAdminProfileUserId = await getSuperAdminProfileUserId();
+  const superAdminProfile =
+    superAdminProfileUserId == null
+      ? undefined
+      : (
+          await db
+            .select({ email: userProfiles.email })
+            .from(userProfiles)
+            .where(eq(userProfiles.userId, superAdminProfileUserId))
+            .limit(1)
+        )[0];
+  const superAdminEmail = superAdminProfile?.email?.trim().toLowerCase() || "";
+  if (superAdminEmail && superAdminEmail === email && superAdminProfileUserId !== excludeUserId) {
     return "该邮箱已被超级管理员使用，请更换邮箱";
   }
 

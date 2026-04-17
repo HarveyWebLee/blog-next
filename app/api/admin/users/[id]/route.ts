@@ -9,6 +9,11 @@ import type { AdminUserDetail, AdminUserPatchBody, ApiResponse } from "@/types/b
 
 type RouteContext = { params: Promise<{ id: string }> };
 
+function applyRootRoleSemantic(detail: AdminUserDetail, rootUserId: number): AdminUserDetail {
+  if (detail.id !== rootUserId) return detail;
+  return { ...detail, role: "super_admin" };
+}
+
 function parseId(raw: string): number | null {
   const n = parseInt(raw, 10);
   if (!Number.isFinite(n) || n < 1) return null;
@@ -50,7 +55,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const pros = await db.select().from(userProfiles).where(eq(userProfiles.userId, id)).limit(1);
     const pr = pros[0];
 
-    const detail: AdminUserDetail = {
+    const detailRaw: AdminUserDetail = {
       ...mapDbUserToAdminManagedUserRow(rest),
       profile: pr
         ? {
@@ -65,6 +70,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         : null,
     };
 
+    const detail = applyRootRoleSemantic(detailRaw, gate.user.userId);
     return NextResponse.json<ApiResponse<AdminUserDetail>>({
       success: true,
       data: detail,
@@ -87,7 +93,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
 /**
  * PATCH /api/admin/users/:id
- * 更新角色、启用状态（非 active 时无法登录；与登录/刷新令牌校验一致）
+ * 更新角色、启用状态（非 active 时无法登录；与登录/刷新令牌校验一致）。
+ * 目标用户 id 与当前令牌中的根账户 userId 相同时拒绝修改（根账户在管理端展示为 super_admin）。
  */
 export async function PATCH(request: NextRequest, context: RouteContext) {
   const gate = requireInMemorySuperRoot(request);
@@ -146,6 +153,18 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       );
     }
 
+    // 禁止通过本接口修改当前登录的根账户（内存 JWT 中的 super_admin / DB 行可能为 admin）
+    if (id === gate.user.userId) {
+      return NextResponse.json<ApiResponse>(
+        {
+          success: false,
+          message: "不可修改根账户（超级管理员本人）的角色与状态",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 403 }
+      );
+    }
+
     await db
       .update(users)
       .set({
@@ -162,7 +181,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const pros = await db.select().from(userProfiles).where(eq(userProfiles.userId, id)).limit(1);
     const pr = pros[0];
 
-    const detail: AdminUserDetail = {
+    const detailRaw: AdminUserDetail = {
       ...mapDbUserToAdminManagedUserRow(rest),
       profile: pr
         ? {
@@ -177,6 +196,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         : null,
     };
 
+    const detail = applyRootRoleSemantic(detailRaw, gate.user.userId);
     return NextResponse.json<ApiResponse<AdminUserDetail>>({
       success: true,
       data: detail,

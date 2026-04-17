@@ -14,18 +14,77 @@ interface PostCardProps {
   post: PostData;
   lang?: string;
   onView?: () => void;
-  onLike?: () => void;
+  onToggleLike?: () => void;
+  onToggleFavorite?: () => void;
+  isLiked?: boolean;
+  isFavorited?: boolean;
+  likeLoading?: boolean;
+  favoriteLoading?: boolean;
 }
 
-export function PostCard({ post, lang = "zh-CN", onView, onLike }: PostCardProps) {
+export function PostCard({
+  post,
+  lang = "zh-CN",
+  onView,
+  onToggleLike,
+  onToggleFavorite,
+  isLiked = false,
+  isFavorited = false,
+  likeLoading = false,
+  favoriteLoading = false,
+}: PostCardProps) {
   const [isHovered, setIsHovered] = useState(false);
-  const [isLiked, setIsLiked] = useState(false);
+  const resolveRoleName = (role?: string): string => {
+    if (!role) return "";
+    if (lang === "en-US") {
+      if (role === "super_admin") return "Super Admin";
+      if (role === "admin") return "Admin";
+      if (role === "author") return "Author";
+      return "User";
+    }
+    if (lang === "ja-JP") {
+      if (role === "super_admin") return "スーパー管理者";
+      if (role === "admin") return "管理者";
+      if (role === "author") return "著者";
+      return "ユーザー";
+    }
+    if (role === "super_admin") return "超级管理员";
+    if (role === "admin") return "管理员";
+    if (role === "author") return "作者";
+    return "用户";
+  };
+  const authorLabel =
+    post.author?.displayName?.trim() || resolveRoleName(post.author?.role) || post.author?.username?.trim() || "—";
   const t =
     lang === "en-US"
-      ? { emptyExcerpt: "No excerpt", minutes: "min", liked: "Liked", like: "Like", readMore: "Read More" }
+      ? {
+          emptyExcerpt: "No excerpt",
+          minutes: "min",
+          liked: "Liked",
+          like: "Like",
+          favorite: "Favorite",
+          favorited: "Favorited",
+          readMore: "Read More",
+        }
       : lang === "ja-JP"
-        ? { emptyExcerpt: "概要なし", minutes: "分", liked: "いいね済み", like: "いいね", readMore: "続きを読む" }
-        : { emptyExcerpt: "暂无摘要", minutes: "分钟", liked: "已点赞", like: "点赞", readMore: "阅读更多" };
+        ? {
+            emptyExcerpt: "概要なし",
+            minutes: "分",
+            liked: "いいね済み",
+            like: "いいね",
+            favorite: "お気に入り",
+            favorited: "お気に入り済み",
+            readMore: "続きを読む",
+          }
+        : {
+            emptyExcerpt: "暂无摘要",
+            minutes: "分钟",
+            liked: "已点赞",
+            like: "点赞",
+            favorite: "收藏",
+            favorited: "已收藏",
+            readMore: "阅读更多",
+          };
 
   return (
     <div className="group relative animate-fade-in-up blog-card-container">
@@ -147,10 +206,10 @@ export function PostCard({ post, lang = "zh-CN", onView, onLike }: PostCardProps
                   <Avatar
                     size="sm"
                     src={post.author?.avatar || undefined}
-                    name={post.author?.displayName || undefined}
+                    name={authorLabel}
                     className="w-6 h-6 backdrop-blur-xl bg-white/10 dark:bg-black/10"
                   />
-                  <span className="truncate text-xs">{post.author.displayName}</span>
+                  <span className="truncate text-xs">{authorLabel}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Calendar className="w-3 h-3" />
@@ -191,13 +250,23 @@ export function PostCard({ post, lang = "zh-CN", onView, onLike }: PostCardProps
               variant={isLiked ? "solid" : "flat"}
               color="danger"
               startContent={<Heart className={`w-4 h-4 transition-all ${isLiked ? "fill-current" : ""}`} />}
-              onPress={() => {
-                setIsLiked(!isLiked);
-                onLike?.();
-              }}
+              isLoading={likeLoading}
+              onPress={() => onToggleLike?.()}
               className={`font-semibold tracking-wide button-hover-effect ${isLiked ? "bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 shadow-lg hover:shadow-xl animate-button-pulse" : "backdrop-blur-xl bg-white/10 dark:bg-black/10 hover:bg-danger/20 dark:hover:bg-danger/20"}`}
             >
-              {isLiked ? t.liked : t.like}
+              {isLiked ? t.liked : t.like} ({post.likeCount || 0})
+            </Button>
+
+            <Button
+              size="sm"
+              variant={isFavorited ? "solid" : "flat"}
+              color="secondary"
+              isLoading={favoriteLoading}
+              startContent={<Tag className={`w-4 h-4 transition-all ${isFavorited ? "fill-current" : ""}`} />}
+              onPress={() => onToggleFavorite?.()}
+              className="font-semibold tracking-wide button-hover-effect backdrop-blur-xl bg-white/10 dark:bg-black/10 hover:bg-secondary/20 dark:hover:bg-secondary/20"
+            >
+              {isFavorited ? t.favorited : t.favorite} ({post.favoriteCount || 0})
             </Button>
 
             <Button

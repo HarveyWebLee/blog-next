@@ -127,7 +127,7 @@ export default function LoginPage() {
         <div className="mb-6">
           <Link
             href={`/${lang}`}
-            className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 transition-colors"
+            className="inline-flex items-center text-sm text-default-700 transition-colors hover:text-foreground"
           >
             <Button radius="full" color="warning" variant="light" startContent={<ArrowLeftIcon />}>
               {t.backHome}
@@ -135,12 +135,20 @@ export default function LoginPage() {
           </Link>
         </div>
 
-        {/* 登录卡片 */}
-        <Card className="shadow-xl">
+        {/* 登录卡片：浅色用柔和白底+细边+轻阴影，避免与视频底对比过硬；文案用语义色保证对比度 */}
+        <Card
+          classNames={{
+            base: [
+              "w-full border backdrop-blur-xl backdrop-saturate-150",
+              "border-default-200/90 bg-white/88 shadow-lg shadow-black/[0.06]",
+              "dark:border-white/10 dark:bg-background/55 dark:shadow-black/40",
+            ].join(" "),
+          }}
+        >
           <CardHeader className="text-center pb-2">
             <div className="w-full">
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">{t.welcome}</h1>
-              <p className="text-gray-400">{t.subtitle}</p>
+              <h1 className="mb-2 text-2xl font-bold text-foreground">{t.welcome}</h1>
+              <p className="text-default-600 dark:text-default-400">{t.subtitle}</p>
             </div>
           </CardHeader>
 
@@ -150,15 +158,15 @@ export default function LoginPage() {
               <Input
                 name="username"
                 type="text"
-                label={<span className="text-gray-200">{t.usernameLabel}</span>}
+                label={<span className="text-default-700 dark:text-default-300">{t.usernameLabel}</span>}
                 placeholder={t.usernamePlaceholder}
-                startContent={<Mail className="w-4 h-4 text-gray-200" />}
+                startContent={<Mail className="h-4 w-4 text-default-500 dark:text-default-400" />}
                 variant="bordered"
                 size="lg"
                 classNames={{
-                  input: "text-sm",
+                  input: "text-sm text-foreground placeholder:text-default-400",
                   inputWrapper:
-                    "border-gray-300 hover:blog-border-y-box-shadowlue-500 focus-within:blog-border-y-box-shadowlue-500",
+                    "border-default-300 bg-white/80 hover:border-primary data-[hover=true]:border-primary dark:border-default-400 dark:bg-transparent",
                 }}
                 isClearable
                 validate={(value) => {
@@ -175,7 +183,7 @@ export default function LoginPage() {
                 name="password"
                 // errorMessage="密码不能为空"
                 type={showPassword ? "text" : "password"}
-                label={<span className="text-gray-200">{t.passwordLabel}</span>}
+                label={<span className="text-default-700 dark:text-default-300">{t.passwordLabel}</span>}
                 placeholder={t.passwordPlaceholder}
                 validate={(value) => {
                   if (!value) {
@@ -187,7 +195,7 @@ export default function LoginPage() {
                   }
                   return null;
                 }}
-                startContent={<Lock className="w-4 h-4 text-gray-200" />}
+                startContent={<Lock className="h-4 w-4 text-default-500 dark:text-default-400" />}
                 endContent={
                   <button
                     type="button"
@@ -196,18 +204,18 @@ export default function LoginPage() {
                     aria-label={showPassword ? t.hidePassword : t.showPassword}
                   >
                     {showPassword ? (
-                      <EyeOff className="w-4 h-4 text-gray-200" />
+                      <EyeOff className="h-4 w-4 text-default-500 dark:text-default-400" />
                     ) : (
-                      <Eye className="w-4 h-4 text-gray-200" />
+                      <Eye className="h-4 w-4 text-default-500 dark:text-default-400" />
                     )}
                   </button>
                 }
                 variant="bordered"
                 size="lg"
                 classNames={{
-                  input: "text-sm",
+                  input: "text-sm text-foreground placeholder:text-default-400",
                   inputWrapper:
-                    "border-gray-300 hover:blog-border-y-box-shadowlue-500 focus-within:blog-border-y-box-shadowlue-500",
+                    "border-default-300 bg-white/80 hover:border-primary data-[hover=true]:border-primary dark:border-default-400 dark:bg-transparent",
                 }}
               />
 
@@ -215,7 +223,7 @@ export default function LoginPage() {
               <div className="w-full flex justify-end">
                 <Link
                   href={`/${lang}/auth/forgot-password`}
-                  className="text-sm text-blue-600 hover:text-blue-800 transition-colors"
+                  className="text-sm font-medium text-primary hover:opacity-90"
                 >
                   {t.forgot}
                 </Link>
@@ -236,11 +244,8 @@ export default function LoginPage() {
               {/* 注册链接 */}
               <div className="w-full text-center">
                 <span className="text-sm">
-                  <span className="text-gray-200">{t.noAccount} </span>
-                  <Link
-                    href={`/${lang}/auth/register`}
-                    className="text-blue-600 hover:text-blue-800 font-medium transition-colors"
-                  >
+                  <span className="text-default-600 dark:text-default-400">{t.noAccount} </span>
+                  <Link href={`/${lang}/auth/register`} className="font-medium text-primary hover:opacity-90">
                     {t.registerNow}
                   </Link>
                 </span>
@@ -251,18 +256,18 @@ export default function LoginPage() {
 
         {/* 底部信息 */}
         <div className="mt-8 text-center">
-          <p className="text-xs text-gray-200">
+          <p className="text-xs text-default-600 drop-shadow-sm dark:text-default-400 dark:drop-shadow-none">
             {t.agreementPrefix}{" "}
             <Link
               href={`/${lang}/terms?return=${encodeURIComponent(pathname)}`}
-              className="text-blue-600 hover:underline"
+              className="font-medium text-primary hover:underline"
             >
               {t.terms}
             </Link>{" "}
             {t.and}{" "}
             <Link
               href={`/${lang}/privacy?return=${encodeURIComponent(pathname)}`}
-              className="text-blue-600 hover:underline"
+              className="font-medium text-primary hover:underline"
             >
               {t.privacy}
             </Link>

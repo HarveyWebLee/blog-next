@@ -44,6 +44,11 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
   const [comment, setComment] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [likeLoading, setLikeLoading] = useState(false);
+  const [favoriteLoading, setFavoriteLoading] = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
+  const [favoriteCount, setFavoriteCount] = useState(0);
   const lang = resolvedParams?.lang || "zh-CN";
   const t =
     lang === "en-US"
@@ -87,6 +92,8 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
             unknownAuthor: "不明な著者",
             liked: "いいね済み",
             like: "いいね",
+            favorited: "お気に入り済み",
+            favorite: "お気に入り",
             commentLabel: "💭 コメントを投稿",
             commentPlaceholder: "ご意見をどうぞ...",
             submitting: "投稿中...",
@@ -110,6 +117,8 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
             unknownAuthor: "未知作者",
             liked: "已点赞",
             like: "点赞",
+            favorited: "已收藏",
+            favorite: "收藏",
             commentLabel: "💭 发表您的评论",
             commentPlaceholder: "写下您的想法和见解...",
             submitting: "发布中...",
@@ -144,6 +153,8 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
           }
           console.log("postData", postData);
           setPost(postData);
+          setLikeCount(postData.likeCount || 0);
+          setFavoriteCount(postData.favoriteCount || 0);
         } else {
           if (result.message.includes("密码")) {
             setShowPasswordForm(true);
@@ -163,6 +174,33 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
 
     fetchPost();
   }, [resolvedParams?.slug, router, t.fetchFailed]);
+
+  useEffect(() => {
+    if (!post?.id) return;
+    let cancelled = false;
+    const loadEngagement = async () => {
+      try {
+        const res = await fetch(`/api/posts/engagement?ids=${post.id}`, {
+          headers:
+            typeof window !== "undefined" && localStorage.getItem("accessToken")
+              ? { Authorization: `Bearer ${localStorage.getItem("accessToken")}` }
+              : undefined,
+        });
+        const json = await res.json();
+        const state = (json?.data || [])[0];
+        if (!cancelled && state) {
+          setIsLiked(Boolean(state.liked));
+          setIsFavorited(Boolean(state.favorited));
+        }
+      } catch (error) {
+        console.error("加载互动状态失败:", error);
+      }
+    };
+    void loadEngagement();
+    return () => {
+      cancelled = true;
+    };
+  }, [post?.id, isAuthenticated]);
 
   // 验证密码
   const handlePasswordSubmit = async (e: React.FormEvent) => {
@@ -244,9 +282,61 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
   };
 
   // 点赞功能
-  const handleLike = () => {
-    setIsLiked(!isLiked);
-    // 这里可以添加API调用来更新点赞状态
+  const handleLike = async () => {
+    if (!post?.id) return;
+    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+    if (!token) {
+      router.push(`/${lang}/auth/login`);
+      return;
+    }
+    try {
+      setLikeLoading(true);
+      const response = await fetch(`/api/posts/${post.id}/like`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const result = await response.json();
+      if (!result.success) {
+        message.error(result.message || "点赞失败");
+        return;
+      }
+      setIsLiked(Boolean(result.data?.liked));
+      setLikeCount(Number(result.data?.likeCount || 0));
+    } catch (error) {
+      console.error("点赞失败:", error);
+      message.error("点赞失败");
+    } finally {
+      setLikeLoading(false);
+    }
+  };
+
+  const handleFavorite = async () => {
+    if (!post?.id) return;
+    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+    if (!token) {
+      router.push(`/${lang}/auth/login`);
+      return;
+    }
+    try {
+      setFavoriteLoading(true);
+      const response = await fetch(`/api/posts/${post.id}/favorite`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const result = await response.json();
+      if (!result.success) {
+        message.error(result.message || "收藏失败");
+        return;
+      }
+      setIsFavorited(Boolean(result.data?.favorited));
+      setFavoriteCount(Number(result.data?.favoriteCount || 0));
+      message.success(result.message || (result.data?.favorited ? "收藏成功" : "已取消收藏"));
+    } catch (error) {
+      console.error("收藏失败:", error);
+      message.error("收藏失败");
+    } finally {
+      setFavoriteLoading(false);
+    }
   };
 
   // 获取状态标签颜色
@@ -523,13 +613,14 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
                       variant="flat"
                       color={isLiked ? "danger" : "default"}
                       size="lg"
+                      isLoading={likeLoading}
                       onPress={handleLike}
                       startContent={<Heart className={`w-5 h-5 ${isLiked ? "fill-current" : ""}`} />}
                       className={`button-hover-effect animate-blog-scale-in delay-100 ${
                         isLiked ? "gradient-button-danger" : ""
                       }`}
                     >
-                      {isLiked ? t.liked : t.like} ({post.likeCount})
+                      {isLiked ? t.liked : t.like} ({likeCount})
                     </Button>
                     <Button
                       variant="flat"
@@ -542,12 +633,14 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
                     </Button>
                     <Button
                       variant="flat"
-                      color="secondary"
+                      color={isFavorited ? "secondary" : "default"}
                       size="lg"
+                      isLoading={favoriteLoading}
+                      onPress={handleFavorite}
                       startContent={<Bookmark className="w-5 h-5" />}
                       className="button-hover-effect animate-blog-scale-in delay-300 gradient-button-secondary"
                     >
-                      收藏
+                      {isFavorited ? t.favorited : t.favorite} ({favoriteCount})
                     </Button>
                   </div>
 

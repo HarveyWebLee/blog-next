@@ -22,7 +22,7 @@ export function ConditionalLayout({ children, lang }: ConditionalLayoutProps) {
   if (isAuthPage) {
     // 认证页面：不显示 Header 和 Footer，使用全屏布局
     return (
-      <div className="w-screen h-screen relativebg-[url('/images/login-bg.png')] bg-cover bg-center">
+      <div className="relative h-screen w-screen bg-[url('/images/login-bg.png')] bg-cover bg-center">
         <video
           src="/videos/login-bg.mp4"
           className="absolute top-0 left-0 w-full h-full object-cover"

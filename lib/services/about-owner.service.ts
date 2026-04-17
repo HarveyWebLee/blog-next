@@ -1,16 +1,16 @@
 import { eq } from "drizzle-orm";
 
 import {
+  getSuperAdminProfileUserId,
   isSuperAdminEnabled,
   mergeSuperAdminProfileFromRow,
-  RESERVED_SUPER_ADMIN_USER_ID,
 } from "@/lib/config/super-admin";
 import { db } from "@/lib/db/config";
 import { userProfiles } from "@/lib/db/schema";
 import type { ProfileSocialLinks } from "@/types/blog";
 
 /**
- * 关于页面向访客展示的站长信息（来源：`user_profiles.user_id = 0`，与内存超级管理员个人中心一致）。
+ * 关于页面向访客展示的站长信息（来源：超级管理员资料行）。
  * 各字段为 null 时表示不在此渠道展示该项，调用方应回退到 i18n 词典中的占位文案。
  */
 export type AboutOwnerPublic = {
@@ -38,12 +38,11 @@ export async function getAboutOwnerPublic(): Promise<AboutOwnerPublic | null> {
     return null;
   }
 
-  const rows = await db
-    .select()
-    .from(userProfiles)
-    .where(eq(userProfiles.userId, RESERVED_SUPER_ADMIN_USER_ID))
-    .limit(1);
-
+  const profileUserId = await getSuperAdminProfileUserId();
+  if (profileUserId == null) {
+    return null;
+  }
+  const rows = await db.select().from(userProfiles).where(eq(userProfiles.userId, profileUserId)).limit(1);
   const profile = mergeSuperAdminProfileFromRow(rows[0], username);
   const rawEmail = profile.email?.trim() ?? "";
   const email = rawEmail && !isPlaceholderSuperAdminEmail(rawEmail) ? rawEmail : null;

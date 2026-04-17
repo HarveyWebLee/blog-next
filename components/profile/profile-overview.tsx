@@ -22,6 +22,21 @@ function isHttpUrl(s: string) {
   return /^https?:\/\//i.test(s.trim());
 }
 
+/** 兼容历史 social_links 键名，避免刷新后因键名差异导致内容丢失 */
+function readSocialValue(socialLinks: Record<string, unknown>, key: (typeof SOCIAL_KEYS)[number]): string {
+  const keyMap: Record<(typeof SOCIAL_KEYS)[number], string[]> = {
+    github: ["github"],
+    wechatQr: ["wechatQr", "wechat_qr", "wechatQR", "wechat"],
+    douyin: ["douyin"],
+    bilibili: ["bilibili"],
+  };
+  for (const candidate of keyMap[key]) {
+    const value = socialLinks[candidate];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return "";
+}
+
 export default function ProfileOverview({ lang }: ProfileOverviewProps) {
   const t =
     lang === "en-US"
@@ -174,8 +189,8 @@ export default function ProfileOverview({ lang }: ProfileOverviewProps) {
 
   const socialLinks = profile.socialLinks || {};
   const socialEntries = SOCIAL_KEYS.map((k) => {
-    const v = socialLinks[k];
-    return typeof v === "string" && v.trim() ? ([k, v.trim()] as const) : null;
+    const v = readSocialValue(socialLinks, k);
+    return v ? ([k, v] as const) : null;
   }).filter(Boolean) as [string, string][];
 
   return (
@@ -256,17 +271,22 @@ export default function ProfileOverview({ lang }: ProfileOverviewProps) {
             <h3 className="mb-3 text-sm font-medium text-foreground">{t.social}</h3>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {socialEntries.map(([key, val]) => (
-                <div key={key} className="rounded-xl border border-white/10 bg-white/5 p-3">
+                <div
+                  key={key}
+                  className={`rounded-xl border border-white/10 bg-white/5 ${key === "wechatQr" ? "p-2.5" : "p-3"}`}
+                >
                   <p className="mb-2 text-xs text-default-500">{labelForKey(key)}</p>
                   {key === "wechatQr" ? (
-                    <Image
-                      src={val}
-                      alt=""
-                      width={128}
-                      height={128}
-                      unoptimized
-                      className="h-32 w-32 rounded-lg border border-default-200 object-cover dark:border-white/10"
-                    />
+                    <div className="flex items-center justify-center">
+                      <Image
+                        src={val}
+                        alt=""
+                        width={176}
+                        height={176}
+                        unoptimized
+                        className="mx-auto h-40 w-40 rounded-lg border border-default-200 object-cover dark:border-white/10"
+                      />
+                    </div>
                   ) : key === "github" && isHttpUrl(val) ? (
                     <div className="flex min-h-32 items-center justify-center">
                       <a

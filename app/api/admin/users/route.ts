@@ -7,9 +7,14 @@ import { requireInMemorySuperRoot } from "@/lib/utils/authz";
 import { mapDbUserToAdminManagedUserRow } from "@/lib/utils/map-db-user-to-admin-row";
 import type { AdminManagedUserRow, ApiResponse, PaginatedResponseData } from "@/types/blog";
 
+function applyRootRoleSemantic(row: AdminManagedUserRow, rootUserId: number): AdminManagedUserRow {
+  if (row.id !== rootUserId) return row;
+  return { ...row, role: "super_admin" };
+}
+
 /**
  * GET /api/admin/users?page=&limit=&q=
- * 分页列出数据库注册用户（不含内存超级管理员）。仅内存超级管理员可调用。
+ * 分页列出数据库注册用户（不含超级管理员）。仅超级管理员可调用。
  */
 export async function GET(request: NextRequest) {
   const gate = requireInMemorySuperRoot(request);
@@ -60,7 +65,10 @@ export async function GET(request: NextRequest) {
       .limit(limit)
       .offset(offset);
 
-    const data: AdminManagedUserRow[] = rows.map((r) => mapDbUserToAdminManagedUserRow(r));
+    const rootUserId = gate.user.userId;
+    const data: AdminManagedUserRow[] = rows.map((r) =>
+      applyRootRoleSemantic(mapDbUserToAdminManagedUserRow(r), rootUserId)
+    );
 
     const totalPages = Math.max(1, Math.ceil(total / limit));
     const payload: PaginatedResponseData<AdminManagedUserRow> = {

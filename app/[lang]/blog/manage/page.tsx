@@ -27,7 +27,6 @@ import {
 } from "lucide-react";
 
 import { BlogNavigation } from "@/components/blog/blog-navigation";
-import { RESERVED_SUPER_ADMIN_USER_ID } from "@/lib/config/super-admin";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { message } from "@/lib/utils";
 import { isInMemorySuperRootClientUser } from "@/lib/utils/authz";
@@ -40,24 +39,12 @@ function isPostOwner(post: PostData, userId: number | undefined): boolean {
   return userId != null && post.authorId === userId;
 }
 
-/** 作者展示名优先级：displayName > username > 用户#ID（超级管理员按专属回退） */
-function resolveAuthorName(
-  post: PostData,
-  unknownText: string,
-  currentUser?: User | null,
-  superAdminText = "超级管理员"
-): string {
+/** 作者展示名优先级：displayName > username > 用户#ID */
+function resolveAuthorName(post: PostData, unknownText: string): string {
   const displayName = post.author?.displayName?.trim();
   if (displayName) return displayName;
   const username = post.author?.username?.trim();
   if (username) return username;
-  if (post.authorId === RESERVED_SUPER_ADMIN_USER_ID) {
-    const currentDisplayName = currentUser?.displayName?.trim();
-    if (currentDisplayName) return currentDisplayName;
-    const currentUsername = currentUser?.username?.trim();
-    if (currentUsername) return currentUsername;
-    return superAdminText;
-  }
   return `${unknownText} #${post.authorId}`;
 }
 
@@ -248,6 +235,8 @@ export default function BlogManagePage() {
   const fetchPosts = useCallback(async () => {
     // 注意：超级管理员可能使用 id=0，不能用 !user?.id 判断，否则会误判为未登录并导致列表一直 loading
     if (user?.id == null) return;
+    // 读取 applyVersion：用户重复点击「应用/重置」且已应用条件与当前一致时，React 可能跳过 applied* 更新，仍需重新请求列表
+    void applyVersion;
     try {
       setLoading(true);
       const params = new URLSearchParams({
@@ -684,7 +673,7 @@ export default function BlogManagePage() {
               {posts.map((post) => {
                 const canManage = isSuperAdmin || isPostOwner(post, user?.id);
                 const viewHref = `/${lang}/blog/${post.slug}`;
-                const authorName = resolveAuthorName(post, t.unknown, user, t.superAdmin);
+                const authorName = resolveAuthorName(post, t.unknown);
                 const authorAvatar = resolveAuthorAvatar(post);
                 return (
                   <Card

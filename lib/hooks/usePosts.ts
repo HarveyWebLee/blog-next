@@ -212,6 +212,41 @@ export function usePosts(options: UsePostsOptions = {}) {
     }
   }, []);
 
+  // 切换点赞状态（按用户维度）
+  const toggleLike = useCallback(async (id: number): Promise<{ liked: boolean; likeCount: number } | null> => {
+    try {
+      const result = await PostsAPI.toggleLike(id);
+      setPosts((prevPosts) =>
+        prevPosts.map((post) =>
+          post.id === id ? { ...post, likeCount: result.likeCount, isLiked: result.liked } : post
+        )
+      );
+      return result;
+    } catch (err) {
+      console.error("切换点赞状态失败:", err);
+      return null;
+    }
+  }, []);
+
+  // 切换收藏状态（按用户维度）
+  const toggleFavorite = useCallback(
+    async (id: number): Promise<{ favorited: boolean; favoriteCount: number } | null> => {
+      try {
+        const result = await PostsAPI.toggleFavorite(id);
+        setPosts((prevPosts) =>
+          prevPosts.map((post) =>
+            post.id === id ? { ...post, isFavorited: result.favorited, favoriteCount: result.favoriteCount } : post
+          )
+        );
+        return result;
+      } catch (err) {
+        console.error("切换收藏状态失败:", err);
+        return null;
+      }
+    },
+    []
+  );
+
   // 搜索和筛选
   const searchPosts = useCallback(
     (searchTerm: string) => {
@@ -314,6 +349,8 @@ export function usePosts(options: UsePostsOptions = {}) {
     updatePostStatus,
     incrementViewCount,
     incrementLikeCount,
+    toggleLike,
+    toggleFavorite,
 
     // 筛选和搜索
     searchPosts,

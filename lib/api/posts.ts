@@ -8,6 +8,12 @@ import { CreatePostRequest, PaginatedResponse, PostData, PostQueryParams, Update
 
 const API_BASE = "/api/posts";
 
+export type PostEngagementState = {
+  postId: number;
+  liked: boolean;
+  favorited: boolean;
+};
+
 /**
  * 文章API客户端类
  */
@@ -174,6 +180,59 @@ export class PostsAPI {
     }
 
     return true;
+  }
+
+  /**
+   * 批量获取当前用户对文章的点赞/收藏状态
+   */
+  static async getEngagementStates(ids: number[]): Promise<PostEngagementState[]> {
+    if (!ids.length) return [];
+    const uniq = Array.from(new Set(ids.map((n) => Math.floor(n)).filter((n) => Number.isFinite(n) && n > 0)));
+    if (!uniq.length) return [];
+    const response = await fetch(`${API_BASE}/engagement?ids=${uniq.join(",")}`, {
+      headers: {
+        ...clientBearerHeaders(),
+      },
+    });
+    if (!response.ok) {
+      throw new Error(`获取互动状态失败: ${response.statusText}`);
+    }
+    const json = await response.json();
+    return (json?.data || []) as PostEngagementState[];
+  }
+
+  /**
+   * 切换文章点赞状态（已点赞则取消）
+   */
+  static async toggleLike(id: number): Promise<{ liked: boolean; likeCount: number }> {
+    const response = await fetch(`${API_BASE}/${id}/like`, {
+      method: "POST",
+      headers: {
+        ...clientBearerHeaders(),
+      },
+    });
+    if (!response.ok) {
+      throw new Error(`点赞操作失败: ${response.statusText}`);
+    }
+    const json = await response.json();
+    return (json?.data || { liked: false, likeCount: 0 }) as { liked: boolean; likeCount: number };
+  }
+
+  /**
+   * 切换文章收藏状态（已收藏则取消）
+   */
+  static async toggleFavorite(id: number): Promise<{ favorited: boolean; favoriteCount: number }> {
+    const response = await fetch(`${API_BASE}/${id}/favorite`, {
+      method: "POST",
+      headers: {
+        ...clientBearerHeaders(),
+      },
+    });
+    if (!response.ok) {
+      throw new Error(`收藏操作失败: ${response.statusText}`);
+    }
+    const json = await response.json();
+    return (json?.data || { favorited: false, favoriteCount: 0 }) as { favorited: boolean; favoriteCount: number };
   }
 }
 

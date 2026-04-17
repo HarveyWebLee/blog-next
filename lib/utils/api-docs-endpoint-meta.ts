@@ -6,7 +6,7 @@
 /** 分组副标题（与 app/api 下目录名对应） */
 export const API_DOCS_GROUP_DESCRIPTIONS: Record<string, string> = {
   auth: "用户认证、验证码、令牌刷新与密码找回",
-  admin: "后台用户管理（需数据库管理员或更高权限，见各接口）",
+  admin: "超级管理员专用：数据库用户列表与单用户详情/部分更新（非站点 admin 角色；见各接口）",
   profile: "当前登录用户个人资料、统计、动态、收藏与通知",
   posts: "文章 CRUD、按 slug 查询、浏览量",
   categories: "分类 CRUD",
@@ -18,7 +18,7 @@ export const API_DOCS_GROUP_DESCRIPTIONS: Record<string, string> = {
   about: "关于页站长信息",
   music: "音乐相关第三方代理数据",
   users: "用户列表/创建（示例或过渡接口，以代码为准）",
-  "api-docs": "文档元数据（仅内存超级管理员）",
+  "api-docs": "文档元数据（仅超级管理员）",
   seed: "种子/演示数据（生产慎用）",
   "test-db": "数据库连通性自检",
   "test-env": "环境变量自检",
@@ -28,10 +28,10 @@ export const API_DOCS_GROUP_DESCRIPTIONS: Record<string, string> = {
 /** 端点简述：method -> 中文一句 */
 export const API_DOCS_ENDPOINT_DESCRIPTIONS: Record<string, Partial<Record<string, string>>> = {
   "/api/api-docs": {
-    GET: "获取扫描后的全站 API 分组与端点元数据（需内存超级管理员 JWT）",
+    GET: "获取扫描后的全站 API 分组与端点元数据（需超级管理员 JWT）",
   },
   "/api/auth/login": {
-    POST: "用户登录（含内存超级管理员应急通道），返回 access / refresh token",
+    POST: "用户登录（含超级管理员应急通道），返回 access / refresh token",
   },
   "/api/auth/register": {
     POST: "用户注册（通常需先收邮箱验证码）",
@@ -65,7 +65,8 @@ export const API_DOCS_ENDPOINT_DESCRIPTIONS: Record<string, Partial<Record<strin
     GET: "个人数据统计（Bearer）",
   },
   "/api/profile/activities": {
-    GET: "个人动态时间线（Bearer）",
+    GET: "个人活动日志分页列表（Bearer）",
+    POST: "记录一条用户活动（Bearer）",
   },
   "/api/profile/favorites": {
     GET: "收藏列表（Bearer）",
@@ -78,13 +79,11 @@ export const API_DOCS_ENDPOINT_DESCRIPTIONS: Record<string, Partial<Record<strin
     DELETE: "删除通知（Bearer）",
   },
   "/api/admin/users": {
-    GET: "管理员：用户列表",
-    POST: "管理员：创建用户",
+    GET: "超级管理员：分页用户列表",
   },
   "/api/admin/users/{id}": {
-    GET: "管理员：用户详情",
-    PUT: "管理员：更新用户",
-    DELETE: "管理员：删除用户",
+    GET: "超级管理员：用户详情（含 user_profiles 摘要）",
+    PATCH: "超级管理员：更新角色与账号状态等（不可修改当前登录根账户本人）",
   },
   "/api/posts": {
     GET: "文章列表（公开/管理筛选由查询参数决定）",
@@ -98,6 +97,17 @@ export const API_DOCS_ENDPOINT_DESCRIPTIONS: Record<string, Partial<Record<strin
   },
   "/api/posts/{id}/view": {
     POST: "记录一次浏览",
+  },
+  "/api/posts/{id}/favorite": {
+    GET: "是否已收藏该文（匿名返回未收藏）",
+    POST: "切换收藏（需 Bearer）",
+  },
+  "/api/posts/{id}/like": {
+    GET: "当前用户是否已赞与点赞总数（匿名仅返回总数）",
+    POST: "切换点赞（需 Bearer）",
+  },
+  "/api/posts/engagement": {
+    GET: "批量查询多篇文章的点赞/收藏状态（Query: ids）；登录用户返回真实状态",
   },
   "/api/posts/slug/{slug}": {
     GET: "按 slug 获取已发布文章",
@@ -130,11 +140,11 @@ export const API_DOCS_ENDPOINT_DESCRIPTIONS: Record<string, Partial<Record<strin
     DELETE: "删除通知",
   },
   "/api/about/owner": {
-    GET: "关于页展示的站长/站点信息",
-    PUT: "更新站长信息（通常需管理员）",
+    GET: "关于页展示的站长公开信息（无写接口；更新走管理流程或服务层）",
   },
   "/api/uploads/image": {
-    POST: "上传图片（multipart，鉴权以路由为准）",
+    POST: "上传图片（multipart：file、scope、previousKey）",
+    DELETE: "按对象键删除本人命名空间下的已上传对象（JSON: key）",
   },
   "/api/music/netease/free-tracks": {
     GET: "网易云免费曲目代理数据",
@@ -165,7 +175,7 @@ export const API_DOCS_ENDPOINT_DESCRIPTIONS: Record<string, Partial<Record<strin
 /** 鉴权与调用注意（展示在文档卡片上） */
 export const API_DOCS_AUTH_HINTS: Record<string, Partial<Record<string, string>>> = {
   "/api/api-docs": {
-    GET: "必须：Authorization: Bearer + 内存超级管理员 accessToken（JWT：userId=0、role=super_admin、isRoot=true）。",
+    GET: "必须：Authorization: Bearer + 超级管理员 accessToken（JWT：role=super_admin、isRoot=true）。",
   },
   "/api/auth/login": {
     POST: "无需 Bearer。Body：{ username, password }。",
@@ -203,6 +213,7 @@ export const API_DOCS_AUTH_HINTS: Record<string, Partial<Record<string, string>>
   },
   "/api/profile/activities": {
     GET: "必须：Authorization: Bearer",
+    POST: "必须：Authorization: Bearer",
   },
   "/api/profile/favorites": {
     GET: "必须：Authorization: Bearer",
@@ -215,13 +226,12 @@ export const API_DOCS_AUTH_HINTS: Record<string, Partial<Record<string, string>>
     DELETE: "必须：Authorization: Bearer",
   },
   "/api/admin/users": {
-    GET: "必须：Authorization: Bearer（站点管理员）",
-    POST: "必须：Authorization: Bearer（站点管理员）",
+    GET: "必须：Authorization: Bearer + 超级管理员 accessToken（requireInMemorySuperRoot）。",
   },
   "/api/admin/users/{id}": {
-    GET: "必须：Authorization: Bearer（站点管理员）",
-    PUT: "必须：Authorization: Bearer（站点管理员）",
-    DELETE: "必须：Authorization: Bearer（站点管理员）",
+    GET: "必须：Authorization: Bearer + 超级管理员 accessToken。",
+    PATCH:
+      "必须：Authorization: Bearer + 超级管理员 accessToken。路径 id 为当前登录根账户 userId 时 **403**（不可改本人角色/状态）。",
   },
   "/api/posts": {
     GET: "公开列表通常无需 Bearer；管理筛选见代码。",
@@ -235,6 +245,17 @@ export const API_DOCS_AUTH_HINTS: Record<string, Partial<Record<string, string>>
   },
   "/api/posts/{id}/view": {
     POST: "通常无需 Bearer（匿名计数）。",
+  },
+  "/api/posts/{id}/favorite": {
+    GET: "无需 Bearer 可查未收藏；已登录返回真实状态。",
+    POST: "必须：Authorization: Bearer。",
+  },
+  "/api/posts/{id}/like": {
+    GET: "无需 Bearer 可返回总数；登录时返回是否已赞。",
+    POST: "必须：Authorization: Bearer。",
+  },
+  "/api/posts/engagement": {
+    GET: "Query: ids。未登录：匿名占位；已登录：真实状态。",
   },
   "/api/posts/slug/{slug}": {
     GET: "无需 Bearer（公开已发布）。",
@@ -267,11 +288,11 @@ export const API_DOCS_AUTH_HINTS: Record<string, Partial<Record<string, string>>
     DELETE: "以路由为准。",
   },
   "/api/about/owner": {
-    GET: "通常无需 Bearer。",
-    PUT: "须管理员（Bearer）。",
+    GET: "公开，无需 Bearer。",
   },
   "/api/uploads/image": {
-    POST: "须登录或路由约定（Bearer），以代码为准。",
+    POST: "必须：Authorization: Bearer；multipart 上传。",
+    DELETE: "必须：Authorization: Bearer；Body JSON 含 key，且仅能删除本人命名空间对象。",
   },
   "/api/music/netease/free-tracks": {
     GET: "通常公开。",

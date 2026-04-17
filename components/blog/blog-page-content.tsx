@@ -24,6 +24,7 @@ import {
 import { BlogPagination } from "@/components/blog/blog-pagination";
 import { BlogSidebar } from "@/components/blog/blog-sidebar";
 import { PostCard } from "@/components/blog/post-card";
+import PostsAPI from "@/lib/api/posts";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { useCategories } from "@/lib/hooks/useCategories";
 import { usePosts } from "@/lib/hooks/usePosts";
@@ -112,6 +113,10 @@ export function BlogPageContent({ lang, initialCategoryId, initialTagId }: BlogP
     initialCategoryId != null && Number.isFinite(initialCategoryId) ? String(Math.floor(initialCategoryId)) : "all"
   );
   const [sortBy, setSortBy] = useState("publishedAt");
+  const [likedPostIds, setLikedPostIds] = useState<Set<number>>(new Set());
+  const [favoritedPostIds, setFavoritedPostIds] = useState<Set<number>>(new Set());
+  const [likeLoadingPostIds, setLikeLoadingPostIds] = useState<Set<number>>(new Set());
+  const [favoriteLoadingPostIds, setFavoriteLoadingPostIds] = useState<Set<number>>(new Set());
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
 
   const {
@@ -127,7 +132,8 @@ export function BlogPageContent({ lang, initialCategoryId, initialTagId }: BlogP
     sortPosts,
     goToPage,
     incrementViewCount,
-    incrementLikeCount,
+    toggleLike,
+    toggleFavorite,
   } = usePosts({
     initialParams: {
       status: "published",
@@ -269,8 +275,75 @@ export function BlogPageContent({ lang, initialCategoryId, initialTagId }: BlogP
   };
 
   const handleLikePost = async (post: PostData) => {
-    await incrementLikeCount(post.id);
+    if (!isAuthenticated) {
+      router.push(`/${lang}/auth/login`);
+      return;
+    }
+    setLikeLoadingPostIds((prev) => new Set(prev).add(post.id));
+    try {
+      const result = await toggleLike(post.id);
+      if (!result) return;
+      setLikedPostIds((prev) => {
+        const next = new Set(prev);
+        if (result.liked) next.add(post.id);
+        else next.delete(post.id);
+        return next;
+      });
+    } finally {
+      setLikeLoadingPostIds((prev) => {
+        const next = new Set(prev);
+        next.delete(post.id);
+        return next;
+      });
+    }
   };
+
+  const handleFavoritePost = async (post: PostData) => {
+    if (!isAuthenticated) {
+      router.push(`/${lang}/auth/login`);
+      return;
+    }
+    setFavoriteLoadingPostIds((prev) => new Set(prev).add(post.id));
+    try {
+      const result = await toggleFavorite(post.id);
+      if (!result) return;
+      setFavoritedPostIds((prev) => {
+        const next = new Set(prev);
+        if (result.favorited) next.add(post.id);
+        else next.delete(post.id);
+        return next;
+      });
+    } finally {
+      setFavoriteLoadingPostIds((prev) => {
+        const next = new Set(prev);
+        next.delete(post.id);
+        return next;
+      });
+    }
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      if (!posts.length) {
+        setLikedPostIds(new Set());
+        setFavoritedPostIds(new Set());
+        return;
+      }
+      try {
+        const states = await PostsAPI.getEngagementStates(posts.map((p) => p.id));
+        if (cancelled) return;
+        setLikedPostIds(new Set(states.filter((x) => x.liked).map((x) => x.postId)));
+        setFavoritedPostIds(new Set(states.filter((x) => x.favorited).map((x) => x.postId)));
+      } catch (e) {
+        console.error("加载互动状态失败:", e);
+      }
+    };
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [posts, isAuthenticated]);
 
   if (error) {
     return (
@@ -503,7 +576,12 @@ export function BlogPageContent({ lang, initialCategoryId, initialTagId }: BlogP
                       post={post}
                       lang={lang}
                       onView={() => handleViewPost(post)}
-                      onLike={() => handleLikePost(post)}
+                      isLiked={likedPostIds.has(post.id)}
+                      isFavorited={favoritedPostIds.has(post.id)}
+                      likeLoading={likeLoadingPostIds.has(post.id)}
+                      favoriteLoading={favoriteLoadingPostIds.has(post.id)}
+                      onToggleLike={() => handleLikePost(post)}
+                      onToggleFavorite={() => handleFavoritePost(post)}
                     />
                   </div>
                 ))}

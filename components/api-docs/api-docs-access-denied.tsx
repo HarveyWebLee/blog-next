@@ -6,7 +6,7 @@ import { Card, CardBody } from "@heroui/card";
 import { ShieldOff } from "lucide-react";
 
 /**
- * 非内存超级管理员访问 API 文档页时的说明（数据接口另有 401/403）。
+ * 非超级管理员访问 API 文档页时的说明（数据接口另有 401/403）。
  */
 export function ApiDocsAccessDenied({ lang }: { lang: string }) {
   const prefix = `/${lang}`;

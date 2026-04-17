@@ -277,7 +277,7 @@ export const userProfiles = mysqlTable(
   {
     id: int("id").primaryKey().autoincrement(),
     userId: int("user_id").notNull(), // 关联用户ID
-    /** 仅内存超级管理员（user_id=0）使用；普通用户邮箱以 users.email 为准 */
+    /** 仅超级管理员使用；普通用户邮箱以 users.email 为准 */
     email: varchar("email", { length: 100 }),
     firstName: varchar("first_name", { length: 50 }), // 名字
     lastName: varchar("last_name", { length: 50 }), // 姓氏
@@ -367,6 +367,26 @@ export const userFavorites = mysqlTable(
 );
 
 /**
+ * 用户点赞表
+ * 存储用户对文章的点赞关系（单用户对同一文章仅允许一条记录）
+ */
+export const userPostLikes = mysqlTable(
+  "user_post_likes",
+  {
+    userId: int("user_id").notNull(), // 点赞用户ID
+    postId: int("post_id").notNull(), // 文章ID
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("user_like_user_idx").on(table.userId),
+    index("user_like_post_idx").on(table.postId),
+    index("user_like_created_idx").on(table.createdAt),
+    // 复合主键语义的唯一约束，防止重复点赞；这里沿用复合主键实现去重语义
+    primaryKey({ columns: [table.userId, table.postId] }),
+  ]
+);
+
+/**
  * 用户关注表
  * 存储用户关注关系
  */
@@ -426,6 +446,7 @@ export const schema = {
   userPreferences,
   userActivities,
   userFavorites,
+  userPostLikes,
   userFollows,
   userNotifications,
 };

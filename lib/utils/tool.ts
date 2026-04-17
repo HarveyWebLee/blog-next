@@ -72,6 +72,26 @@ export function calculateReadTime(content: string, wordsPerMinute: number = 200)
 }
 
 /**
+ * 将数据库驱动可能返回的整型（含 bigint、数字字符串）规范为可 JSON 序列化的 number。
+ * mysql2 对部分聚合/整型在特定配置下会返回 bigint，直接放入 NextResponse.json 会触发
+ * 「Do not know how to serialize a BigInt」。
+ */
+export function toJsonSafeInt(value: unknown, fallback = 0): number {
+  if (typeof value === "bigint") {
+    const n = Number(value);
+    return Number.isSafeInteger(n) ? n : fallback;
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.trunc(value);
+  }
+  if (typeof value === "string" && value.trim() !== "") {
+    const n = Number(value);
+    if (Number.isFinite(n)) return Math.trunc(n);
+  }
+  return fallback;
+}
+
+/**
  * 创建成功响应
  */
 export function createSuccessResponse<T>(data: T, message?: string) {

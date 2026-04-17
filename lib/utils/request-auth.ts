@@ -7,7 +7,7 @@ export type AuthJwtPayload = {
   userId: number;
   username: string;
   role: string;
-  /** 内存态超级管理员等 */
+  /** 超级管理员 root 会话标记 */
   isRoot?: boolean;
 };
 
@@ -20,9 +20,25 @@ export function getAuthUserFromRequest(request: NextRequest): AuthJwtPayload | n
   const token = header.slice(7).trim();
   if (!token) return null;
   try {
-    const decoded = verifyToken(token) as AuthJwtPayload;
-    if (decoded == null || typeof decoded.userId !== "number") return null;
-    return decoded;
+    const decoded = verifyToken(token) as Omit<AuthJwtPayload, "userId"> & { userId?: unknown };
+    if (decoded == null) return null;
+
+    // 兼容历史 JWT 将 userId 存成数字字符串的情况
+    let userId: number;
+    if (typeof decoded.userId === "number" && Number.isFinite(decoded.userId)) {
+      userId = Math.trunc(decoded.userId);
+    } else if (typeof decoded.userId === "string" && decoded.userId.trim() !== "") {
+      const parsed = Number.parseInt(decoded.userId, 10);
+      if (!Number.isFinite(parsed)) return null;
+      userId = parsed;
+    } else {
+      return null;
+    }
+
+    // 项目已切换为“真实 DB 用户”模型，userId 必须为正整数
+    if (!Number.isInteger(userId) || userId <= 0) return null;
+
+    return { ...decoded, userId };
   } catch {
     return null;
   }

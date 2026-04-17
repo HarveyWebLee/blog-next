@@ -37,6 +37,15 @@ function buildSocialLinksPayload(form: {
   };
 }
 
+/** 兼容历史 social_links 键名（wechat_qr / wechat 等） */
+function readSocialString(sl: Record<string, unknown>, keys: string[]): string {
+  for (const key of keys) {
+    const val = sl[key];
+    if (typeof val === "string" && val.trim()) return val.trim();
+  }
+  return "";
+}
+
 export default function ProfileSettings({ lang }: ProfileSettingsProps) {
   const t =
     lang === "en-US"
@@ -369,10 +378,10 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
       profileVisibility: String(p.profileVisibility ?? "public"),
       emailVisibility: String(p.emailVisibility ?? "private"),
       activityVisibility: String(p.activityVisibility ?? "public"),
-      github: typeof sl.github === "string" ? sl.github : "",
-      wechatQr: typeof sl.wechatQr === "string" ? sl.wechatQr : "",
-      douyin: typeof sl.douyin === "string" ? sl.douyin : "",
-      bilibili: typeof sl.bilibili === "string" ? sl.bilibili : "",
+      github: readSocialString(sl, ["github"]),
+      wechatQr: readSocialString(sl, ["wechatQr", "wechat_qr", "wechatQR", "wechat"]),
+      douyin: readSocialString(sl, ["douyin"]),
+      bilibili: readSocialString(sl, ["bilibili"]),
     });
   }, []);
 
@@ -510,9 +519,16 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
       if (refreshed.success && refreshed.data) {
         setProfile(refreshed.data);
         applyProfileToForm(refreshed.data);
+        const sl = asRecord(refreshed.data.socialLinks);
+        const avatarFromSocial = typeof sl.avatar === "string" ? sl.avatar.trim() : "";
+        const nextAvatar =
+          (typeof refreshed.data.avatar === "string" && refreshed.data.avatar.trim()) ||
+          (body.avatar && body.avatar.trim()) ||
+          avatarFromSocial ||
+          undefined;
         patchUser({
           email: refreshed.data.email ?? body.email ?? undefined,
-          avatar: refreshed.data.avatar ?? body.avatar ?? undefined,
+          avatar: nextAvatar,
         });
       }
     } catch (error) {

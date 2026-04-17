@@ -25,3 +25,5 @@ alwaysApply: true
 ## 与文档的绑定
 
 任何**非琐碎**的功能、配置或排错结论，须按 **`.cursor/rules/AI协作与文档沉淀.mdc`** 写入 `docs/` 并维护索引。
+
+**接口与数据库表**：新增或变更 **`app/api`**、**`lib/db/schema.ts`** 时，须按 **`.cursor/rules/接口与数据库文档同步.mdc`** 同步 **`api-docs` 元数据**与 **`docs/接口文档.md`**、**`docs/数据库表记录文档.md`** 等（详见该规则）。

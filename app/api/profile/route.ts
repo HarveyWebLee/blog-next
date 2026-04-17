@@ -10,13 +10,51 @@
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 
-import { mergeSuperAdminProfileFromRow } from "@/lib/config/super-admin";
 import { db } from "@/lib/db/config";
 import { userProfiles, users } from "@/lib/db/schema";
 import { resolveProfileEmailUpdateOrError, verifyProfileEmailCodeOrError } from "@/lib/services/profile-email.service";
-import { isJwtInMemorySuperRoot } from "@/lib/utils/authz";
 import { requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, UpdateProfileRequest, UserProfile } from "@/types/blog";
+
+function asObjectRecord(v: unknown): Record<string, unknown> {
+  if (v && typeof v === "object" && !Array.isArray(v)) return v as Record<string, unknown>;
+  return {};
+}
+
+function normalizeProfileSocialLinks(raw: unknown): Record<string, string> {
+  const obj = asObjectRecord(raw);
+  const normalized: Record<string, string> = {};
+  const pickString = (...keys: string[]) => {
+    for (const key of keys) {
+      const val = obj[key];
+      if (typeof val === "string" && val.trim()) return val.trim();
+    }
+    return "";
+  };
+
+  const github = pickString("github");
+  const wechatQr = pickString("wechatQr", "wechat_qr", "wechatQR", "wechat");
+  const douyin = pickString("douyin");
+  const bilibili = pickString("bilibili");
+  const avatar = pickString("avatar");
+
+  if (github) normalized.github = github;
+  if (wechatQr) normalized.wechatQr = wechatQr;
+  if (douyin) normalized.douyin = douyin;
+  if (bilibili) normalized.bilibili = bilibili;
+  if (avatar) normalized.avatar = avatar;
+
+  return normalized;
+}
+
+function parseJsonRecord(raw: string | null): Record<string, unknown> {
+  if (!raw) return {};
+  try {
+    return asObjectRecord(JSON.parse(raw));
+  } catch {
+    return {};
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -33,18 +71,6 @@ export async function GET(request: NextRequest) {
       );
     }
     const decoded = auth.user;
-
-    // 内存超级管理员：users 表无 id=0；个人资料落在 user_profiles.user_id = 0
-    if (isJwtInMemorySuperRoot(decoded)) {
-      const profile = await db.select().from(userProfiles).where(eq(userProfiles.userId, decoded.userId)).limit(1);
-      const data = mergeSuperAdminProfileFromRow(profile[0], decoded.username);
-      return NextResponse.json<ApiResponse<UserProfile>>({
-        success: true,
-        data,
-        message: "个人资料获取成功",
-        timestamp: new Date().toISOString(),
-      });
-    }
 
     // 获取用户基本信息
     const user = await db.select().from(users).where(eq(users.id, decoded.userId)).limit(1);
@@ -65,6 +91,10 @@ export async function GET(request: NextRequest) {
 
     const userData = user[0];
     const profileData = profile[0];
+    const socialLinks = normalizeProfileSocialLinks(parseJsonRecord(profileData?.socialLinks ?? null));
+
+    const avatarFromUser =
+      typeof userData.avatar === "string" && userData.avatar.trim() !== "" ? userData.avatar.trim() : undefined;
 
     return NextResponse.json<ApiResponse<UserProfile>>({
       success: true,
@@ -72,7 +102,7 @@ export async function GET(request: NextRequest) {
         id: profileData?.id || 0,
         userId: userData.id,
         email: userData.email,
-        avatar: userData.avatar ?? undefined,
+        avatar: avatarFromUser,
         firstName: profileData?.firstName ?? undefined,
         lastName: profileData?.lastName ?? undefined,
         phone: profileData?.phone ?? undefined,
@@ -80,7 +110,7 @@ export async function GET(request: NextRequest) {
         location: profileData?.location ?? undefined,
         notifications: profileData?.notifications ? JSON.parse(profileData.notifications) : {},
         privacy: profileData?.privacy ? JSON.parse(profileData.privacy) : {},
-        socialLinks: profileData?.socialLinks ? JSON.parse(profileData.socialLinks) : {},
+        socialLinks,
         createdAt: profileData?.createdAt || new Date(),
         updatedAt: profileData?.updatedAt || new Date(),
       },
@@ -134,15 +164,9 @@ export async function POST(request: NextRequest) {
 
     // 若本次要改邮箱，需先通过 change_email 验证码校验
     if (emailNormalized !== undefined) {
-      const currentEmail = isJwtInMemorySuperRoot(decoded)
-        ? (
-            await db
-              .select({ email: userProfiles.email })
-              .from(userProfiles)
-              .where(eq(userProfiles.userId, decoded.userId))
-              .limit(1)
-          )[0]?.email
-        : (await db.select({ email: users.email }).from(users).where(eq(users.id, decoded.userId)).limit(1))[0]?.email;
+      const currentEmail = (
+        await db.select({ email: users.email }).from(users).where(eq(users.id, decoded.userId)).limit(1)
+      )[0]?.email;
 
       const verification = await verifyProfileEmailCodeOrError({
         oldEmail: currentEmail ?? undefined,
@@ -161,7 +185,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 检查是否已存在个人资料（含超级管理员 user_id=0）
+    // 检查是否已存在个人资料
     const existingProfile = await db
       .select()
       .from(userProfiles)
@@ -179,15 +203,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const socialLinksRaw = body.socialLinks ? { ...body.socialLinks } : {};
-    const socialLinksWithAvatar =
-      isJwtInMemorySuperRoot(decoded) && avatarNormalized !== undefined
-        ? { ...socialLinksRaw, avatar: avatarNormalized }
-        : socialLinksRaw;
+    let socialLinksRaw = normalizeProfileSocialLinks(body.socialLinks);
+    // 与 users.avatar 对齐，避免 social_links 中残留旧默认图覆盖登录合并逻辑
+    if (avatarNormalized !== undefined) {
+      socialLinksRaw = { ...socialLinksRaw, avatar: avatarNormalized };
+    }
 
     const [insertResult] = await db.insert(userProfiles).values({
       userId: decoded.userId,
-      email: isJwtInMemorySuperRoot(decoded) && emailNormalized !== undefined ? emailNormalized : null,
+      email: emailNormalized ?? null,
       firstName: body.firstName,
       lastName: body.lastName,
       phone: body.phone,
@@ -195,13 +219,13 @@ export async function POST(request: NextRequest) {
       location: body.location,
       notifications: body.notifications ? JSON.stringify(body.notifications) : null,
       privacy: body.privacy ? JSON.stringify(body.privacy) : null,
-      socialLinks: Object.keys(socialLinksWithAvatar).length > 0 ? JSON.stringify(socialLinksWithAvatar) : null,
+      socialLinks: Object.keys(socialLinksRaw).length > 0 ? JSON.stringify(socialLinksRaw) : null,
     });
 
-    if (!isJwtInMemorySuperRoot(decoded) && emailNormalized !== undefined) {
+    if (emailNormalized !== undefined) {
       await db.update(users).set({ email: emailNormalized, updatedAt: new Date() }).where(eq(users.id, decoded.userId));
     }
-    if (!isJwtInMemorySuperRoot(decoded) && avatarNormalized !== undefined) {
+    if (avatarNormalized !== undefined) {
       await db
         .update(users)
         .set({ avatar: avatarNormalized, updatedAt: new Date() })
@@ -282,9 +306,9 @@ export async function PUT(request: NextRequest) {
 
     // 若本次要改邮箱，需先通过 change_email 验证码校验
     if (emailNormalized !== undefined) {
-      const currentEmail = isJwtInMemorySuperRoot(decoded)
-        ? existingProfile[0]?.email
-        : (await db.select({ email: users.email }).from(users).where(eq(users.id, decoded.userId)).limit(1))[0]?.email;
+      const currentEmail = (
+        await db.select({ email: users.email }).from(users).where(eq(users.id, decoded.userId)).limit(1)
+      )[0]?.email;
 
       const verification = await verifyProfileEmailCodeOrError({
         oldEmail: currentEmail ?? undefined,
@@ -303,23 +327,17 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    // 更新个人资料（超级管理员邮箱仅存 user_profiles.email）
+    // 更新个人资料
     const existingSocialLinks = existingProfile[0]?.socialLinks;
-    let mergedSocialLinks: Record<string, unknown> = {};
-    if (existingSocialLinks) {
-      try {
-        mergedSocialLinks = JSON.parse(existingSocialLinks) as Record<string, unknown>;
-      } catch {
-        mergedSocialLinks = {};
-      }
-    }
+    let mergedSocialLinks: Record<string, unknown> = normalizeProfileSocialLinks(
+      parseJsonRecord(existingSocialLinks ?? null)
+    );
     if (body.socialLinks) {
-      mergedSocialLinks = { ...mergedSocialLinks, ...body.socialLinks };
+      mergedSocialLinks = { ...mergedSocialLinks, ...normalizeProfileSocialLinks(body.socialLinks) };
     }
-    if (isJwtInMemorySuperRoot(decoded) && avatarNormalized !== undefined) {
-      mergedSocialLinks.avatar = avatarNormalized;
+    if (avatarNormalized !== undefined) {
+      mergedSocialLinks = { ...mergedSocialLinks, avatar: avatarNormalized };
     }
-
     await db
       .update(userProfiles)
       .set({
@@ -332,14 +350,14 @@ export async function PUT(request: NextRequest) {
         privacy: body.privacy ? JSON.stringify(body.privacy) : null,
         socialLinks: Object.keys(mergedSocialLinks).length > 0 ? JSON.stringify(mergedSocialLinks) : null,
         updatedAt: new Date(),
-        ...(isJwtInMemorySuperRoot(decoded) && emailNormalized !== undefined ? { email: emailNormalized } : {}),
+        ...(emailNormalized !== undefined ? { email: emailNormalized } : {}),
       })
       .where(eq(userProfiles.userId, decoded.userId));
 
-    if (!isJwtInMemorySuperRoot(decoded) && emailNormalized !== undefined) {
+    if (emailNormalized !== undefined) {
       await db.update(users).set({ email: emailNormalized, updatedAt: new Date() }).where(eq(users.id, decoded.userId));
     }
-    if (!isJwtInMemorySuperRoot(decoded) && avatarNormalized !== undefined) {
+    if (avatarNormalized !== undefined) {
       await db
         .update(users)
         .set({ avatar: avatarNormalized, updatedAt: new Date() })

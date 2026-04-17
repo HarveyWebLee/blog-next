@@ -102,7 +102,7 @@ export type AboutPageDictionary = AboutMusicCopy & {
 type Props = {
   lang: string;
   about: AboutPageDictionary;
-  /** 内存超级管理员个人资料（服务端注入）；无则仅用词典占位 */
+  /** 超级管理员个人资料（服务端注入）；无则仅用词典占位 */
   ownerPublic?: AboutOwnerPublic | null;
 };
 
@@ -115,7 +115,7 @@ export function AboutPageContent({ lang, about: a, ownerPublic }: Props) {
     setMounted(true);
   }, []);
 
-  // 接口优先：与 /api/profile、/api/about/owner 同源（user_profiles.user_id=0）
+  // 接口优先：与 /api/profile、/api/about/owner 同源（user_profiles.user_id=<super_admin_id>）
   const displayEmail = ownerPublic?.email ?? a.contactEmailValue;
   const displayGithubUrl = ownerPublic?.githubUrl ?? a.socialGithubUrl;
   const displayLocationBadge = ownerPublic?.location ?? a.badge1;

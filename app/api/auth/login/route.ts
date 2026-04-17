@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 
 import {
   getSuperAdminConfiguredUsername,
-  RESERVED_SUPER_ADMIN_USER_ID,
+  getSuperAdminProfileUserId,
   resolveSuperAdminLogin,
 } from "@/lib/config/super-admin";
 import { db } from "@/lib/db/config";
@@ -31,15 +31,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ① 内存态超级管理员（支持用户名登录；若绑定邮箱，也支持邮箱登录）
+    // ① 超级管理员（支持用户名登录；若绑定邮箱，也支持邮箱登录）
     let superAdminLoginName = username;
     if (username.includes("@")) {
-      const [superProfile] = await db
-        .select({ email: userProfiles.email })
-        .from(userProfiles)
-        .where(eq(userProfiles.userId, RESERVED_SUPER_ADMIN_USER_ID))
-        .limit(1);
-      const superEmail = superProfile?.email?.trim().toLowerCase() || "";
+      const superProfileUserId = await getSuperAdminProfileUserId();
+      const profileRows =
+        superProfileUserId == null
+          ? []
+          : await db
+              .select({ email: userProfiles.email })
+              .from(userProfiles)
+              .where(eq(userProfiles.userId, superProfileUserId))
+              .limit(1);
+      const superEmail = profileRows[0]?.email?.trim().toLowerCase() || "";
       if (superEmail && superEmail === username.toLowerCase()) {
         const configuredUsername = getSuperAdminConfiguredUsername();
         if (configuredUsername) {
@@ -82,12 +86,18 @@ export async function POST(request: NextRequest) {
           persistedAvatar = undefined;
         }
       }
+      // 头像：以 users 表为准（资料保存写入 users.avatar）；social_links 仅作历史兼容回退，避免旧默认图覆盖新头像
+      const dbAvatar = typeof superAdminResult.user.avatar === "string" ? superAdminResult.user.avatar.trim() : "";
+      const mergedAvatar = dbAvatar || persistedAvatar || undefined;
+      // 与普通用户分支一致：成功登录后写入最后登录时间，管理端用户列表才能展示
+      await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, superAdminResult.user.id));
+
       const response: LoginResponse = {
         user: {
           ...superAdminResult.user,
           ...(persistedEmail ? { email: persistedEmail } : {}),
           ...(persistedDisplayName ? { displayName: persistedDisplayName } : {}),
-          ...(persistedAvatar ? { avatar: persistedAvatar } : {}),
+          ...(mergedAvatar !== undefined ? { avatar: mergedAvatar } : {}),
         },
         token: superAdminResult.accessToken,
         refreshToken: superAdminResult.refreshToken,

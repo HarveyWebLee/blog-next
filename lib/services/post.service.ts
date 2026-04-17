@@ -6,7 +6,7 @@
 import { and, asc, count, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
-import { categories, comments, posts, postTags, tags, users } from "@/lib/db/schema";
+import { categories, comments, posts, postTags, tags, userFavorites, users } from "@/lib/db/schema";
 import { calculatePagination, generateSlug, truncateText } from "@/lib/utils";
 import { CreatePostRequest, PaginatedResponseData, PostData, PostQueryParams, UpdatePostRequest } from "@/types/blog";
 
@@ -43,6 +43,11 @@ function buildPostsListOrderBy(params: PostQueryParams) {
  * 封装所有与文章相关的业务操作
  */
 export class PostService {
+  private async getPostFavoriteCount(postId: number): Promise<number> {
+    const rows = await db.select({ count: count() }).from(userFavorites).where(eq(userFavorites.postId, postId));
+    return rows[0]?.count ?? 0;
+  }
+
   /**
    * 创建新文章
    * @param data 文章创建数据
@@ -122,15 +127,18 @@ export class PostService {
 
       // 如果包含关联数据，获取标签和评论
       if (includeRelations) {
-        const [tags, comments] = await Promise.all([
-          this.getPostTags(post.posts.id),
-          this.getPostComments(post.posts.id),
+        const postId = post.posts.id;
+        const [tags, comments, favoriteCount] = await Promise.all([
+          this.getPostTags(postId),
+          this.getPostComments(postId),
+          this.getPostFavoriteCount(postId),
         ]);
 
         return {
           ...post,
           tags: tags || [],
           comments: comments || [],
+          favoriteCount,
           author: post.users
             ? {
                 id: post.users.id,
@@ -163,7 +171,7 @@ export class PostService {
         } as any;
       }
 
-      return post as PostData;
+      return { ...(post as PostData), favoriteCount: await this.getPostFavoriteCount(id) } as PostData;
     } catch (error) {
       console.error("获取文章详情失败:", error);
       throw error;
@@ -196,7 +204,11 @@ export class PostService {
       if (includeRelations) {
         // 如果使用了leftJoin，post结构是{posts: {...}, users: {...}, categories: {...}}
         const postId = (post as any).posts?.id || post.id;
-        const [tags, comments] = await Promise.all([this.getPostTags(postId), this.getPostComments(postId)]);
+        const [tags, comments, favoriteCount] = await Promise.all([
+          this.getPostTags(postId),
+          this.getPostComments(postId),
+          this.getPostFavoriteCount(postId),
+        ]);
 
         // 将分类对象转换为数组格式
         const categoryData = (post as any).categories;
@@ -208,12 +220,14 @@ export class PostService {
           ...postData,
           tags,
           comments,
+          favoriteCount,
           author: (post as any).users,
           category: categoryData, // 保留：单对象格式的分类
         } as any as PostData;
       }
 
-      return ((post as any).posts || post) as any as PostData;
+      const postData = ((post as any).posts || post) as any as PostData;
+      return { ...postData, favoriteCount: await this.getPostFavoriteCount(postData.id) };
     } catch (error) {
       console.error("根据slug获取文章失败:", error);
       throw error;
@@ -305,12 +319,16 @@ export class PostService {
           allowComments: posts.allowComments,
           viewCount: posts.viewCount,
           likeCount: posts.likeCount,
+          favoriteCount: sql<number>`(
+            select count(*) from user_favorites uf where uf.post_id = ${posts.id}
+          )`,
           publishedAt: posts.publishedAt,
           createdAt: posts.createdAt,
           updatedAt: posts.updatedAt,
           // 关联数据
           authorName: users.displayName,
           authorUsername: users.username,
+          authorRole: users.role,
           authorAvatar: users.avatar,
           categoryName: categories.name,
         })
@@ -341,6 +359,7 @@ export class PostService {
         allowComments: row.allowComments,
         viewCount: row.viewCount,
         likeCount: row.likeCount,
+        favoriteCount: row.favoriteCount ?? 0,
         publishedAt: row.publishedAt,
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
@@ -348,6 +367,7 @@ export class PostService {
           id: row.authorId,
           username: row.authorUsername || "",
           displayName: row.authorName || "",
+          role: row.authorRole || "user",
           avatar: row.authorAvatar || undefined,
         } as any,
         category: row.categoryName

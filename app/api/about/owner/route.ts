@@ -5,7 +5,7 @@ import type { ApiResponse } from "@/types/blog";
 
 /**
  * GET /api/about/owner
- * 公开接口：返回关于页可用的站长联系信息（内存超级管理员 user_profiles.user_id=0）。
+ * 公开接口：返回关于页可用的站长联系信息（超级管理员 user_profiles.user_id=<super_admin_id>）。
  * 未启用超级管理员或未填写时 data 可能为 null 或字段为 null，前端应回退到词典默认值。
  */
 export async function GET() {
