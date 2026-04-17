@@ -2,9 +2,12 @@
  * 单个标签API路由
  * 提供单个标签的增删改查接口
  *
- * GET /api/tags/[id] - 获取单个标签
- * PUT /api/tags/[id] - 更新标签
- * DELETE /api/tags/[id] - 删除标签
+ * 鉴权要求：所有接口均需 Authorization: Bearer。
+ * 数据范围：仅允许访问与操作当前登录用户 ownerId 下的标签数据。
+ *
+ * GET /api/tags/[id] - 获取单个标签（返回标签信息与文章使用次数）
+ * PUT /api/tags/[id] - 更新标签（校验名称/slug 在 owner 范围内唯一）
+ * DELETE /api/tags/[id] - 删除标签（若存在关联文章则拒绝）
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -12,6 +15,7 @@ import { and, count, eq, ne } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { postTags, tags } from "@/lib/db/schema";
+import { requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, Tag, UpdateTagRequest } from "@/types/blog";
 
 /**
@@ -20,6 +24,17 @@ import { ApiResponse, Tag, UpdateTagRequest } from "@/types/blog";
  */
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const auth = requireAuthUser(request);
+    if (!auth.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: auth.reason === "missing" ? "请先登录后查看标签" : "登录状态无效，请重新登录",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 401 }
+      );
+    }
     const { id } = await params;
     const tagId = parseInt(id);
 
@@ -35,7 +50,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     // 查询标签
-    const [tag] = await db.select().from(tags).where(eq(tags.id, tagId)).limit(1);
+    const [tag] = await db
+      .select()
+      .from(tags)
+      .where(and(eq(tags.id, tagId), eq(tags.ownerId, auth.user.userId)))
+      .limit(1);
 
     if (!tag) {
       return NextResponse.json(
@@ -82,6 +101,17 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
  */
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const auth = requireAuthUser(request);
+    if (!auth.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: auth.reason === "missing" ? "请先登录后更新标签" : "登录状态无效，请重新登录",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 401 }
+      );
+    }
     const { id } = await params;
     const tagId = parseInt(id);
 
@@ -99,7 +129,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const body: UpdateTagRequest = await request.json();
 
     // 检查标签是否存在
-    const [existingTag] = await db.select().from(tags).where(eq(tags.id, tagId)).limit(1);
+    const [existingTag] = await db
+      .select()
+      .from(tags)
+      .where(and(eq(tags.id, tagId), eq(tags.ownerId, auth.user.userId)))
+      .limit(1);
 
     if (!existingTag) {
       return NextResponse.json(
@@ -117,7 +151,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       const [duplicateName] = await db
         .select()
         .from(tags)
-        .where(and(eq(tags.name, body.name), ne(tags.id, tagId)))
+        .where(and(eq(tags.name, body.name), ne(tags.id, tagId), eq(tags.ownerId, auth.user.userId)))
         .limit(1);
 
       if (duplicateName) {
@@ -137,7 +171,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       const [duplicateSlug] = await db
         .select()
         .from(tags)
-        .where(and(eq(tags.slug, body.slug), ne(tags.id, tagId)))
+        .where(and(eq(tags.slug, body.slug), ne(tags.id, tagId), eq(tags.ownerId, auth.user.userId)))
         .limit(1);
 
       if (duplicateSlug) {
@@ -163,10 +197,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         ...(body.isActive !== undefined && { isActive: body.isActive }),
         updatedAt: new Date(),
       })
-      .where(eq(tags.id, tagId));
+      .where(and(eq(tags.id, tagId), eq(tags.ownerId, auth.user.userId)));
 
     // 重新查询更新后的标签
-    const [updatedTag] = await db.select().from(tags).where(eq(tags.id, tagId)).limit(1);
+    const [updatedTag] = await db
+      .select()
+      .from(tags)
+      .where(and(eq(tags.id, tagId), eq(tags.ownerId, auth.user.userId)))
+      .limit(1);
 
     return NextResponse.json({
       success: true,
@@ -194,6 +232,17 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
  */
 export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
+    const auth = requireAuthUser(request);
+    if (!auth.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: auth.reason === "missing" ? "请先登录后删除标签" : "登录状态无效，请重新登录",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 401 }
+      );
+    }
     const { id } = await context.params;
     const tagId = parseInt(id);
 
@@ -209,7 +258,11 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
     }
 
     // 检查标签是否存在
-    const [existingTag] = await db.select().from(tags).where(eq(tags.id, tagId)).limit(1);
+    const [existingTag] = await db
+      .select()
+      .from(tags)
+      .where(and(eq(tags.id, tagId), eq(tags.ownerId, auth.user.userId)))
+      .limit(1);
 
     if (!existingTag) {
       return NextResponse.json(
@@ -237,7 +290,7 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
     }
 
     // 删除标签
-    await db.delete(tags).where(eq(tags.id, tagId));
+    await db.delete(tags).where(and(eq(tags.id, tagId), eq(tags.ownerId, auth.user.userId)));
 
     return NextResponse.json({
       success: true,

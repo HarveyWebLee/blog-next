@@ -3,9 +3,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { Avatar } from "@heroui/avatar";
 import { Button } from "@heroui/button";
-import { Avatar, Dropdown, DropdownItem, DropdownMenu, DropdownSection, DropdownTrigger } from "@heroui/react";
-import { FileIcon, FilesIcon, LogInIcon, LogOutIcon, SettingsIcon, UserCircleIcon } from "lucide-react";
+import { Dropdown, DropdownItem, DropdownMenu, DropdownSection, DropdownTrigger } from "@heroui/dropdown";
+import { FileIcon, FilesIcon, LibraryBig, LogInIcon, LogOutIcon, TagIcon, UserCircleIcon } from "lucide-react";
 
 import { useAuth } from "@/lib/contexts/auth-context";
 import { Locale } from "@/types";
@@ -32,8 +33,10 @@ export function UserNav() {
           manageDesc: "Manage your blogs",
           write: "Write Post",
           writeDesc: "Open editor",
-          settings: "Settings",
-          settingsDesc: "System settings",
+          categories: "Category Management",
+          categoriesDesc: "Manage categories",
+          tags: "Tag Management",
+          tagsDesc: "Manage tags",
           logout: "Logout",
           logoutDesc: "You cannot edit after logout",
           avatarError: "Avatar load failed, fallback applied",
@@ -48,8 +51,10 @@ export function UserNav() {
             manageDesc: "ブログを管理",
             write: "記事を書く",
             writeDesc: "エディターを開く",
-            settings: "設定",
-            settingsDesc: "システム設定",
+            categories: "カテゴリー管理",
+            categoriesDesc: "カテゴリーを管理",
+            tags: "タグ管理",
+            tagsDesc: "タグを管理",
             logout: "ログアウト",
             logoutDesc: "ログアウト後は編集できません",
             avatarError: "アバター読み込み失敗、代替画像を使用",
@@ -63,8 +68,10 @@ export function UserNav() {
             manageDesc: "管理已创建博客",
             write: "写文章",
             writeDesc: "文章编辑入口",
-            settings: "设置",
-            settingsDesc: "系统设置",
+            categories: "分类管理",
+            categoriesDesc: "管理分类",
+            tags: "标签管理",
+            tagsDesc: "管理标签",
             logout: "退出登录",
             logoutDesc: "退出登录后，将无法编辑文章和信息",
             avatarError: "头像加载失败，使用默认头像",
@@ -141,12 +148,20 @@ export function UserNav() {
             {t.write}
           </DropdownItem>
           <DropdownItem
-            key="settings"
-            description={t.settingsDesc}
-            startContent={<SettingsIcon width="1em" height="1em" className={iconClasses} />}
-            href={`/${lang}/profile/settings`}
+            key="categories"
+            description={t.categoriesDesc}
+            startContent={<LibraryBig width="1em" height="1em" className={iconClasses} />}
+            href={`/${lang}/categories/manage`}
           >
-            {t.settings}
+            {t.categories}
+          </DropdownItem>
+          <DropdownItem
+            key="tags"
+            description={t.tagsDesc}
+            startContent={<TagIcon width="1em" height="1em" className={iconClasses} />}
+            href={`/${lang}/tags/manage`}
+          >
+            {t.tags}
           </DropdownItem>
         </DropdownSection>
         <DropdownSection>

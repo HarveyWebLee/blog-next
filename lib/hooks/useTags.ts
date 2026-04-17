@@ -5,6 +5,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { clientBearerHeaders } from "@/lib/utils/client-bearer-auth";
 import {
   ApiResponse,
   CreateTagRequest,
@@ -100,7 +101,9 @@ export function useTags(options: UseTagsOptions = {}): UseTagsReturn {
           queryParams.set("isActive", currentIsActive.toString());
         }
 
-        const response = await fetch(`/api/tags?${queryParams.toString()}`);
+        const response = await fetch(`/api/tags?${queryParams.toString()}`, {
+          headers: { ...clientBearerHeaders() },
+        });
         const result: ApiResponse<PaginatedResponseData<Tag>> = await response.json();
 
         if (!response.ok || !result.success) {
@@ -133,6 +136,7 @@ export function useTags(options: UseTagsOptions = {}): UseTagsReturn {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            ...clientBearerHeaders(),
           },
           body: JSON.stringify(data),
         });
@@ -171,6 +175,7 @@ export function useTags(options: UseTagsOptions = {}): UseTagsReturn {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
+            ...clientBearerHeaders(),
           },
           body: JSON.stringify(data),
         });
@@ -207,6 +212,7 @@ export function useTags(options: UseTagsOptions = {}): UseTagsReturn {
       try {
         const response = await fetch(`/api/tags/${id}`, {
           method: "DELETE",
+          headers: { ...clientBearerHeaders() },
         });
 
         const result: ApiResponse<null> = await response.json();

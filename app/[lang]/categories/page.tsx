@@ -5,26 +5,46 @@
 
 "use client";
 
-import { MouseEvent, useEffect, useRef, useState } from "react";
+import { MouseEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Button, Card, CardBody, Chip, Divider, Input, Spinner } from "@heroui/react";
+import {
+  Button,
+  Card,
+  CardBody,
+  Chip,
+  Divider,
+  Input,
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  Spinner,
+  Switch,
+  Textarea,
+} from "@heroui/react";
 import {
   BookOpen,
   Calendar,
   ChevronRight,
+  Edit3,
   FileText,
   Filter,
   Folder,
   FolderOpen,
-  Hash,
+  Plus,
   Search,
+  Trash2,
   TrendingUp,
   Users,
 } from "lucide-react";
 
+import { useAuth } from "@/lib/contexts/auth-context";
 import { useCategories } from "@/lib/hooks/useCategories";
+import { generateRandomUrlAlias, message } from "@/lib/utils";
+import { clientBearerHeaders } from "@/lib/utils/client-bearer-auth";
 import { Locale } from "@/types";
-import { Category } from "@/types/blog";
+import { ApiResponse, Category } from "@/types/blog";
 import { shadowManager } from "./shadow-effects";
 // 导入样式
 import "./categories.scss";
@@ -38,9 +58,11 @@ const CATEGORY_PAGE_TEXT: Record<
     totalCategories: string;
     totalPosts: string;
     activeCategories: string;
+    inactiveCategories: string;
     includeAllLevels: string;
     allCategoryPosts: string;
     activeInUse: string;
+    currentlyDisabled: string;
     searchPlaceholder: string;
     onlyActive: string;
     loading: string;
@@ -54,6 +76,31 @@ const CATEGORY_PAGE_TEXT: Record<
     metaInactive: string;
     statPosts: string;
     statChildren: string;
+    createCategory: string;
+    editCategory: string;
+    deleteCategory: string;
+    save: string;
+    create: string;
+    cancel: string;
+    formName: string;
+    formSlug: string;
+    formDescription: string;
+    formStatus: string;
+    active: string;
+    inactive: string;
+    formNamePlaceholder: string;
+    formSlugPlaceholder: string;
+    formDescriptionPlaceholder: string;
+    deleteConfirmTitle: string;
+    deleteConfirmDesc: (name: string) => string;
+    deleteWarning: string;
+    deleteSuccess: string;
+    createSuccess: string;
+    saveSuccess: string;
+    operationFailed: string;
+    deleting: string;
+    viewMore: string;
+    loadingMore: string;
   }
 > = {
   "zh-CN": {
@@ -63,9 +110,11 @@ const CATEGORY_PAGE_TEXT: Record<
     totalCategories: "总分类数",
     totalPosts: "总文章数",
     activeCategories: "活跃分类",
+    inactiveCategories: "停用分类",
     includeAllLevels: "包含所有层级",
     allCategoryPosts: "所有分类文章",
     activeInUse: "正在使用中",
+    currentlyDisabled: "当前已停用",
     searchPlaceholder: "搜索分类名称、描述...",
     onlyActive: "仅显示活跃",
     loading: "加载分类中...",
@@ -79,6 +128,31 @@ const CATEGORY_PAGE_TEXT: Record<
     metaInactive: "非活跃",
     statPosts: "文章",
     statChildren: "子分类",
+    createCategory: "新建分类",
+    editCategory: "编辑分类",
+    deleteCategory: "删除分类",
+    save: "保存",
+    create: "创建",
+    cancel: "取消",
+    formName: "分类名称",
+    formSlug: "分类标识",
+    formDescription: "分类描述",
+    formStatus: "分类状态",
+    active: "活跃",
+    inactive: "停用",
+    formNamePlaceholder: "请输入分类名称",
+    formSlugPlaceholder: "默认自动生成 8 位随机码",
+    formDescriptionPlaceholder: "可选，介绍该分类用途",
+    deleteConfirmTitle: "删除分类",
+    deleteConfirmDesc: (name) => `确定要删除分类「${name}」吗？`,
+    deleteWarning: "若该分类下有文章或子分类，将无法删除。",
+    deleteSuccess: "分类删除成功",
+    createSuccess: "分类创建成功",
+    saveSuccess: "分类更新成功",
+    operationFailed: "分类操作失败",
+    deleting: "删除中...",
+    viewMore: "查看更多",
+    loadingMore: "加载中...",
   },
   "en-US": {
     manageTitle: "Category Management",
@@ -87,9 +161,11 @@ const CATEGORY_PAGE_TEXT: Record<
     totalCategories: "Total Categories",
     totalPosts: "Total Posts",
     activeCategories: "Active Categories",
+    inactiveCategories: "Inactive Categories",
     includeAllLevels: "Including all levels",
     allCategoryPosts: "Posts in all categories",
     activeInUse: "Currently in use",
+    currentlyDisabled: "Currently disabled",
     searchPlaceholder: "Search category name or description...",
     onlyActive: "Only active",
     loading: "Loading categories...",
@@ -103,6 +179,31 @@ const CATEGORY_PAGE_TEXT: Record<
     metaInactive: "Inactive",
     statPosts: "Posts",
     statChildren: "Children",
+    createCategory: "Create Category",
+    editCategory: "Edit Category",
+    deleteCategory: "Delete Category",
+    save: "Save",
+    create: "Create",
+    cancel: "Cancel",
+    formName: "Name",
+    formSlug: "Slug",
+    formDescription: "Description",
+    formStatus: "Status",
+    active: "Active",
+    inactive: "Inactive",
+    formNamePlaceholder: "Enter category name",
+    formSlugPlaceholder: "Auto-generated 8-char random slug",
+    formDescriptionPlaceholder: "Optional description",
+    deleteConfirmTitle: "Delete Category",
+    deleteConfirmDesc: (name) => `Delete category "${name}"?`,
+    deleteWarning: "If this category has posts or children, deletion will fail.",
+    deleteSuccess: "Category deleted",
+    createSuccess: "Category created",
+    saveSuccess: "Category updated",
+    operationFailed: "Category operation failed",
+    deleting: "Deleting...",
+    viewMore: "Load more",
+    loadingMore: "Loading...",
   },
   "ja-JP": {
     manageTitle: "カテゴリー管理",
@@ -111,9 +212,11 @@ const CATEGORY_PAGE_TEXT: Record<
     totalCategories: "カテゴリー総数",
     totalPosts: "記事総数",
     activeCategories: "有効カテゴリー",
+    inactiveCategories: "無効カテゴリー",
     includeAllLevels: "全階層を含む",
     allCategoryPosts: "全カテゴリーの記事",
     activeInUse: "現在利用中",
+    currentlyDisabled: "現在無効",
     searchPlaceholder: "カテゴリー名・説明を検索...",
     onlyActive: "有効のみ表示",
     loading: "カテゴリーを読み込み中...",
@@ -127,6 +230,31 @@ const CATEGORY_PAGE_TEXT: Record<
     metaInactive: "無効",
     statPosts: "記事",
     statChildren: "子カテゴリー",
+    createCategory: "カテゴリー作成",
+    editCategory: "カテゴリー編集",
+    deleteCategory: "カテゴリー削除",
+    save: "保存",
+    create: "作成",
+    cancel: "キャンセル",
+    formName: "カテゴリー名",
+    formSlug: "スラッグ",
+    formDescription: "説明",
+    formStatus: "状態",
+    active: "有効",
+    inactive: "無効",
+    formNamePlaceholder: "カテゴリー名を入力",
+    formSlugPlaceholder: "既定で8文字ランダム生成",
+    formDescriptionPlaceholder: "任意の説明",
+    deleteConfirmTitle: "カテゴリー削除",
+    deleteConfirmDesc: (name) => `カテゴリー「${name}」を削除しますか？`,
+    deleteWarning: "記事や子カテゴリーがある場合は削除できません。",
+    deleteSuccess: "カテゴリーを削除しました",
+    createSuccess: "カテゴリーを作成しました",
+    saveSuccess: "カテゴリーを更新しました",
+    operationFailed: "カテゴリー操作に失敗しました",
+    deleting: "削除中...",
+    viewMore: "さらに表示",
+    loadingMore: "読み込み中...",
   },
 };
 
@@ -144,11 +272,15 @@ function CategoryCard({
   level = 0,
   locale,
   t,
+  onEdit,
+  onDelete,
 }: {
   category: Category;
   level?: number;
   locale: Locale;
   t: (typeof CATEGORY_PAGE_TEXT)[Locale];
+  onEdit?: (category: Category) => void;
+  onDelete?: (category: Category) => void;
 }) {
   const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -224,7 +356,6 @@ function CategoryCard({
 
           <div className="category-info-section">
             <h3 className="category-title">{category.name}</h3>
-            {category.description && <p className="category-desc">{category.description}</p>}
             <div className="category-meta-info">
               <div className="meta-item">
                 <Calendar className="w-4 h-4" />
@@ -235,13 +366,10 @@ function CategoryCard({
                 <span>{category.isActive ? t.metaActive : t.metaInactive}</span>
               </div>
             </div>
+            {category.description && <p className="category-desc">{category.description}</p>}
           </div>
 
           <div className="category-actions">
-            <div className="post-count-badge">
-              <Hash className="w-4 h-4" />
-              <span>{category.postCount || 0}</span>
-            </div>
             {hasChildren && (
               <button
                 className={`expand-btn ${isExpanded ? "expanded" : ""}`}
@@ -253,11 +381,35 @@ function CategoryCard({
                 <ChevronRight className="w-5 h-5" />
               </button>
             )}
+            {onEdit && (
+              <button
+                className="expand-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(category);
+                }}
+                aria-label={t.editCategory}
+              >
+                <Edit3 className="w-5 h-5" />
+              </button>
+            )}
+            {onDelete && (
+              <button
+                className="expand-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(category);
+                }}
+                aria-label={t.deleteCategory}
+              >
+                <Trash2 className="w-5 h-5" />
+              </button>
+            )}
           </div>
         </div>
 
         {/* 卡片内容区域 */}
-        <div className="category-card-body">
+        <div className="category-card-body mt-auto">
           <div className="category-stats-grid">
             <button type="button" className="stat-item" onClick={handleOpenCategoryPosts}>
               <BookOpen className="w-4 h-4" />
@@ -279,7 +431,15 @@ function CategoryCard({
           <div className="children-divider"></div>
           <div className="children-grid">
             {category.children?.map((child) => (
-              <CategoryCard key={child.id} category={child} level={level + 1} locale={locale} t={t} />
+              <CategoryCard
+                key={child.id}
+                category={child}
+                level={level + 1}
+                locale={locale}
+                t={t}
+                onEdit={onEdit}
+                onDelete={onDelete}
+              />
             ))}
           </div>
         </div>
@@ -292,10 +452,19 @@ function CategoryCard({
  * 分类统计组件
  * 展示分类的总体统计信息
  */
-function CategoryStats({ categories, t }: { categories: Category[]; t: (typeof CATEGORY_PAGE_TEXT)[Locale] }) {
-  const totalCategories = categories.length;
-  const totalPosts = categories.reduce((sum, cat) => sum + (cat.postCount || 0), 0);
-  const activeCategories = categories.filter((cat) => cat.isActive).length;
+function CategoryStats({
+  categories,
+  t,
+  summary,
+}: {
+  categories: Category[];
+  t: (typeof CATEGORY_PAGE_TEXT)[Locale];
+  summary?: { totalCategories: number; totalPosts: number; activeCategories: number; inactiveCategories: number };
+}) {
+  const totalCategories = summary?.totalCategories ?? categories.length;
+  const totalPosts = summary?.totalPosts ?? categories.reduce((sum, cat) => sum + (cat.postCount || 0), 0);
+  const activeCategories = summary?.activeCategories ?? categories.filter((cat) => cat.isActive).length;
+  const inactiveCategories = summary?.inactiveCategories ?? Math.max(totalCategories - activeCategories, 0);
 
   return (
     <div className="stats-grid-modern">
@@ -314,10 +483,10 @@ function CategoryStats({ categories, t }: { categories: Category[]; t: (typeof C
         </CardBody>
       </Card>
 
-      <Card className="stat-card-modern green-theme">
+      <Card className="stat-card-modern teal-theme">
         <CardBody className="stat-content-modern">
           <div className="stat-header">
-            <div className="stat-icon-wrapper green">
+            <div className="stat-icon-wrapper teal">
               <FileText className="w-8 h-8" />
             </div>
             <div className="stat-info">
@@ -329,16 +498,30 @@ function CategoryStats({ categories, t }: { categories: Category[]; t: (typeof C
         </CardBody>
       </Card>
 
-      <Card className="stat-card-modern purple-theme">
+      <Card className="stat-card-modern green-theme">
         <CardBody className="stat-content-modern">
           <div className="stat-header">
-            <div className="stat-icon-wrapper purple">
+            <div className="stat-icon-wrapper green">
               <Filter className="w-8 h-8" />
             </div>
             <div className="stat-info">
               <h3 className="stat-title">{t.activeCategories}</h3>
               <p className="stat-value">{activeCategories}</p>
               <p className="stat-desc">{t.activeInUse}</p>
+            </div>
+          </div>
+        </CardBody>
+      </Card>
+      <Card className="stat-card-modern rose-theme">
+        <CardBody className="stat-content-modern">
+          <div className="stat-header">
+            <div className="stat-icon-wrapper rose">
+              <FolderOpen className="w-8 h-8" />
+            </div>
+            <div className="stat-info">
+              <h3 className="stat-title">{t.inactiveCategories}</h3>
+              <p className="stat-value">{inactiveCategories}</p>
+              <p className="stat-desc">{t.currentlyDisabled}</p>
             </div>
           </div>
         </CardBody>
@@ -355,12 +538,14 @@ function SearchAndFilter({
   onSearchChange,
   showOnlyActive,
   onToggleActive,
+  onCreateCategory,
   t,
 }: {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   showOnlyActive: boolean;
   onToggleActive: (show: boolean) => void;
+  onCreateCategory: () => void;
   t: (typeof CATEGORY_PAGE_TEXT)[Locale];
 }) {
   return (
@@ -394,6 +579,9 @@ function SearchAndFilter({
             >
               {t.onlyActive}
             </Button>
+            <Button size="sm" color="primary" startContent={<Plus className="w-4 h-4" />} onPress={onCreateCategory}>
+              {t.createCategory}
+            </Button>
           </div>
         </div>
       </CardBody>
@@ -405,8 +593,10 @@ function SearchAndFilter({
  * 主分类页面组件
  */
 export default function CategoriesPage() {
+  const router = useRouter();
   const params = useParams<{ lang: string }>();
   const locale = resolveLocale(params.lang);
+  const { isAuthenticated } = useAuth();
   const t = CATEGORY_PAGE_TEXT[locale];
   // 使用分类数据管理 Hook
   const {
@@ -414,20 +604,133 @@ export default function CategoriesPage() {
     filteredCategories,
     loading,
     error,
+    pagination,
     searchQuery,
     showOnlyActive,
     setSearchQuery,
     setShowOnlyActive,
     refetch,
+    loadMore,
   } = useCategories({
     autoFetch: true,
-    limit: 100,
+    limit: 12,
   });
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [deletingCategory, setDeletingCategory] = useState<Category | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+  const [statsSummary, setStatsSummary] = useState<{
+    totalCategories: number;
+    totalPosts: number;
+    activeCategories: number;
+    inactiveCategories: number;
+  } | null>(null);
+  const [formData, setFormData] = useState({ name: "", slug: "", description: "", isActive: true });
+
+  const fetchStatsSummary = useCallback(async () => {
+    try {
+      const response = await fetch("/api/categories?limit=1000&sortBy=createdAt&sortOrder=desc", {
+        headers: { ...clientBearerHeaders() },
+      });
+      if (!response.ok) return;
+      const result = (await response.json()) as ApiResponse<{ data: Category[]; pagination: { total: number } }>;
+      const rows = result.data?.data || [];
+      const totalCategories = result.data?.pagination?.total ?? rows.length;
+      const totalPosts = rows.reduce((sum, cat) => sum + (cat.postCount || 0), 0);
+      const activeCategories = rows.filter((cat) => cat.isActive).length;
+      const inactiveCategories = Math.max(totalCategories - activeCategories, 0);
+      setStatsSummary({ totalCategories, totalPosts, activeCategories, inactiveCategories });
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchStatsSummary();
+  }, [fetchStatsSummary]);
+
+  const openCreateModal = () => {
+    if (!isAuthenticated) return void router.push(`/${locale}/auth/login`);
+    setEditingCategory(null);
+    setFormData({ name: "", slug: generateRandomUrlAlias(8), description: "", isActive: true });
+    setIsEditorOpen(true);
+  };
+  const openEditModal = (category: Category) => {
+    if (!isAuthenticated) return void router.push(`/${locale}/auth/login`);
+    setEditingCategory(category);
+    setFormData({
+      name: category.name || "",
+      slug: category.slug || "",
+      description: category.description || "",
+      isActive: Boolean(category.isActive),
+    });
+    setIsEditorOpen(true);
+  };
+  const openDeleteModal = (category: Category) => {
+    if (!isAuthenticated) return void router.push(`/${locale}/auth/login`);
+    setDeletingCategory(category);
+    setIsDeleteOpen(true);
+  };
+
+  const handleSubmitCategory = async () => {
+    if (!formData.name.trim()) return message.warning(t.formNamePlaceholder);
+    try {
+      setSubmitting(true);
+      const isEdit = Boolean(editingCategory);
+      const endpoint = isEdit ? `/api/categories/${editingCategory?.id}` : "/api/categories";
+      const response = await fetch(endpoint, {
+        method: isEdit ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json", ...clientBearerHeaders() },
+        body: JSON.stringify({
+          name: formData.name.trim(),
+          slug: formData.slug.trim() || generateRandomUrlAlias(8),
+          description: formData.description.trim(),
+          isActive: formData.isActive,
+        }),
+      });
+      if (response.status === 401) return void router.push(`/${locale}/auth/login`);
+      const result = (await response.json()) as ApiResponse<Category>;
+      if (!result.success) return message.error(result.message || t.operationFailed);
+      message.success(isEdit ? t.saveSuccess : t.createSuccess);
+      setIsEditorOpen(false);
+      await refetch();
+      await fetchStatsSummary();
+    } catch {
+      message.error(t.operationFailed);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteCategory = async () => {
+    if (!deletingCategory) return;
+    try {
+      setDeleteSubmitting(true);
+      const response = await fetch(`/api/categories/${deletingCategory.id}`, {
+        method: "DELETE",
+        headers: { ...clientBearerHeaders() },
+      });
+      if (response.status === 401) return void router.push(`/${locale}/auth/login`);
+      const result = (await response.json()) as ApiResponse<null>;
+      if (!result.success) return message.error(result.message || t.operationFailed);
+      message.success(t.deleteSuccess);
+      setIsDeleteOpen(false);
+      setDeletingCategory(null);
+      await refetch();
+      await fetchStatsSummary();
+    } catch {
+      message.error(t.operationFailed);
+    } finally {
+      setDeleteSubmitting(false);
+    }
+  };
 
   return (
     <div className="categories-page">
       {/* 统计信息 */}
-      <CategoryStats categories={categories} t={t} />
+      <CategoryStats categories={categories} t={t} summary={statsSummary ?? undefined} />
 
       {/* 搜索和筛选 */}
       <SearchAndFilter
@@ -435,6 +738,7 @@ export default function CategoriesPage() {
         onSearchChange={setSearchQuery}
         showOnlyActive={showOnlyActive}
         onToggleActive={setShowOnlyActive}
+        onCreateCategory={openCreateModal}
         t={t}
       />
 
@@ -457,11 +761,27 @@ export default function CategoriesPage() {
             </Button>
           </div>
         ) : filteredCategories.length > 0 ? (
-          <div className="categories-grid">
-            {filteredCategories.map((category) => (
-              <CategoryCard key={category.id} category={category} locale={locale} t={t} />
-            ))}
-          </div>
+          <>
+            <div className="categories-grid">
+              {filteredCategories.map((category) => (
+                <CategoryCard
+                  key={category.id}
+                  category={category}
+                  locale={locale}
+                  t={t}
+                  onEdit={openEditModal}
+                  onDelete={openDeleteModal}
+                />
+              ))}
+            </div>
+            {pagination?.hasNext ? (
+              <div className="mt-6 flex justify-center">
+                <Button color="primary" variant="flat" onPress={() => void loadMore()} isLoading={loading}>
+                  {loading ? t.loadingMore : t.viewMore}
+                </Button>
+              </div>
+            ) : null}
+          </>
         ) : (
           <div className="empty-state">
             <div className="empty-icon">
@@ -474,6 +794,68 @@ export default function CategoriesPage() {
           </div>
         )}
       </div>
+      <Modal isOpen={isEditorOpen} onOpenChange={setIsEditorOpen}>
+        <ModalContent>
+          <ModalHeader>{editingCategory ? t.editCategory : t.createCategory}</ModalHeader>
+          <ModalBody>
+            <Input
+              label={t.formName}
+              placeholder={t.formNamePlaceholder}
+              value={formData.name}
+              onValueChange={(value) => setFormData((prev) => ({ ...prev, name: value }))}
+              isRequired
+            />
+            <Input
+              label={t.formSlug}
+              placeholder={t.formSlugPlaceholder}
+              value={formData.slug}
+              onValueChange={(value) => setFormData((prev) => ({ ...prev, slug: value }))}
+            />
+            <Textarea
+              label={t.formDescription}
+              placeholder={t.formDescriptionPlaceholder}
+              value={formData.description}
+              onValueChange={(value) => setFormData((prev) => ({ ...prev, description: value }))}
+              minRows={3}
+            />
+            <div className="flex items-center justify-between rounded-lg border border-default-200 p-3">
+              <span className="text-sm">{t.formStatus}</span>
+              <div className="flex items-center gap-2">
+                <Switch
+                  isSelected={formData.isActive}
+                  onValueChange={(value) => setFormData((prev) => ({ ...prev, isActive: value }))}
+                />
+                <span className="text-sm">{formData.isActive ? t.active : t.inactive}</span>
+              </div>
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="light" onPress={() => setIsEditorOpen(false)}>
+              {t.cancel}
+            </Button>
+            <Button color="primary" isLoading={submitting} onPress={handleSubmitCategory}>
+              {editingCategory ? t.save : t.create}
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+      <Modal isOpen={isDeleteOpen} onOpenChange={setIsDeleteOpen} size="sm">
+        <ModalContent>
+          <ModalHeader>{t.deleteConfirmTitle}</ModalHeader>
+          <ModalBody>
+            <p>{t.deleteConfirmDesc(deletingCategory?.name || "")}</p>
+            <p className="text-sm text-warning">{t.deleteWarning}</p>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="light" onPress={() => setIsDeleteOpen(false)}>
+              {t.cancel}
+            </Button>
+            <Button color="danger" isLoading={deleteSubmitting} onPress={handleDeleteCategory}>
+              {deleteSubmitting ? t.deleting : t.deleteCategory}
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </div>
   );
 }

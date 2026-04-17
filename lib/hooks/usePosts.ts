@@ -255,26 +255,12 @@ export function usePosts(options: UsePostsOptions = {}) {
     [fetchPosts, params]
   );
 
-  /** 按分类筛选；会清除 tagId，避免与标签筛选叠加导致侧栏跳转后条件混乱 */
-  const filterByCategory = useCallback(
-    (categoryId: number | null) => {
-      fetchPosts({
-        ...params,
-        categoryId: categoryId || undefined,
-        tagId: undefined,
-        page: 1,
-      });
-    },
-    [fetchPosts, params]
-  );
-
-  /** 按标签筛选；会清除 categoryId，与分类筛选互斥（与 GET /api/posts 的 tagId 一致） */
+  /** 按标签筛选（与 GET /api/posts 的 tagId 一致） */
   const filterByTag = useCallback(
     (tagId: number | null) => {
       fetchPosts({
         ...params,
         tagId: tagId ?? undefined,
-        categoryId: undefined,
         page: 1,
       });
     },
@@ -354,7 +340,6 @@ export function usePosts(options: UsePostsOptions = {}) {
 
     // 筛选和搜索
     searchPosts,
-    filterByCategory,
     filterByTag,
     filterByStatus,
 

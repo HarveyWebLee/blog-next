@@ -2,8 +2,11 @@
  * 标签API路由
  * 提供标签的增删改查接口
  *
- * GET /api/tags - 获取标签列表（支持分页、搜索、过滤）
- * POST /api/tags - 创建新标签
+ * 鉴权要求：所有接口均需 Authorization: Bearer。
+ * 数据范围：仅允许访问与操作当前登录用户 ownerId 下的标签数据。
+ *
+ * GET /api/tags - 获取标签列表（支持分页、搜索、状态过滤；返回每个标签的 postCount）
+ * POST /api/tags - 创建新标签（ownerId 由服务端按登录态写入）
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -11,6 +14,7 @@ import { and, asc, count, desc, eq, like, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { postTags, tags } from "@/lib/db/schema";
+import { requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, CreateTagRequest, PaginatedResponseData, Tag, TagQueryParams } from "@/types/blog";
 
 /**
@@ -20,6 +24,18 @@ import { ApiResponse, CreateTagRequest, PaginatedResponseData, Tag, TagQueryPara
  */
 export async function GET(request: NextRequest) {
   try {
+    const auth = requireAuthUser(request);
+    if (!auth.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: auth.reason === "missing" ? "请先登录后查看标签" : "登录状态无效，请重新登录",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 401 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
 
     // 解析查询参数
@@ -40,6 +56,7 @@ export async function GET(request: NextRequest) {
     if (isActive !== undefined) {
       conditions.push(eq(tags.isActive, isActive));
     }
+    conditions.push(eq(tags.ownerId, auth.user.userId));
 
     // 构建排序 - 使用安全的字段映射
     const postCountExpr = sql<number>`count(${postTags.postId})`;
@@ -135,6 +152,18 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    const auth = requireAuthUser(request);
+    if (!auth.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: auth.reason === "missing" ? "请先登录后再创建标签" : "登录状态无效，请重新登录",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 401 }
+      );
+    }
+
     const body: CreateTagRequest = await request.json();
 
     // 验证必填字段
@@ -150,7 +179,11 @@ export async function POST(request: NextRequest) {
     }
 
     // 检查标签名称是否已存在
-    const existingTag = await db.select().from(tags).where(eq(tags.name, body.name)).limit(1);
+    const existingTag = await db
+      .select()
+      .from(tags)
+      .where(and(eq(tags.name, body.name), eq(tags.ownerId, auth.user.userId)))
+      .limit(1);
 
     if (existingTag.length > 0) {
       return NextResponse.json(
@@ -164,7 +197,11 @@ export async function POST(request: NextRequest) {
     }
 
     // 检查slug是否已存在
-    const existingSlug = await db.select().from(tags).where(eq(tags.slug, body.slug)).limit(1);
+    const existingSlug = await db
+      .select()
+      .from(tags)
+      .where(and(eq(tags.slug, body.slug), eq(tags.ownerId, auth.user.userId)))
+      .limit(1);
 
     if (existingSlug.length > 0) {
       return NextResponse.json(
@@ -179,6 +216,7 @@ export async function POST(request: NextRequest) {
 
     // 创建新标签
     await db.insert(tags).values({
+      ownerId: auth.user.userId,
       name: body.name,
       slug: body.slug,
       description: body.description || null,
@@ -187,7 +225,11 @@ export async function POST(request: NextRequest) {
     });
 
     // 重新查询创建的标签
-    const [newTag] = await db.select().from(tags).where(eq(tags.name, body.name)).limit(1);
+    const [newTag] = await db
+      .select()
+      .from(tags)
+      .where(and(eq(tags.name, body.name), eq(tags.ownerId, auth.user.userId)))
+      .limit(1);
 
     return NextResponse.json({
       success: true,

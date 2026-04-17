@@ -1,7 +1,7 @@
 import NextImage from "next/image";
 import Link from "next/link";
 import { Image } from "@heroui/react";
-import { BookImageIcon, ClipboardPlus, HouseIcon, LibraryBig, TagIcon } from "lucide-react";
+import { BookImageIcon, ClipboardPlus, HouseIcon } from "lucide-react";
 
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { SearchBar } from "@/components/layout/search-bar";
@@ -34,24 +34,6 @@ export function Header({ lang }: HeaderProps) {
       },
       href: `/${lang}/blog`,
       icon: <BookImageIcon width={"1em"} height={"1em"} />,
-    },
-    {
-      name: {
-        "zh-CN": "分类",
-        "en-US": "Categories",
-        "ja-JP": "カテゴリー",
-      },
-      href: `/${lang}/categories`,
-      icon: <LibraryBig width={"1em"} height={"1em"} />,
-    },
-    {
-      name: {
-        "zh-CN": "标签",
-        "en-US": "Tags",
-        "ja-JP": "タグ",
-      },
-      href: `/${lang}/tags`,
-      icon: <TagIcon width={"1em"} height={"1em"} />,
     },
     {
       name: {

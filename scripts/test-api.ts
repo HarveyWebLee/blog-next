@@ -9,12 +9,15 @@ import { sql } from "drizzle-orm";
 import { db } from "../lib/db/config";
 import { categories, posts, tags, users } from "../lib/db/schema";
 
+const TEST_OWNER_ID = 1;
+
 /**
  * 测试数据
  */
 const testData = {
   // 测试分类
   category: {
+    ownerId: TEST_OWNER_ID,
     name: "技术分享",
     slug: "tech",
     description: "技术相关的文章分享",
@@ -26,6 +29,7 @@ const testData = {
   // 测试标签
   tags: [
     {
+      ownerId: TEST_OWNER_ID,
       name: "JavaScript",
       slug: "javascript",
       description: "JavaScript相关",
@@ -33,6 +37,7 @@ const testData = {
       isActive: true,
     },
     {
+      ownerId: TEST_OWNER_ID,
       name: "React",
       slug: "react",
       description: "React相关",
@@ -40,6 +45,7 @@ const testData = {
       isActive: true,
     },
     {
+      ownerId: TEST_OWNER_ID,
       name: "Next.js",
       slug: "nextjs",
       description: "Next.js相关",
@@ -115,10 +121,12 @@ async function cleanupTestData() {
       );
 
     // 删除测试分类
-    await db.delete(categories).where(sql`name = '技术分享'`);
+    await db.delete(categories).where(sql`name = '技术分享' AND owner_id = ${TEST_OWNER_ID}`);
 
     // 删除测试标签
-    await db.delete(tags).where(sql`name = 'JavaScript' OR name = 'React' OR name = 'Next.js'`);
+    await db
+      .delete(tags)
+      .where(sql`(name = 'JavaScript' OR name = 'React' OR name = 'Next.js') AND owner_id = ${TEST_OWNER_ID}`);
 
     console.log("✅ 测试数据清理完成");
   } catch (error) {
@@ -154,7 +162,7 @@ async function testCreateCategory() {
     const [category] = await db
       .select()
       .from(categories)
-      .where(sql`name = ${testData.category.name}`)
+      .where(sql`name = ${testData.category.name} AND owner_id = ${TEST_OWNER_ID}`)
       .limit(1);
     console.log("✅ 分类创建成功:", category);
     return category;
@@ -176,7 +184,7 @@ async function testCreateTags() {
     const createdTags = await db
       .select()
       .from(tags)
-      .where(sql`name = 'JavaScript' OR name = 'React' OR name = 'Next.js'`);
+      .where(sql`(name = 'JavaScript' OR name = 'React' OR name = 'Next.js') AND owner_id = ${TEST_OWNER_ID}`);
     console.log("✅ 标签创建成功:", createdTags);
     return createdTags;
   } catch (error) {

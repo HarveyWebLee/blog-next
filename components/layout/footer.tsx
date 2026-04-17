@@ -6,7 +6,7 @@ import { useParams, usePathname } from "next/navigation";
 import { Button } from "@heroui/button";
 import { Divider } from "@heroui/divider";
 import { Input } from "@heroui/input";
-import { BookOpen, ClipboardList, FolderOpen, Hash, Home, Mail, Scale, Shield } from "lucide-react";
+import { BookOpen, ClipboardList, Home, Mail, Scale, Shield } from "lucide-react";
 
 import { useAuth } from "@/lib/contexts/auth-context";
 import { useNewsletterGuestSubscription } from "@/lib/hooks/useNewsletterGuestSubscription";
@@ -27,8 +27,6 @@ const copy = {
     explore: "浏览",
     home: "首页",
     blog: "博客",
-    categories: "分类",
-    tags: "标签",
     about: "关于",
     legal: "条款与说明",
     privacy: "隐私政策",
@@ -59,8 +57,6 @@ const copy = {
     explore: "Explore",
     home: "Home",
     blog: "Blog",
-    categories: "Categories",
-    tags: "Tags",
     about: "About",
     legal: "Legal & docs",
     privacy: "Privacy",
@@ -91,8 +87,6 @@ const copy = {
     explore: "ナビ",
     home: "ホーム",
     blog: "ブログ",
-    categories: "カテゴリー",
-    tags: "タグ",
     about: "について",
     legal: "規約・資料",
     privacy: "プライバシー",
@@ -265,14 +259,6 @@ export function Footer() {
               <Link href={`${prefix}/blog`} className={navLinkClass}>
                 <BookOpen className="h-4 w-4 shrink-0 text-default-400 transition-colors group-hover:text-primary" />
                 {t.blog}
-              </Link>
-              <Link href={`${prefix}/categories`} className={navLinkClass}>
-                <FolderOpen className="h-4 w-4 shrink-0 text-default-400 transition-colors group-hover:text-primary" />
-                {t.categories}
-              </Link>
-              <Link href={`${prefix}/tags`} className={navLinkClass}>
-                <Hash className="h-4 w-4 shrink-0 text-default-400 transition-colors group-hover:text-primary" />
-                {t.tags}
               </Link>
               <Link href={`${prefix}/about`} className={navLinkClass}>
                 <ClipboardList className="h-4 w-4 shrink-0 text-default-400 transition-colors group-hover:text-primary" />

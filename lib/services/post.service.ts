@@ -263,11 +263,6 @@ export class PostService {
         conditions.push(eq(posts.authorId, params.authorId));
       }
 
-      // 分类过滤
-      if (params.categoryId) {
-        conditions.push(eq(posts.categoryId, params.categoryId));
-      }
-
       // 标签过滤（与 GET /api/posts 的 tagId 查询参数一致）
       if (params.tagId != null && Number.isFinite(params.tagId)) {
         const postsWithTag = db

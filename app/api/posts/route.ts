@@ -18,7 +18,7 @@ import { CreatePostRequest, PostQueryParams } from "@/types/blog";
 /**
  * GET /api/posts
  * 获取文章列表
- * 支持分页、搜索、状态过滤、分类过滤等
+ * 支持分页、搜索、状态过滤、标签过滤等
  */
 export async function GET(request: NextRequest) {
   try {
@@ -36,7 +36,6 @@ export async function GET(request: NextRequest) {
       status: (searchParams.get("status") as any) || undefined,
       visibility: (searchParams.get("visibility") as any) || undefined,
       authorId: searchParams.get("authorId") ? parseInt(searchParams.get("authorId")!) : undefined,
-      categoryId: searchParams.get("categoryId") ? parseInt(searchParams.get("categoryId")!) : undefined,
       tagId: searchParams.get("tagId") ? parseInt(searchParams.get("tagId")!) : undefined,
       search: searchParams.get("search") || undefined,
       featured: searchParams.get("featured") === "true",

@@ -4,6 +4,8 @@ import { sql } from "drizzle-orm";
 import { db } from "@/lib/db/config";
 import { categories, posts, tags, users } from "@/lib/db/schema";
 
+const DEFAULT_OWNER_ID = 1;
+
 /**
  * 种子数据
  */
@@ -29,6 +31,7 @@ const seedData = {
   // 分类数据
   categories: [
     {
+      ownerId: DEFAULT_OWNER_ID,
       name: "技术分享",
       slug: "tech",
       description: "技术相关的文章分享",
@@ -37,6 +40,7 @@ const seedData = {
       isActive: true,
     },
     {
+      ownerId: DEFAULT_OWNER_ID,
       name: "生活随笔",
       slug: "life",
       description: "生活感悟和随笔",
@@ -45,6 +49,7 @@ const seedData = {
       isActive: true,
     },
     {
+      ownerId: DEFAULT_OWNER_ID,
       name: "前端开发",
       slug: "frontend",
       description: "前端开发技术",
@@ -57,6 +62,7 @@ const seedData = {
   // 标签数据
   tags: [
     {
+      ownerId: DEFAULT_OWNER_ID,
       name: "JavaScript",
       slug: "javascript",
       description: "JavaScript相关",
@@ -64,6 +70,7 @@ const seedData = {
       isActive: true,
     },
     {
+      ownerId: DEFAULT_OWNER_ID,
       name: "React",
       slug: "react",
       description: "React相关",
@@ -71,6 +78,7 @@ const seedData = {
       isActive: true,
     },
     {
+      ownerId: DEFAULT_OWNER_ID,
       name: "Next.js",
       slug: "nextjs",
       description: "Next.js相关",
@@ -78,6 +86,7 @@ const seedData = {
       isActive: true,
     },
     {
+      ownerId: DEFAULT_OWNER_ID,
       name: "TypeScript",
       slug: "typescript",
       description: "TypeScript相关",
@@ -85,6 +94,7 @@ const seedData = {
       isActive: true,
     },
     {
+      ownerId: DEFAULT_OWNER_ID,
       name: "生活",
       slug: "life",
       description: "生活相关",

@@ -113,22 +113,22 @@ export const API_DOCS_ENDPOINT_DESCRIPTIONS: Record<string, Partial<Record<strin
     GET: "按 slug 获取已发布文章",
   },
   "/api/categories": {
-    GET: "分类列表",
-    POST: "创建分类（管理）",
+    GET: "分类列表（分页/搜索/状态/父分类过滤；仅当前登录用户）",
+    POST: "创建分类（服务端自动绑定 ownerId 到当前登录用户）",
   },
   "/api/categories/{id}": {
-    GET: "分类详情",
-    PUT: "更新分类",
-    DELETE: "删除分类",
+    GET: "分类详情（附带该分类文章数量；仅当前登录用户可见）",
+    PUT: "更新分类（名称/slug 去重校验；仅当前登录用户）",
+    DELETE: "删除分类（若仍被文章或子分类引用则拒绝；仅当前登录用户）",
   },
   "/api/tags": {
-    GET: "标签列表",
-    POST: "创建标签（管理）",
+    GET: "标签列表（分页/搜索/状态过滤，含 postCount；仅当前登录用户）",
+    POST: "创建标签（服务端自动绑定 ownerId 到当前登录用户）",
   },
   "/api/tags/{id}": {
-    GET: "标签详情",
-    PUT: "更新标签",
-    DELETE: "删除标签",
+    GET: "标签详情（附带标签被文章使用次数；仅当前登录用户可见）",
+    PUT: "更新标签（名称/slug 去重校验；仅当前登录用户）",
+    DELETE: "删除标签（若仍有关联文章则拒绝；仅当前登录用户）",
   },
   "/api/notifications": {
     GET: "通知列表（以路由鉴权为准）",
@@ -162,7 +162,7 @@ export const API_DOCS_ENDPOINT_DESCRIPTIONS: Record<string, Partial<Record<strin
     GET: "服务端代理到目标路径",
   },
   "/api/seed": {
-    GET: "种子/演示数据接口（高危，生产勿暴露；以 route 实现为准）",
+    GET: "种子/演示数据接口（会清空并重建 users/categories/tags/posts，高危）",
   },
   "/api/test-db": {
     GET: "检测数据库连接",
@@ -261,22 +261,22 @@ export const API_DOCS_AUTH_HINTS: Record<string, Partial<Record<string, string>>
     GET: "无需 Bearer（公开已发布）。",
   },
   "/api/categories": {
-    GET: "无需 Bearer。",
-    POST: "须管理权限（Bearer），以路由实现为准。",
+    GET: "必须：Authorization: Bearer。支持 page/limit/sortBy/sortOrder/search/isActive/parentId，结果仅当前登录用户 ownerId 下数据。",
+    POST: "必须：Authorization: Bearer。Body 至少包含 name、slug；新建记录 ownerId 自动取当前登录用户。",
   },
   "/api/categories/{id}": {
-    GET: "无需 Bearer。",
-    PUT: "须管理权限（Bearer）。",
-    DELETE: "须管理权限（Bearer）。",
+    GET: "必须：Authorization: Bearer。且 id 必须属于当前登录用户 ownerId。",
+    PUT: "必须：Authorization: Bearer。仅可修改当前登录用户 ownerId 下数据；name/slug 冲突返回 409。",
+    DELETE: "必须：Authorization: Bearer。仅可删除当前登录用户 ownerId 下数据；若存在子分类或关联文章返回 409。",
   },
   "/api/tags": {
-    GET: "无需 Bearer。",
-    POST: "须管理权限（Bearer）。",
+    GET: "必须：Authorization: Bearer。支持 page/limit/sortBy/sortOrder/search/isActive，结果仅当前登录用户 ownerId 下数据。",
+    POST: "必须：Authorization: Bearer。Body 至少包含 name、slug；新建记录 ownerId 自动取当前登录用户。",
   },
   "/api/tags/{id}": {
-    GET: "无需 Bearer。",
-    PUT: "须管理权限（Bearer）。",
-    DELETE: "须管理权限（Bearer）。",
+    GET: "必须：Authorization: Bearer。且 id 必须属于当前登录用户 ownerId。",
+    PUT: "必须：Authorization: Bearer。仅可修改当前登录用户 ownerId 下数据；name/slug 冲突返回 409。",
+    DELETE: "必须：Authorization: Bearer。仅可删除当前登录用户 ownerId 下数据；若存在关联文章返回 409。",
   },
   "/api/notifications": {
     GET: "以路由为准，常需 Bearer。",
@@ -310,7 +310,7 @@ export const API_DOCS_AUTH_HINTS: Record<string, Partial<Record<string, string>>
     GET: "可能需内网或密钥，以路由实现为准。",
   },
   "/api/seed": {
-    GET: "高危；常限管理员或禁用生产。",
+    GET: "当前实现未鉴权；会先删除再写入示例 users/categories/tags/posts，生产环境应禁用或加管理员保护。",
   },
   "/api/test-db": {
     GET: "开发与运维自检，生产建议关闭或保护。",

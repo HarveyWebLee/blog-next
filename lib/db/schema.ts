@@ -47,6 +47,7 @@ export const categories = mysqlTable(
   "categories",
   {
     id: int("id").primaryKey().autoincrement(),
+    ownerId: int("owner_id").notNull(),
     name: varchar("name", { length: 100 }).notNull().unique(),
     slug: varchar("slug", { length: 100 }).notNull().unique(), // URL友好的标识符
     description: text("description"), // 分类描述
@@ -57,6 +58,7 @@ export const categories = mysqlTable(
     updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
   },
   (table) => [
+    index("owner_idx").on(table.ownerId),
     index("slug_idx").on(table.slug),
     index("parent_idx").on(table.parentId),
     index("active_idx").on(table.isActive),
@@ -71,6 +73,7 @@ export const tags = mysqlTable(
   "tags",
   {
     id: int("id").primaryKey().autoincrement(),
+    ownerId: int("owner_id").notNull(),
     name: varchar("name", { length: 100 }).notNull().unique(),
     slug: varchar("slug", { length: 100 }).notNull().unique(), // URL友好的标识符
     description: text("description"), // 标签描述
@@ -79,7 +82,11 @@ export const tags = mysqlTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
   },
-  (table) => [index("slug_idx").on(table.slug), index("active_idx").on(table.isActive)]
+  (table) => [
+    index("owner_idx").on(table.ownerId),
+    index("slug_idx").on(table.slug),
+    index("active_idx").on(table.isActive),
+  ]
 );
 
 /**

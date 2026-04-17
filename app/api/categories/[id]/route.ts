@@ -2,9 +2,12 @@
  * 单个分类API路由
  * 提供单个分类的增删改查接口
  *
- * GET /api/categories/[id] - 获取单个分类
- * PUT /api/categories/[id] - 更新分类
- * DELETE /api/categories/[id] - 删除分类
+ * 鉴权要求：所有接口均需 Authorization: Bearer。
+ * 数据范围：仅允许访问与操作当前登录用户 ownerId 下的分类数据。
+ *
+ * GET /api/categories/[id] - 获取单个分类（返回分类信息与文章数量）
+ * PUT /api/categories/[id] - 更新分类（校验名称/slug 在 owner 范围内唯一）
+ * DELETE /api/categories/[id] - 删除分类（若存在子分类或关联文章则拒绝）
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -12,6 +15,7 @@ import { and, count, eq, ne } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { categories, posts } from "@/lib/db/schema";
+import { requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, Category, UpdateCategoryRequest } from "@/types/blog";
 
 /**
@@ -20,6 +24,17 @@ import { ApiResponse, Category, UpdateCategoryRequest } from "@/types/blog";
  */
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const auth = requireAuthUser(request);
+    if (!auth.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: auth.reason === "missing" ? "请先登录后查看分类" : "登录状态无效，请重新登录",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 401 }
+      );
+    }
     const { id } = await params;
     const categoryId = parseInt(id);
 
@@ -35,7 +50,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     // 查询分类
-    const [category] = await db.select().from(categories).where(eq(categories.id, categoryId)).limit(1);
+    const [category] = await db
+      .select()
+      .from(categories)
+      .where(and(eq(categories.id, categoryId), eq(categories.ownerId, auth.user.userId)))
+      .limit(1);
 
     if (!category) {
       return NextResponse.json(
@@ -82,6 +101,17 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
  */
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const auth = requireAuthUser(request);
+    if (!auth.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: auth.reason === "missing" ? "请先登录后更新分类" : "登录状态无效，请重新登录",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 401 }
+      );
+    }
     const { id } = await params;
     const categoryId = parseInt(id);
     const body: UpdateCategoryRequest = await request.json();
@@ -98,7 +128,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     // 检查分类是否存在
-    const [existingCategory] = await db.select().from(categories).where(eq(categories.id, categoryId)).limit(1);
+    const [existingCategory] = await db
+      .select()
+      .from(categories)
+      .where(and(eq(categories.id, categoryId), eq(categories.ownerId, auth.user.userId)))
+      .limit(1);
 
     if (!existingCategory) {
       return NextResponse.json(
@@ -116,7 +150,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       const [duplicateName] = await db
         .select()
         .from(categories)
-        .where(and(eq(categories.name, body.name), ne(categories.id, categoryId)))
+        .where(
+          and(eq(categories.name, body.name), ne(categories.id, categoryId), eq(categories.ownerId, auth.user.userId))
+        )
         .limit(1);
 
       if (duplicateName) {
@@ -136,7 +172,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       const [duplicateSlug] = await db
         .select()
         .from(categories)
-        .where(and(eq(categories.slug, body.slug), ne(categories.id, categoryId)))
+        .where(
+          and(eq(categories.slug, body.slug), ne(categories.id, categoryId), eq(categories.ownerId, auth.user.userId))
+        )
         .limit(1);
 
       if (duplicateSlug) {
@@ -163,10 +201,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         ...(body.isActive !== undefined && { isActive: body.isActive }),
         updatedAt: new Date(),
       })
-      .where(eq(categories.id, categoryId));
+      .where(and(eq(categories.id, categoryId), eq(categories.ownerId, auth.user.userId)));
 
     // 重新查询更新后的分类
-    const [updatedCategory] = await db.select().from(categories).where(eq(categories.id, categoryId)).limit(1);
+    const [updatedCategory] = await db
+      .select()
+      .from(categories)
+      .where(and(eq(categories.id, categoryId), eq(categories.ownerId, auth.user.userId)))
+      .limit(1);
 
     return NextResponse.json({
       success: true,
@@ -199,6 +241,17 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
  */
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const auth = requireAuthUser(request);
+    if (!auth.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: auth.reason === "missing" ? "请先登录后删除分类" : "登录状态无效，请重新登录",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 401 }
+      );
+    }
     const { id } = await params;
     const categoryId = parseInt(id);
 
@@ -214,7 +267,11 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     }
 
     // 检查分类是否存在
-    const [existingCategory] = await db.select().from(categories).where(eq(categories.id, categoryId)).limit(1);
+    const [existingCategory] = await db
+      .select()
+      .from(categories)
+      .where(and(eq(categories.id, categoryId), eq(categories.ownerId, auth.user.userId)))
+      .limit(1);
 
     if (!existingCategory) {
       return NextResponse.json(
@@ -259,7 +316,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     }
 
     // 删除分类
-    await db.delete(categories).where(eq(categories.id, categoryId));
+    await db.delete(categories).where(and(eq(categories.id, categoryId), eq(categories.ownerId, auth.user.userId)));
 
     return NextResponse.json({
       success: true,

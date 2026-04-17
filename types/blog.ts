@@ -359,7 +359,6 @@ export interface PostQueryParams extends PaginationParams {
   status?: PostStatus;
   visibility?: PostVisibility;
   authorId?: number;
-  categoryId?: number;
   tagId?: number;
   search?: string;
   featured?: boolean;

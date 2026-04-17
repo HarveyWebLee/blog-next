@@ -8,11 +8,19 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Badge, Button, Card, CardBody, CardHeader, Chip, Input, Select, SelectItem, Spinner } from "@heroui/react";
+import { Button } from "@heroui/button";
+import { Card, CardBody, CardHeader } from "@heroui/card";
+import { Chip } from "@heroui/chip";
+import { Input, Textarea } from "@heroui/input";
+import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader } from "@heroui/modal";
+import { Select, SelectItem } from "@heroui/select";
+import { Spinner } from "@heroui/spinner";
+import { Switch } from "@heroui/switch";
 import {
   AlertCircle,
   BarChart3,
   Calendar,
+  Edit3,
   Filter,
   Grid3X3,
   Hash,
@@ -27,14 +35,18 @@ import {
   Sparkles,
   Star,
   Tag as TagIcon,
+  Trash2,
   TrendingUp,
   Zap,
 } from "lucide-react";
 
 import { TagCloud } from "@/components/ui/tag-cloud";
+import { useAuth } from "@/lib/contexts/auth-context";
 import { useTags } from "@/lib/hooks/useTags";
+import { generateRandomUrlAlias, message } from "@/lib/utils";
+import { clientBearerHeaders } from "@/lib/utils/client-bearer-auth";
 import { Locale } from "@/types";
-import { Tag } from "@/types/blog";
+import { ApiResponse, Tag } from "@/types/blog";
 
 const TAG_PAGE_TEXT: Record<
   Locale,
@@ -53,6 +65,7 @@ const TAG_PAGE_TEXT: Record<
     totalTags: string;
     activeTags: string;
     totalPosts: string;
+    inactiveTags: string;
     avgPosts: string;
     loadFailed: string;
     retry: string;
@@ -67,6 +80,29 @@ const TAG_PAGE_TEXT: Record<
     manageTitle: string;
     manageDesc: string;
     enterManage: string;
+    manageTagsInline: string;
+    createTag: string;
+    editTag: string;
+    deleteTag: string;
+    save: string;
+    create: string;
+    cancel: string;
+    formName: string;
+    formSlug: string;
+    formDescription: string;
+    formColor: string;
+    formStatus: string;
+    formNamePlaceholder: string;
+    formSlugPlaceholder: string;
+    formDescriptionPlaceholder: string;
+    deleteConfirmTitle: string;
+    deleteConfirmDesc: (name: string) => string;
+    deleteWarning: string;
+    deleteSuccess: string;
+    createSuccess: string;
+    saveSuccess: string;
+    operationFailed: string;
+    deleting: string;
   }
 > = {
   "zh-CN": {
@@ -84,6 +120,7 @@ const TAG_PAGE_TEXT: Record<
     totalTags: "总标签数",
     activeTags: "活跃标签",
     totalPosts: "总文章数",
+    inactiveTags: "停用标签",
     avgPosts: "平均文章",
     loadFailed: "加载失败",
     retry: "重试",
@@ -98,6 +135,29 @@ const TAG_PAGE_TEXT: Record<
     manageTitle: "标签管理",
     manageDesc: "登录后可管理标签的创建、编辑、删除和状态",
     enterManage: "进入管理",
+    manageTagsInline: "标签管理",
+    createTag: "新建标签",
+    editTag: "编辑标签",
+    deleteTag: "删除标签",
+    save: "保存",
+    create: "创建",
+    cancel: "取消",
+    formName: "标签名称",
+    formSlug: "标签标识",
+    formDescription: "标签描述",
+    formColor: "标签颜色",
+    formStatus: "标签状态",
+    formNamePlaceholder: "请输入标签名称",
+    formSlugPlaceholder: "默认自动生成 8 位随机码",
+    formDescriptionPlaceholder: "可选，介绍标签用途",
+    deleteConfirmTitle: "删除标签",
+    deleteConfirmDesc: (name) => `确定要删除标签「${name}」吗？`,
+    deleteWarning: "若标签下仍有关联文章，将无法删除。",
+    deleteSuccess: "标签删除成功",
+    createSuccess: "标签创建成功",
+    saveSuccess: "标签更新成功",
+    operationFailed: "标签操作失败",
+    deleting: "删除中...",
   },
   "en-US": {
     createdAt: "Created at",
@@ -114,6 +174,7 @@ const TAG_PAGE_TEXT: Record<
     totalTags: "Total Tags",
     activeTags: "Active Tags",
     totalPosts: "Total Posts",
+    inactiveTags: "Inactive Tags",
     avgPosts: "Avg Posts",
     loadFailed: "Load failed",
     retry: "Retry",
@@ -128,6 +189,29 @@ const TAG_PAGE_TEXT: Record<
     manageTitle: "Tag Management",
     manageDesc: "Sign in to create, edit, delete, and control tag status",
     enterManage: "Manage Tags",
+    manageTagsInline: "Tag Management",
+    createTag: "Create Tag",
+    editTag: "Edit Tag",
+    deleteTag: "Delete Tag",
+    save: "Save",
+    create: "Create",
+    cancel: "Cancel",
+    formName: "Name",
+    formSlug: "Slug",
+    formDescription: "Description",
+    formColor: "Color",
+    formStatus: "Status",
+    formNamePlaceholder: "Enter tag name",
+    formSlugPlaceholder: "Auto-generated 8-char random slug",
+    formDescriptionPlaceholder: "Optional description",
+    deleteConfirmTitle: "Delete Tag",
+    deleteConfirmDesc: (name) => `Delete tag "${name}"?`,
+    deleteWarning: "If the tag still has associated posts, deletion will fail.",
+    deleteSuccess: "Tag deleted",
+    createSuccess: "Tag created",
+    saveSuccess: "Tag updated",
+    operationFailed: "Tag operation failed",
+    deleting: "Deleting...",
   },
   "ja-JP": {
     createdAt: "作成日",
@@ -144,6 +228,7 @@ const TAG_PAGE_TEXT: Record<
     totalTags: "タグ総数",
     activeTags: "有効タグ",
     totalPosts: "記事総数",
+    inactiveTags: "無効タグ",
     avgPosts: "平均記事数",
     loadFailed: "読み込み失敗",
     retry: "再試行",
@@ -158,6 +243,29 @@ const TAG_PAGE_TEXT: Record<
     manageTitle: "タグ管理",
     manageDesc: "ログイン後にタグの作成・編集・削除・状態管理ができます",
     enterManage: "管理へ",
+    manageTagsInline: "タグ管理",
+    createTag: "タグ作成",
+    editTag: "タグ編集",
+    deleteTag: "タグ削除",
+    save: "保存",
+    create: "作成",
+    cancel: "キャンセル",
+    formName: "タグ名",
+    formSlug: "スラッグ",
+    formDescription: "説明",
+    formColor: "色",
+    formStatus: "状態",
+    formNamePlaceholder: "タグ名を入力",
+    formSlugPlaceholder: "既定で8文字ランダム生成",
+    formDescriptionPlaceholder: "任意の説明",
+    deleteConfirmTitle: "タグ削除",
+    deleteConfirmDesc: (name) => `タグ「${name}」を削除しますか？`,
+    deleteWarning: "タグに記事が紐づいている場合は削除できません。",
+    deleteSuccess: "タグを削除しました",
+    createSuccess: "タグを作成しました",
+    saveSuccess: "タグを更新しました",
+    operationFailed: "タグ操作に失敗しました",
+    deleting: "削除中...",
   },
 };
 
@@ -173,15 +281,17 @@ const resolveLocale = (lang: string): Locale => {
 function TagCard({
   tag,
   index,
-  onDelete,
   onOpenTag,
+  onEdit,
+  onDelete,
   locale,
   t,
 }: {
   tag: Tag;
   index: number;
-  onDelete?: (id: number) => void;
   onOpenTag?: (tag: Tag) => void;
+  onEdit?: (tag: Tag) => void;
+  onDelete?: (tag: Tag) => void;
   locale: Locale;
   t: (typeof TAG_PAGE_TEXT)[Locale];
 }) {
@@ -243,17 +353,20 @@ function TagCard({
               </div>
             </div>
 
-            <Badge
-              content={tag.postCount || 0}
-              color="primary"
-              variant="flat"
-              className="shrink-0 animate-scale-in"
-              style={{ animationDelay: `${index * 100 + 200}ms` }}
-            >
+            <div className="relative shrink-0 animate-scale-in" style={{ animationDelay: `${index * 100 + 200}ms` }}>
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-secondary/20">
                 <Hash className="h-5 w-5 text-primary" />
               </div>
-            </Badge>
+              {/* HeroUI 当前版本不导出 Badge，改用 Chip 呈现数量角标 */}
+              <Chip
+                size="sm"
+                color="primary"
+                variant="flat"
+                className="absolute -top-2 -right-3 min-w-8 justify-center px-1 text-xs font-semibold"
+              >
+                {tag.postCount || 0}
+              </Chip>
+            </div>
           </div>
 
           {/* 标签统计信息 */}
@@ -302,10 +415,21 @@ function TagCard({
                   size="sm"
                   variant="light"
                   isIconOnly
-                  className="text-default-500 hover:text-danger transition-colors duration-300"
-                  onPress={() => onDelete(tag.id)}
+                  className="text-default-500 hover:text-warning transition-colors duration-300"
+                  onPress={() => onEdit?.(tag)}
                 >
-                  <AlertCircle className="w-4 h-4" />
+                  <Edit3 className="w-4 h-4" />
+                </Button>
+              )}
+              {onDelete && (
+                <Button
+                  size="sm"
+                  variant="light"
+                  isIconOnly
+                  className="text-default-500 hover:text-danger transition-colors duration-300"
+                  onPress={() => onDelete(tag)}
+                >
+                  <Trash2 className="w-4 h-4" />
                 </Button>
               )}
             </div>
@@ -345,6 +469,7 @@ function SearchAndFilter({
   onViewModeChange,
   loading,
   onRefresh,
+  onCreateTag,
   t,
 }: {
   searchQuery: string;
@@ -359,6 +484,7 @@ function SearchAndFilter({
   onViewModeChange: (mode: "grid" | "list") => void;
   loading: boolean;
   onRefresh: () => void;
+  onCreateTag: () => void;
   t: (typeof TAG_PAGE_TEXT)[Locale];
 }) {
   const sortOptions = [
@@ -456,6 +582,15 @@ function SearchAndFilter({
             <div className="flex items-center gap-2">
               <Button
                 size="sm"
+                color="primary"
+                onPress={onCreateTag}
+                startContent={<TagIcon className="w-4 h-4" />}
+                className="border-0 bg-gradient-to-r from-primary to-secondary text-white shadow-lg shadow-primary/25 transition-all duration-300 hover:from-primary-600 hover:to-secondary-600 hover:shadow-xl hover:shadow-primary/35 dark:from-primary-500 dark:to-secondary-500 dark:hover:from-primary-400 dark:hover:to-secondary-400"
+              >
+                {t.createTag}
+              </Button>
+              <Button
+                size="sm"
                 variant={viewMode === "grid" ? "solid" : "bordered"}
                 color={viewMode === "grid" ? "primary" : "default"}
                 isIconOnly
@@ -547,16 +682,16 @@ function TagStats({ tags, pagination, t }: { tags: Tag[]; pagination: any; t: (t
     const total = pagination?.total || tags.length;
     const active = tags.filter((tag) => tag.isActive).length;
     const totalPosts = tags.reduce((sum, tag) => sum + (tag.postCount || 0), 0);
-    const avgPosts = tags.length > 0 ? Math.round(totalPosts / tags.length) : 0;
+    const inactive = Math.max(total - active, 0);
 
-    return { total, active, totalPosts, avgPosts };
+    return { total, active, totalPosts, inactive };
   }, [tags, pagination]);
 
   const statItems = [
     { label: t.totalTags, value: stats.total, icon: TagIcon, color: "text-primary" },
-    { label: t.activeTags, value: stats.active, icon: Zap, color: "text-success" },
     { label: t.totalPosts, value: stats.totalPosts, icon: BarChart3, color: "text-warning" },
-    { label: t.avgPosts, value: stats.avgPosts, icon: TrendingUp, color: "text-secondary" },
+    { label: t.activeTags, value: stats.active, icon: Zap, color: "text-success" },
+    { label: t.inactiveTags, value: stats.inactive, icon: TrendingUp, color: "text-secondary" },
   ];
 
   return (
@@ -564,15 +699,27 @@ function TagStats({ tags, pagination, t }: { tags: Tag[]; pagination: any; t: (t
       {statItems.map((item, index) => (
         <Card
           key={item.label}
-          className="backdrop-blur-xl bg-white/10 dark:bg-black/10 hover:bg-white/20 dark:hover:bg-black/20 transition-all duration-300 hover:scale-105 animate-fade-in-up"
+          className="group relative overflow-hidden border border-white/20 bg-white/[0.08] shadow-lg shadow-black/5 backdrop-blur-xl transition-all duration-500 ease-out hover:-translate-y-1 hover:border-primary/35 hover:bg-white/[0.16] hover:shadow-2xl hover:shadow-primary/15 dark:border-white/10 dark:bg-black/15 dark:hover:bg-black/25 animate-fade-in-up"
           style={{ animationDelay: `${index * 100}ms` }}
         >
-          <CardBody className="p-4 text-center">
-            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 mx-auto mb-3">
-              <item.icon className={`w-6 h-6 ${item.color}`} />
+          {/* 渐变光斑：提升卡片背景层次，hover 时轻微增强，避免纯色玻璃背景发灰 */}
+          <div className="pointer-events-none absolute inset-0 opacity-80 transition-opacity duration-500 group-hover:opacity-100">
+            <div className="absolute -left-10 -top-10 h-28 w-28 rounded-full bg-primary/15 blur-2xl" />
+            <div className="absolute -right-10 -bottom-10 h-28 w-28 rounded-full bg-secondary/15 blur-2xl" />
+          </div>
+          {/* 顶部高光线：交互时从左向右展开，提供更明确的 hover 反馈 */}
+          <div className="absolute inset-x-0 top-0 h-[2px] origin-left scale-x-0 bg-gradient-to-r from-primary via-secondary to-accent transition-transform duration-500 group-hover:scale-x-100" />
+
+          <CardBody className="relative p-4 text-center">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 transition-transform duration-500 ease-out group-hover:scale-110 group-hover:rotate-3">
+              <item.icon className={`w-6 h-6 transition-transform duration-500 group-hover:scale-110 ${item.color}`} />
             </div>
-            <div className="text-2xl font-bold text-foreground mb-1">{item.value}</div>
-            <div className="text-sm text-default-600">{item.label}</div>
+            <div className="mb-1 text-2xl font-bold text-foreground transition-colors duration-300 group-hover:text-primary">
+              {item.value}
+            </div>
+            <div className="text-sm text-default-600 transition-colors duration-300 group-hover:text-default-700 dark:group-hover:text-default-300">
+              {item.label}
+            </div>
           </CardBody>
         </Card>
       ))}
@@ -610,6 +757,7 @@ function ErrorAlert({ error, onRetry, t }: { error: string; onRetry: () => void;
 export default function TagsPage() {
   const router = useRouter();
   const params = useParams<{ lang: string }>();
+  const { isAuthenticated } = useAuth();
   const locale = resolveLocale(params.lang);
   const t = TAG_PAGE_TEXT[locale];
   // 使用自定义 Hook 管理标签数据
@@ -639,6 +787,19 @@ export default function TagsPage() {
   const [sortByValue, setSortByValue] = useState("createdAt");
   const [sortOrderValue, setSortOrderValue] = useState<"asc" | "desc">("desc");
   const [mounted, setMounted] = useState(false);
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [editingTag, setEditingTag] = useState<Tag | null>(null);
+  const [deletingTag, setDeletingTag] = useState<Tag | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    slug: "",
+    description: "",
+    color: "#667eea",
+    isActive: true,
+  });
 
   // 组件挂载状态
   useEffect(() => {
@@ -708,6 +869,119 @@ export default function TagsPage() {
     router.push(`/${locale}/blog?tagId=${tag.id}`);
   };
 
+  const openCreateModal = () => {
+    if (!isAuthenticated) {
+      router.push(`/${locale}/auth/login`);
+      return;
+    }
+    setEditingTag(null);
+    setFormData({
+      name: "",
+      slug: generateRandomUrlAlias(8),
+      description: "",
+      color: "#667eea",
+      isActive: true,
+    });
+    setIsEditorOpen(true);
+  };
+
+  const openEditModal = (tag: Tag) => {
+    if (!isAuthenticated) {
+      router.push(`/${locale}/auth/login`);
+      return;
+    }
+    setEditingTag(tag);
+    setFormData({
+      name: tag.name || "",
+      slug: tag.slug || "",
+      description: tag.description || "",
+      color: tag.color || "#667eea",
+      isActive: Boolean(tag.isActive),
+    });
+    setIsEditorOpen(true);
+  };
+
+  const openDeleteModal = (tag: Tag) => {
+    if (!isAuthenticated) {
+      router.push(`/${locale}/auth/login`);
+      return;
+    }
+    setDeletingTag(tag);
+    setIsDeleteOpen(true);
+  };
+
+  const handleSubmitTag = async () => {
+    if (!formData.name.trim()) {
+      message.warning(t.formNamePlaceholder);
+      return;
+    }
+    try {
+      setSubmitting(true);
+      const isEdit = Boolean(editingTag);
+      const endpoint = isEdit ? `/api/tags/${editingTag?.id}` : "/api/tags";
+      const method = isEdit ? "PUT" : "POST";
+      const response = await fetch(endpoint, {
+        method,
+        headers: { "Content-Type": "application/json", ...clientBearerHeaders() },
+        body: JSON.stringify({
+          name: formData.name.trim(),
+          slug: formData.slug.trim() || generateRandomUrlAlias(8),
+          description: formData.description.trim(),
+          color: formData.color.trim() || "#667eea",
+          isActive: formData.isActive,
+        }),
+      });
+      if (response.status === 401) {
+        message.warning("请先登录后再操作标签");
+        router.push(`/${locale}/auth/login`);
+        return;
+      }
+      const result = (await response.json()) as ApiResponse<Tag>;
+      if (!result.success) {
+        message.error(result.message || t.operationFailed);
+        return;
+      }
+      message.success(isEdit ? t.saveSuccess : t.createSuccess);
+      setIsEditorOpen(false);
+      refreshTags();
+    } catch (submitError) {
+      console.error("提交标签失败:", submitError);
+      message.error(t.operationFailed);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteTag = async () => {
+    if (!deletingTag) return;
+    try {
+      setDeleteSubmitting(true);
+      const response = await fetch(`/api/tags/${deletingTag.id}`, {
+        method: "DELETE",
+        headers: { ...clientBearerHeaders() },
+      });
+      if (response.status === 401) {
+        message.warning("请先登录后再操作标签");
+        router.push(`/${locale}/auth/login`);
+        return;
+      }
+      const result = (await response.json()) as ApiResponse<null>;
+      if (!result.success) {
+        message.error(result.message || t.operationFailed);
+        return;
+      }
+      message.success(t.deleteSuccess);
+      setIsDeleteOpen(false);
+      setDeletingTag(null);
+      refreshTags();
+    } catch (deleteError) {
+      console.error("删除标签失败:", deleteError);
+      message.error(t.operationFailed);
+    } finally {
+      setDeleteSubmitting(false);
+    }
+  };
+
   if (!mounted) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -730,14 +1004,24 @@ export default function TagsPage() {
       {tags.length > 0 && (
         <Card className="mb-8 border-0 backdrop-blur-xl bg-white/10 dark:bg-black/10 animate-fade-in-up">
           <CardHeader className="pb-4">
-            <h2 className="text-2xl font-bold flex items-center gap-3">
-              <div className="p-2 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20">
-                <Palette className="w-6 h-6 text-primary" />
-              </div>
-              <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                {t.tagCloud}
-              </span>
-            </h2>
+            <div className="flex w-full items-center justify-between gap-3">
+              <h2 className="text-2xl font-bold flex items-center gap-3">
+                <div className="p-2 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20">
+                  <Palette className="w-6 h-6 text-primary" />
+                </div>
+                <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                  {t.tagCloud}
+                </span>
+              </h2>
+              <Button
+                color="primary"
+                size="sm"
+                startContent={<TagIcon className="w-4 h-4" />}
+                onPress={openCreateModal}
+              >
+                {t.createTag}
+              </Button>
+            </div>
           </CardHeader>
           <CardBody>
             <TagCloud
@@ -771,6 +1055,7 @@ export default function TagsPage() {
         onViewModeChange={handleViewModeChange}
         loading={loading}
         onRefresh={handleRefresh}
+        onCreateTag={openCreateModal}
         t={t}
       />
 
@@ -789,7 +1074,16 @@ export default function TagsPage() {
           </div>
         ) : filteredAndSortedTags.length > 0 ? (
           filteredAndSortedTags.map((tag, index) => (
-            <TagCard key={tag.id} tag={tag} index={index} onOpenTag={handleOpenTagPosts} locale={locale} t={t} />
+            <TagCard
+              key={tag.id}
+              tag={tag}
+              index={index}
+              onOpenTag={handleOpenTagPosts}
+              onEdit={openEditModal}
+              onDelete={openDeleteModal}
+              locale={locale}
+              t={t}
+            />
           ))
         ) : (
           <div className="col-span-full">
@@ -801,9 +1095,11 @@ export default function TagsPage() {
                   </div>
                   <h3 className="text-2xl font-bold text-foreground">{t.emptyTitle}</h3>
                   <p className="text-default-600 max-w-md">{t.emptyDesc}</p>
-                  <Button color="primary" variant="light" onPress={handleRefresh} className="mt-4">
-                    {t.refreshPage}
-                  </Button>
+                  <div className="mt-4 flex items-center gap-3">
+                    <Button color="primary" variant="light" onPress={handleRefresh}>
+                      {t.refreshPage}
+                    </Button>
+                  </div>
                 </div>
               </CardBody>
             </Card>
@@ -847,6 +1143,81 @@ export default function TagsPage() {
           </Card>
         </div>
       )}
+
+      <Modal isOpen={isEditorOpen} onOpenChange={setIsEditorOpen}>
+        <ModalContent>
+          <ModalHeader>{editingTag ? t.editTag : t.createTag}</ModalHeader>
+          <ModalBody>
+            <Input
+              label={t.formName}
+              placeholder={t.formNamePlaceholder}
+              value={formData.name}
+              onValueChange={(value: string) => setFormData((prev) => ({ ...prev, name: value }))}
+              isRequired
+            />
+            <Input
+              label={t.formSlug}
+              placeholder={t.formSlugPlaceholder}
+              value={formData.slug}
+              onValueChange={(value: string) => setFormData((prev) => ({ ...prev, slug: value }))}
+            />
+            <Textarea
+              label={t.formDescription}
+              placeholder={t.formDescriptionPlaceholder}
+              value={formData.description}
+              onValueChange={(value: string) => setFormData((prev) => ({ ...prev, description: value }))}
+              minRows={3}
+            />
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-[120px_1fr]">
+              <Input
+                type="color"
+                label={t.formColor}
+                value={formData.color}
+                onValueChange={(value: string) => setFormData((prev) => ({ ...prev, color: value }))}
+              />
+              <Input
+                label="HEX"
+                value={formData.color}
+                onValueChange={(value: string) => setFormData((prev) => ({ ...prev, color: value }))}
+                placeholder="#667eea"
+              />
+            </div>
+            <div className="flex items-center justify-between rounded-lg border border-default-200 p-3">
+              <span className="text-sm">{t.formStatus}</span>
+              <Switch
+                isSelected={formData.isActive}
+                onValueChange={(value: boolean) => setFormData((prev) => ({ ...prev, isActive: value }))}
+              />
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="light" onPress={() => setIsEditorOpen(false)}>
+              {t.cancel}
+            </Button>
+            <Button color="primary" isLoading={submitting} onPress={handleSubmitTag}>
+              {editingTag ? t.save : t.create}
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      <Modal isOpen={isDeleteOpen} onOpenChange={setIsDeleteOpen} size="sm">
+        <ModalContent>
+          <ModalHeader>{t.deleteConfirmTitle}</ModalHeader>
+          <ModalBody>
+            <p>{t.deleteConfirmDesc(deletingTag?.name || "")}</p>
+            <p className="text-sm text-warning">{t.deleteWarning}</p>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="light" onPress={() => setIsDeleteOpen(false)}>
+              {t.cancel}
+            </Button>
+            <Button color="danger" isLoading={deleteSubmitting} onPress={handleDeleteTag}>
+              {deleteSubmitting ? t.deleting : t.deleteTag}
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </div>
   );
 }

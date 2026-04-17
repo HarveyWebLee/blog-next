@@ -2,8 +2,11 @@
  * 分类API路由
  * 提供分类的增删改查接口
  *
- * GET /api/categories - 获取分类列表（支持分页、搜索、过滤）
- * POST /api/categories - 创建新分类
+ * 鉴权要求：所有接口均需 Authorization: Bearer。
+ * 数据范围：仅允许访问与操作当前登录用户 ownerId 下的分类数据。
+ *
+ * GET /api/categories - 获取分类列表（支持分页、搜索、状态与父分类过滤）
+ * POST /api/categories - 创建新分类（ownerId 由服务端按登录态写入）
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -11,6 +14,7 @@ import { and, asc, count, desc, eq, like } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { categories } from "@/lib/db/schema";
+import { requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, Category, CategoryQueryParams, CreateCategoryRequest, PaginatedResponseData } from "@/types/blog";
 
 /**
@@ -20,6 +24,17 @@ import { ApiResponse, Category, CategoryQueryParams, CreateCategoryRequest, Pagi
  */
 export async function GET(request: NextRequest) {
   try {
+    const auth = requireAuthUser(request);
+    if (!auth.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: auth.reason === "missing" ? "请先登录后查看分类" : "登录状态无效，请重新登录",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 401 }
+      );
+    }
     const { searchParams } = new URL(request.url);
 
     // 解析查询参数
@@ -45,6 +60,7 @@ export async function GET(request: NextRequest) {
     if (parentId !== undefined) {
       conditions.push(eq(categories.parentId, parentId));
     }
+    conditions.push(eq(categories.ownerId, auth.user.userId));
 
     // 构建排序 - 使用安全的字段映射
     const sortFieldMap: Record<string, any> = {
@@ -126,6 +142,17 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    const auth = requireAuthUser(request);
+    if (!auth.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: auth.reason === "missing" ? "请先登录后创建分类" : "登录状态无效，请重新登录",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 401 }
+      );
+    }
     const body: CreateCategoryRequest = await request.json();
 
     // 验证必填字段
@@ -141,7 +168,11 @@ export async function POST(request: NextRequest) {
     }
 
     // 检查分类名称是否已存在
-    const existingCategory = await db.select().from(categories).where(eq(categories.name, body.name)).limit(1);
+    const existingCategory = await db
+      .select()
+      .from(categories)
+      .where(and(eq(categories.name, body.name), eq(categories.ownerId, auth.user.userId)))
+      .limit(1);
 
     if (existingCategory.length > 0) {
       return NextResponse.json(
@@ -155,7 +186,11 @@ export async function POST(request: NextRequest) {
     }
 
     // 检查slug是否已存在
-    const existingSlug = await db.select().from(categories).where(eq(categories.slug, body.slug)).limit(1);
+    const existingSlug = await db
+      .select()
+      .from(categories)
+      .where(and(eq(categories.slug, body.slug), eq(categories.ownerId, auth.user.userId)))
+      .limit(1);
 
     if (existingSlug.length > 0) {
       return NextResponse.json(
@@ -170,6 +205,7 @@ export async function POST(request: NextRequest) {
 
     // 创建新分类
     await db.insert(categories).values({
+      ownerId: auth.user.userId,
       name: body.name,
       slug: body.slug,
       description: body.description || null,
@@ -179,7 +215,11 @@ export async function POST(request: NextRequest) {
     });
 
     // 重新查询创建的分类
-    const [newCategory] = await db.select().from(categories).where(eq(categories.name, body.name)).limit(1);
+    const [newCategory] = await db
+      .select()
+      .from(categories)
+      .where(and(eq(categories.name, body.name), eq(categories.ownerId, auth.user.userId)))
+      .limit(1);
 
     return NextResponse.json({
       success: true,

@@ -7,23 +7,17 @@ import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Chip } from "@heroui/chip";
 import { Divider } from "@heroui/divider";
 import { Input } from "@heroui/input";
-import { ArrowRight, Bookmark, Eye, FolderOpen, Hash, Mail, Tag, TrendingUp } from "lucide-react";
+import { ArrowRight, Eye, Mail, TrendingUp } from "lucide-react";
 
 import { useAuth } from "@/lib/contexts/auth-context";
-import { useCategories } from "@/lib/hooks/useCategories";
 import { useNewsletterGuestSubscription } from "@/lib/hooks/useNewsletterGuestSubscription";
 import { usePosts } from "@/lib/hooks/usePosts";
-import { useTags } from "@/lib/hooks/useTags";
 import { message } from "@/lib/utils";
 
 export function BlogSidebar({ lang = "zh-CN" }: { lang?: string }) {
   const t =
     lang === "en-US"
       ? {
-          categoryTitle: "Categories",
-          categoryDesc: "Browse posts by topic",
-          tagTitle: "Popular Tags",
-          tagDesc: "Find related content quickly",
           popularTitle: "Popular Posts",
           popularDesc: "Most popular content",
           views: "views",
@@ -46,10 +40,6 @@ export function BlogSidebar({ lang = "zh-CN" }: { lang?: string }) {
         }
       : lang === "ja-JP"
         ? {
-            categoryTitle: "カテゴリ",
-            categoryDesc: "テーマ別に記事を探す",
-            tagTitle: "人気タグ",
-            tagDesc: "関連コンテンツをすばやく検索",
             popularTitle: "人気記事",
             popularDesc: "最も人気のあるコンテンツ",
             views: "閲覧",
@@ -71,10 +61,6 @@ export function BlogSidebar({ lang = "zh-CN" }: { lang?: string }) {
             sendCodeFail: "確認コードの送信に失敗しました",
           }
         : {
-            categoryTitle: "文章分类",
-            categoryDesc: "按主题浏览文章",
-            tagTitle: "热门标签",
-            tagDesc: "快速找到相关内容",
             popularTitle: "热门文章",
             popularDesc: "最受欢迎的内容",
             views: "阅读",
@@ -110,8 +96,6 @@ export function BlogSidebar({ lang = "zh-CN" }: { lang?: string }) {
     unsubscribeSuccess: t.unsubscribeSuccess,
     unsubscribeFail: t.unsubscribeFail,
   });
-  const { categories } = useCategories({ autoFetch: true, limit: 20 });
-  const { tags } = useTags({ autoFetch: true, initialLimit: 20 });
   const { posts: hotPosts } = usePosts({
     initialParams: {
       status: "published",
@@ -122,11 +106,6 @@ export function BlogSidebar({ lang = "zh-CN" }: { lang?: string }) {
     },
     autoFetch: true,
   });
-  const activeCategories = categories.filter((category) => category.isActive).slice(0, 8);
-  const activeTags = tags
-    .filter((tag) => tag.isActive)
-    .sort((a, b) => (b.postCount || 0) - (a.postCount || 0))
-    .slice(0, 12);
   const loginEmail = useMemo(() => {
     if (!isAuthenticated) return "";
     return (user?.email || "").trim().toLowerCase();
@@ -220,83 +199,6 @@ export function BlogSidebar({ lang = "zh-CN" }: { lang?: string }) {
 
   return (
     <div className="space-y-6">
-      {/* 分类 */}
-      <Card className="border-0 backdrop-blur-xl bg-white/10 dark:bg-black/10 hover:bg-white/20 dark:hover:bg-black/20 transition-all duration-300 animate-fade-in-up">
-        <CardHeader className="flex gap-3">
-          <div className="p-2 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20">
-            <FolderOpen className="w-5 h-5 text-primary" />
-          </div>
-          <div className="flex flex-col">
-            <p className="text-md font-semibold">{t.categoryTitle}</p>
-            <p className="text-small text-default-500">{t.categoryDesc}</p>
-          </div>
-        </CardHeader>
-        <CardBody className="pt-0">
-          <div className="space-y-1">
-            {activeCategories.map((category, index) => (
-              <Link
-                key={category.id}
-                href={`/${lang}/blog?categoryId=${category.id}`}
-                className="group flex items-center justify-between rounded-lg border border-transparent bg-white/5 p-3 backdrop-blur-xl transition-colors duration-300 dark:bg-black/5 hover:border-primary/20 hover:bg-white/10 dark:hover:border-primary/25 dark:hover:bg-black/10"
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                <div className="flex items-center gap-2">
-                  <Bookmark className="w-4 h-4 text-default-400 group-hover:text-primary transition-colors" />
-                  <span className="text-sm font-medium group-hover:text-primary transition-colors">
-                    {category.name}
-                  </span>
-                </div>
-                <Chip
-                  size="sm"
-                  variant="flat"
-                  color="default"
-                  className="backdrop-blur-xl bg-white/10 dark:bg-black/10"
-                >
-                  {category.postCount || 0}
-                </Chip>
-              </Link>
-            ))}
-          </div>
-        </CardBody>
-      </Card>
-
-      {/* 热门标签 */}
-      <Card className="border-0 backdrop-blur-xl bg-white/10 dark:bg-black/10 hover:bg-white/20 dark:hover:bg-black/20 transition-all duration-300 animate-fade-in-up">
-        <CardHeader className="flex gap-3">
-          <div className="p-2 rounded-full bg-gradient-to-br from-secondary/20 to-accent/20">
-            <Hash className="w-5 h-5 text-secondary" />
-          </div>
-          <div className="flex flex-col">
-            <p className="text-md font-semibold">{t.tagTitle}</p>
-            <p className="text-small text-default-500">{t.tagDesc}</p>
-          </div>
-        </CardHeader>
-        <CardBody className="pt-0">
-          <div className="flex flex-wrap gap-2">
-            {activeTags.map((tag, index) => (
-              <Link
-                key={tag.id}
-                href={`/${lang}/blog?tagId=${tag.id}`}
-                className="animate-fade-in-up"
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                <Chip
-                  startContent={<Tag className="w-3 h-3" />}
-                  variant="flat"
-                  className="hover:scale-105 transition-all duration-300 cursor-pointer backdrop-blur-xl bg-white/10 dark:bg-black/10 hover:bg-white/20 dark:hover:bg-black/20"
-                  style={{
-                    backgroundColor: `${tag.color}20`,
-                    color: tag.color,
-                  }}
-                >
-                  {tag.name} ({tag.postCount || 0})
-                </Chip>
-              </Link>
-            ))}
-          </div>
-        </CardBody>
-      </Card>
-
       {/* 热门文章 */}
       <Card className="border-0 backdrop-blur-xl bg-white/10 dark:bg-black/10 hover:bg-white/20 dark:hover:bg-black/20 transition-all duration-300 animate-fade-in-up">
         <CardHeader className="flex gap-3">

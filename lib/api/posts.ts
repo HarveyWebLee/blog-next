@@ -30,7 +30,6 @@ export class PostsAPI {
     if (params.status) searchParams.append("status", params.status);
     if (params.visibility) searchParams.append("visibility", params.visibility);
     if (params.authorId) searchParams.append("authorId", params.authorId.toString());
-    if (params.categoryId) searchParams.append("categoryId", params.categoryId.toString());
     if (params.tagId != null) searchParams.append("tagId", params.tagId.toString());
     if (params.sortBy) searchParams.append("sortBy", params.sortBy);
     if (params.sortOrder) searchParams.append("sortOrder", params.sortOrder);

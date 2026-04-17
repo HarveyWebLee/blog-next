@@ -1,15 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
-import { asc, eq } from "drizzle-orm";
-import { BookOpen, Compass, LayoutGrid, Library, Newspaper, Sparkles } from "lucide-react";
+import { BookOpen, Compass, LayoutGrid, Newspaper, Sparkles } from "lucide-react";
 
 import { HomeAmbientBackground } from "@/components/home/home-ambient-background";
 import { HomeDarkStarfield } from "@/components/home/home-dark-starfield";
 import { HomeGlassRain } from "@/components/home/home-glass-rain";
 import { HomeLightMist } from "@/components/home/home-light-mist";
 import { Button } from "@/components/ui/button";
-import { db } from "@/lib/db/config";
-import { categories } from "@/lib/db/schema";
 import { getDictionary } from "@/lib/dictionaries";
 import { postService } from "@/lib/services/post.service";
 import { stripMarkdownForExcerpt } from "@/lib/utils/markdown-plain";
@@ -38,13 +35,6 @@ function formatPostDate(d: Date | string | null | undefined, lang: Locale) {
 
 /** 列表接口返回的文章条目（含作者与分类摘要字段） */
 type HomePost = Awaited<ReturnType<typeof postService.getPosts>>["data"][number];
-
-type HomeTopic = {
-  id: number;
-  name: string;
-  slug: string;
-  description: string | null;
-};
 
 /**
  * 首页文章卡片：服务端渲染，无客户端交互，利于 SEO 与首屏速度。
@@ -169,33 +159,17 @@ export default async function HomePage({ params }: { params: Promise<{ lang: Loc
   const viewsLabel = dict.common.views;
 
   let latest: HomePost[] = [];
-  let topics: HomeTopic[] = [];
-
   try {
-    const [postsResult, topicRows] = await Promise.all([
-      // 不传 sortBy：与 GET /api/posts、博客列表默认一致，按 COALESCE(publishedAt, updatedAt, createdAt) 最近优先。
-      // 若只按 publishedAt 排序，历史上 publishedAt 为空的已发布文章会排在博客靠前、首页却靠后或进不了前 6 条。
-      postService.getPosts({
-        status: "published",
-        visibility: "public",
-        page: 1,
-        limit: 6,
-        sortOrder: "desc",
-      }),
-      db
-        .select({
-          id: categories.id,
-          name: categories.name,
-          slug: categories.slug,
-          description: categories.description,
-        })
-        .from(categories)
-        .where(eq(categories.isActive, true))
-        .orderBy(asc(categories.sortOrder))
-        .limit(12),
-    ]);
+    // 不传 sortBy：与 GET /api/posts、博客列表默认一致，按 COALESCE(publishedAt, updatedAt, createdAt) 最近优先。
+    // 若只按 publishedAt 排序，历史上 publishedAt 为空的已发布文章会排在博客靠前、首页却靠后或进不了前 6 条。
+    const postsResult = await postService.getPosts({
+      status: "published",
+      visibility: "public",
+      page: 1,
+      limit: 6,
+      sortOrder: "desc",
+    });
     latest = postsResult.data as HomePost[];
-    topics = topicRows;
   } catch (e) {
     console.error("[home] 数据加载失败:", e);
   }
@@ -228,67 +202,10 @@ export default async function HomePage({ params }: { params: Promise<{ lang: Loc
                 <Button variant="gradient" size="lg" className="w-full sm:w-auto" asChild>
                   <Link href={`/${lang}/blog`}>{h.ctaRead}</Link>
                 </Button>
-                <Button
-                  variant="glass"
-                  size="lg"
-                  className="w-full !border-0 bg-white/10 shadow-none backdrop-blur-xl hover:scale-100 hover:bg-white/20 dark:bg-black/10 dark:hover:bg-black/20 sm:w-auto"
-                  asChild
-                >
-                  <Link href={`/${lang}/categories`}>{h.ctaTopics}</Link>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="lg"
-                  className="w-full text-foreground hover:bg-white/10 dark:hover:bg-white/5 sm:w-auto"
-                  asChild
-                >
-                  <Link href={`/${lang}/tags`}>{h.ctaTags}</Link>
-                </Button>
               </div>
             </div>
           </div>
         </section>
-
-        {/* 分类：移动端横向滑动，桌面端网格 */}
-        {topics.length > 0 ? (
-          <section className="py-10 sm:py-12 md:py-14">
-            <div className="container mx-auto px-4 sm:px-6 lg:px-8 2xl:px-12">
-              <div className="mb-6 flex flex-col gap-2 sm:mb-8 md:flex-row md:items-end md:justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
-                    {h.sectionTopics}
-                  </h2>
-                  <p className="mt-1 max-w-xl text-sm text-foreground/70 sm:text-base">{h.sectionTopicsDesc}</p>
-                </div>
-                <Link
-                  href={`/${lang}/categories`}
-                  className="mt-2 text-sm font-medium text-primary hover:underline md:mt-0"
-                >
-                  {h.seeAll} →
-                </Link>
-              </div>
-              <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 pt-0.5 [scrollbar-width:none] sm:-mx-0 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden">
-                {topics.map((topic) => (
-                  <Link
-                    key={topic.id}
-                    href={`/${lang}/blog?categoryId=${topic.id}`}
-                    className="min-w-[11rem] max-w-[14rem] shrink-0 snap-start rounded-2xl border-0 bg-white/10 p-4 shadow-none backdrop-blur-xl transition-all duration-300 hover:bg-white/20 hover:shadow-lg hover:shadow-primary/10 dark:bg-black/10 dark:hover:bg-black/20 sm:min-w-0 sm:max-w-none sm:flex-1 sm:basis-[calc(50%-0.375rem)] lg:basis-[calc(25%-0.45rem)]"
-                  >
-                    <div className="mb-2 flex items-center gap-2 text-primary">
-                      <Library className="h-4 w-4 shrink-0" aria-hidden />
-                      <span className="line-clamp-1 font-medium text-foreground">{topic.name}</span>
-                    </div>
-                    {topic.description ? (
-                      <p className="line-clamp-2 text-xs leading-relaxed text-foreground/65">{topic.description}</p>
-                    ) : (
-                      <p className="text-xs text-transparent"> </p>
-                    )}
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </section>
-        ) : null}
 
         {/* 最新文章 */}
         <section className="py-10 sm:py-12 md:py-16">

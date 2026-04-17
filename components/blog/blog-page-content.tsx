@@ -13,7 +13,6 @@ import {
   CalendarIcon,
   FilePlus2Icon,
   FilterIcon,
-  FolderOpen,
   Hash,
   RefreshCwIcon,
   SearchIcon,
@@ -26,7 +25,6 @@ import { BlogSidebar } from "@/components/blog/blog-sidebar";
 import { PostCard } from "@/components/blog/post-card";
 import PostsAPI from "@/lib/api/posts";
 import { useAuth } from "@/lib/contexts/auth-context";
-import { useCategories } from "@/lib/hooks/useCategories";
 import { usePosts } from "@/lib/hooks/usePosts";
 import { useTags } from "@/lib/hooks/useTags";
 import { PostData } from "@/types/blog";
@@ -34,16 +32,11 @@ import { PostData } from "@/types/blog";
 export type BlogPageContentProps = {
   /** 路由语言段，如 zh-CN */
   lang: string;
-  /**
-   * 由服务端 page 从 searchParams.categoryId 解析；与地址栏同步。
-   * 有值时首屏 usePosts 即带 categoryId，避免先拉全量再筛。
-   */
-  initialCategoryId?: number;
   /** 由服务端 page 从 searchParams.tagId 解析；与侧栏热门标签一致 */
   initialTagId?: number;
 };
 
-export function BlogPageContent({ lang, initialCategoryId, initialTagId }: BlogPageContentProps) {
+export function BlogPageContent({ lang, initialTagId }: BlogPageContentProps) {
   const router = useRouter();
   const blogBasePath = `/${lang}/blog`;
 
@@ -52,9 +45,8 @@ export function BlogPageContent({ lang, initialCategoryId, initialTagId }: BlogP
       ? {
           loadFailed: "Load failed",
           filterTitle: "Filter Posts",
-          filterDesc: "Search, filter by category or tag, and sort posts.",
+          filterDesc: "Search, filter by tag, and sort posts.",
           createDoc: "Create Post",
-          selectCategory: "Select category",
           searchPlaceholder: "Search title or content...",
           selectSort: "Select sort",
           loading: "Loading...",
@@ -65,16 +57,14 @@ export function BlogPageContent({ lang, initialCategoryId, initialTagId }: BlogP
           pageMiddle: "of",
           pageSuffix: "",
           reload: "Reload",
-          allCategories: "All categories",
           viewAllPosts: "View all posts",
         }
       : lang === "ja-JP"
         ? {
             loadFailed: "読み込み失敗",
             filterTitle: "記事を絞り込む",
-            filterDesc: "検索・カテゴリ（またはタグ絞り込み）・並び順で記事を探せます。",
+            filterDesc: "検索・タグ絞り込み・並び順で記事を探せます。",
             createDoc: "記事を作成",
-            selectCategory: "カテゴリを選択",
             searchPlaceholder: "タイトルまたは内容を検索...",
             selectSort: "並び順を選択",
             loading: "読み込み中...",
@@ -85,15 +75,13 @@ export function BlogPageContent({ lang, initialCategoryId, initialTagId }: BlogP
             pageMiddle: "/",
             pageSuffix: "",
             reload: "再読み込み",
-            allCategories: "すべてのカテゴリ",
             viewAllPosts: "すべての記事へ",
           }
         : {
             loadFailed: "加载失败",
             filterTitle: "筛选文章",
-            filterDesc: "通过搜索、分类、标签（侧栏入口）与排序找到您需要的文章。",
+            filterDesc: "通过搜索、标签（侧栏入口）与排序找到您需要的文章。",
             createDoc: "新建文章",
-            selectCategory: "选择分类",
             searchPlaceholder: "搜索文章标题或内容...",
             selectSort: "选择排序",
             loading: "加载中...",
@@ -104,14 +92,10 @@ export function BlogPageContent({ lang, initialCategoryId, initialTagId }: BlogP
             pageMiddle: "页 / 共",
             pageSuffix: "页",
             reload: "重新加载",
-            allCategories: "全部分类",
             viewAllPosts: "查看全部文章",
           };
 
   const [searchValue, setSearchValue] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState(
-    initialCategoryId != null && Number.isFinite(initialCategoryId) ? String(Math.floor(initialCategoryId)) : "all"
-  );
   const [sortBy, setSortBy] = useState("publishedAt");
   const [likedPostIds, setLikedPostIds] = useState<Set<number>>(new Set());
   const [favoritedPostIds, setFavoritedPostIds] = useState<Set<number>>(new Set());
@@ -127,7 +111,6 @@ export function BlogPageContent({ lang, initialCategoryId, initialTagId }: BlogP
     params,
     fetchPosts,
     searchPosts,
-    filterByCategory,
     filterByTag,
     sortPosts,
     goToPage,
@@ -139,29 +122,16 @@ export function BlogPageContent({ lang, initialCategoryId, initialTagId }: BlogP
       status: "published",
       visibility: "public",
       limit: 6,
-      ...(initialCategoryId != null && Number.isFinite(initialCategoryId) && initialCategoryId > 0
-        ? { categoryId: Math.floor(initialCategoryId) }
-        : {}),
       ...(initialTagId != null && Number.isFinite(initialTagId) && initialTagId > 0
         ? { tagId: Math.floor(initialTagId) }
         : {}),
     },
   });
 
-  const { categories } = useCategories({ autoFetch: true, limit: 100 });
   const { tags } = useTags({ autoFetch: true, initialLimit: 100 });
-  const selectableCategories = categories.filter((category) => category.isActive);
-  const categoryOptions = [
-    { key: "all", label: t.allCategories },
-    ...selectableCategories.map((category) => ({
-      key: category.id.toString(),
-      label: category.name,
-    })),
-  ];
 
   /**
-   * 从地址栏进入 / 客户端路由切换时，将 URL 上的 categoryId、tagId 与列表请求对齐。
-   * 分类与标签互斥展示为主；若两者同时出现在 URL，则按 AND 查询（与接口一致）。
+   * 从地址栏进入 / 客户端路由切换时，将 URL 上的 tagId 与列表请求对齐。
    */
   const skipFirstUrlSync = useRef(true);
   useEffect(() => {
@@ -169,55 +139,15 @@ export function BlogPageContent({ lang, initialCategoryId, initialTagId }: BlogP
       skipFirstUrlSync.current = false;
       return;
     }
-    const uc = initialCategoryId ?? undefined;
     const ut = initialTagId ?? undefined;
-    const dc = params.categoryId;
     const dt = params.tagId;
-    if (uc === dc && ut === dt) return;
-
-    if (ut != null && uc != null) {
-      setCategoryFilter(String(uc));
-      void fetchPosts({ ...params, categoryId: uc, tagId: ut, page: 1 });
-      return;
-    }
+    if (ut === dt) return;
     if (ut != null) {
-      setCategoryFilter("all");
       filterByTag(ut);
       return;
     }
-    if (uc != null) {
-      setCategoryFilter(String(uc));
-      filterByCategory(uc);
-      return;
-    }
-    setCategoryFilter("all");
-    filterByCategory(null);
-  }, [
-    initialCategoryId,
-    initialTagId,
-    params.categoryId,
-    params.tagId,
-    filterByCategory,
-    filterByTag,
-    fetchPosts,
-    params,
-  ]);
-
-  const activeCategoryMeta = useMemo(() => {
-    if (categoryFilter === "all") return null;
-    const id = Number(categoryFilter);
-    if (!Number.isFinite(id)) return null;
-    return selectableCategories.find((c) => c.id === id) ?? null;
-  }, [categoryFilter, selectableCategories]);
-
-  const categoryHeading = useMemo(() => {
-    if (!activeCategoryMeta) return "";
-    const name =
-      activeCategoryMeta.name?.trim() || (lang === "en-US" ? "Category" : lang === "ja-JP" ? "カテゴリ" : "未命名分类");
-    if (lang === "en-US") return `Posts in “${name}”`;
-    if (lang === "ja-JP") return `「${name}」の記事`;
-    return `「${name}」下的文章`;
-  }, [activeCategoryMeta, lang]);
+    filterByTag(null);
+  }, [initialTagId, params.tagId, filterByTag]);
 
   const activeTagId = params.tagId ?? undefined;
   const activeTagMeta = useMemo(() => {
@@ -240,15 +170,9 @@ export function BlogPageContent({ lang, initialCategoryId, initialTagId }: BlogP
     searchPosts(value);
   };
 
-  const handleCategoryFilter = (value: string) => {
-    setCategoryFilter(value);
-    const categoryId = value === "all" ? null : Number(value);
-    filterByCategory(categoryId);
-    const next =
-      categoryId == null || !Number.isFinite(categoryId)
-        ? blogBasePath
-        : `${blogBasePath}?categoryId=${Math.floor(categoryId)}`;
-    router.replace(next, { scroll: false });
+  const handleClearTagFilter = () => {
+    filterByTag(null);
+    router.replace(blogBasePath, { scroll: false });
   };
 
   const handleSort = (value: string) => {
@@ -374,32 +298,6 @@ export function BlogPageContent({ lang, initialCategoryId, initialTagId }: BlogP
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-4">
         <div className="lg:col-span-3">
-          {categoryFilter !== "all" && activeCategoryMeta && (
-            <Card className="mb-6 border-0 bg-white/10 backdrop-blur-xl animate-fade-in-up dark:bg-black/10">
-              <CardBody className="flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-start gap-3">
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/25 to-secondary/20 text-primary">
-                    <FolderOpen className="h-5 w-5" aria-hidden />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-lg font-semibold tracking-tight text-foreground">{categoryHeading}</p>
-                    {activeCategoryMeta.description ? (
-                      <p className="mt-1 line-clamp-2 text-sm text-default-500">{activeCategoryMeta.description}</p>
-                    ) : null}
-                  </div>
-                </div>
-                <Button
-                  variant="flat"
-                  color="primary"
-                  className="shrink-0 font-medium"
-                  onPress={() => handleCategoryFilter("all")}
-                >
-                  {t.viewAllPosts}
-                </Button>
-              </CardBody>
-            </Card>
-          )}
-
           {activeTagId != null && Number.isFinite(activeTagId) && activeTagId > 0 && (
             <Card className="mb-6 border-0 bg-white/10 backdrop-blur-xl animate-fade-in-up dark:bg-black/10">
               <CardBody className="flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between">
@@ -428,7 +326,7 @@ export function BlogPageContent({ lang, initialCategoryId, initialTagId }: BlogP
                   variant="flat"
                   color="secondary"
                   className="shrink-0 font-medium"
-                  onPress={() => handleCategoryFilter("all")}
+                  onPress={handleClearTagFilter}
                 >
                   {t.viewAllPosts}
                 </Button>
@@ -461,7 +359,7 @@ export function BlogPageContent({ lang, initialCategoryId, initialTagId }: BlogP
               </div>
             </CardHeader>
             <CardBody>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="relative">
                   <Input
                     type="text"
@@ -483,26 +381,6 @@ export function BlogPageContent({ lang, initialCategoryId, initialTagId }: BlogP
                     </div>
                   ) : null}
                 </div>
-
-                <Select
-                  placeholder={t.selectCategory}
-                  selectedKeys={new Set([categoryFilter])}
-                  onSelectionChange={(keys) => {
-                    const selectedKey = Array.from(keys)[0] as string;
-                    handleCategoryFilter(selectedKey);
-                  }}
-                  variant="bordered"
-                  size="md"
-                  classNames={{
-                    trigger:
-                      "border-white/20 bg-white/10 backdrop-blur-xl hover:bg-white/20 dark:border-white/10 dark:bg-black/10 dark:hover:bg-black/20",
-                    value: "text-foreground",
-                  }}
-                >
-                  {categoryOptions.map((option) => (
-                    <SelectItem key={option.key}>{option.label}</SelectItem>
-                  ))}
-                </Select>
 
                 <Select
                   placeholder={t.selectSort}
