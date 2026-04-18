@@ -15,6 +15,7 @@ import { and, count, eq, ne } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { categories, posts } from "@/lib/db/schema";
+import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
 import { requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, Category, UpdateCategoryRequest } from "@/types/blog";
 
@@ -210,6 +211,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       .where(and(eq(categories.id, categoryId), eq(categories.ownerId, auth.user.userId)))
       .limit(1);
 
+    logUserActivity({
+      userId: auth.user.userId,
+      action: UserActivityAction.CATEGORY_UPDATED,
+      description: updatedCategory?.name,
+      metadata: { categoryId, slug: updatedCategory?.slug },
+      request,
+    });
+
     return NextResponse.json({
       success: true,
       data: {
@@ -314,6 +323,14 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
         { status: 409 }
       );
     }
+
+    logUserActivity({
+      userId: auth.user.userId,
+      action: UserActivityAction.CATEGORY_DELETED,
+      description: existingCategory.name,
+      metadata: { categoryId, slug: existingCategory.slug },
+      request,
+    });
 
     // 删除分类
     await db.delete(categories).where(and(eq(categories.id, categoryId), eq(categories.ownerId, auth.user.userId)));

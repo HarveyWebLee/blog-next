@@ -6,6 +6,7 @@ import { Button } from "@heroui/button";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Chip } from "@heroui/chip";
 import { Input } from "@heroui/input";
+import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader } from "@heroui/modal";
 import { Select, SelectItem } from "@heroui/select";
 import { Spinner } from "@heroui/spinner";
 import {
@@ -14,6 +15,7 @@ import {
   FilePlus2Icon,
   FilterIcon,
   Hash,
+  Lock,
   RefreshCwIcon,
   SearchIcon,
   Sparkles,
@@ -57,6 +59,12 @@ export function BlogPageContent({ lang, initialTagId }: BlogPageContentProps) {
           pageSuffix: "",
           reload: "Reload",
           viewAllPosts: "View all posts",
+          passwordTitle: "Password Required",
+          passwordHint: "This post is protected. Enter password to continue.",
+          passwordPlaceholder: "Enter post password",
+          passwordConfirm: "Unlock & Read",
+          passwordCancel: "Cancel",
+          passwordInvalid: "Wrong password",
         }
       : lang === "ja-JP"
         ? {
@@ -75,6 +83,12 @@ export function BlogPageContent({ lang, initialTagId }: BlogPageContentProps) {
             pageSuffix: "",
             reload: "再読み込み",
             viewAllPosts: "すべての記事へ",
+            passwordTitle: "パスワードが必要です",
+            passwordHint: "この記事はパスワード保護されています。入力後に閲覧できます。",
+            passwordPlaceholder: "記事パスワードを入力",
+            passwordConfirm: "解除して読む",
+            passwordCancel: "キャンセル",
+            passwordInvalid: "パスワードが正しくありません",
           }
         : {
             loadFailed: "加载失败",
@@ -92,6 +106,12 @@ export function BlogPageContent({ lang, initialTagId }: BlogPageContentProps) {
             pageSuffix: "页",
             reload: "重新加载",
             viewAllPosts: "查看全部文章",
+            passwordTitle: "需要文章密码",
+            passwordHint: "该文章已开启密码保护，请先输入密码再继续阅读。",
+            passwordPlaceholder: "请输入文章密码",
+            passwordConfirm: "解锁并阅读",
+            passwordCancel: "取消",
+            passwordInvalid: "密码错误，请重试",
           };
 
   const [searchValue, setSearchValue] = useState("");
@@ -100,7 +120,12 @@ export function BlogPageContent({ lang, initialTagId }: BlogPageContentProps) {
   const [favoritedPostIds, setFavoritedPostIds] = useState<Set<number>>(new Set());
   const [likeLoadingPostIds, setLikeLoadingPostIds] = useState<Set<number>>(new Set());
   const [favoriteLoadingPostIds, setFavoriteLoadingPostIds] = useState<Set<number>>(new Set());
-  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [passwordInput, setPasswordInput] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [pendingPost, setPendingPost] = useState<PostData | null>(null);
+  const [passwordVerifying, setPasswordVerifying] = useState(false);
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
 
   const {
     posts,
@@ -119,7 +144,7 @@ export function BlogPageContent({ lang, initialTagId }: BlogPageContentProps) {
   } = usePosts({
     initialParams: {
       status: "published",
-      visibility: "public",
+      includePasswordProtected: true,
       limit: 6,
       ...(initialTagId != null && Number.isFinite(initialTagId) && initialTagId > 0
         ? { tagId: Math.floor(initialTagId) }
@@ -182,11 +207,50 @@ export function BlogPageContent({ lang, initialTagId }: BlogPageContentProps) {
   };
 
   const handleViewPost = async (post: PostData) => {
+    const isPasswordPost = post.visibility === "password";
+    const isAuthor = user?.id === post.authorId;
+    if (isPasswordPost && !isAuthor) {
+      setPendingPost(post);
+      setPasswordInput("");
+      setPasswordError("");
+      setPasswordModalOpen(true);
+      return;
+    }
     try {
       await incrementViewCount(post.id);
       router.push(`/${lang}/blog/${post.slug}`);
     } catch (e) {
       console.error("Failed to increment view count:", e);
+    }
+  };
+
+  const handlePasswordUnlock = async () => {
+    if (!pendingPost) return;
+    if (!passwordInput.trim()) {
+      setPasswordError(t.passwordInvalid);
+      return;
+    }
+    try {
+      setPasswordVerifying(true);
+      setPasswordError("");
+      const response = await fetch(`/api/posts/slug/${pendingPost.slug}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: passwordInput }),
+      });
+      const result = await response.json();
+      if (!result.success) {
+        setPasswordError(result.message || t.passwordInvalid);
+        return;
+      }
+      setPasswordModalOpen(false);
+      await incrementViewCount(pendingPost.id);
+      router.push(`/${lang}/blog/${pendingPost.slug}?password=${encodeURIComponent(passwordInput)}`);
+    } catch (e) {
+      console.error("密码校验失败:", e);
+      setPasswordError(t.passwordInvalid);
+    } finally {
+      setPasswordVerifying(false);
     }
   };
 
@@ -464,6 +528,36 @@ export function BlogPageContent({ lang, initialTagId }: BlogPageContentProps) {
           </div>
         </div>
       </div>
+
+      <Modal isOpen={passwordModalOpen} onOpenChange={setPasswordModalOpen}>
+        <ModalContent>
+          <ModalHeader className="flex items-center gap-2">
+            <Lock className="h-5 w-5 text-warning" />
+            {t.passwordTitle}
+          </ModalHeader>
+          <ModalBody>
+            <p className="text-sm text-default-500">{t.passwordHint}</p>
+            <Input
+              type="password"
+              value={passwordInput}
+              onValueChange={setPasswordInput}
+              placeholder={t.passwordPlaceholder}
+              autoFocus
+              variant="bordered"
+              isInvalid={Boolean(passwordError)}
+              errorMessage={passwordError || undefined}
+            />
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="flat" onPress={() => setPasswordModalOpen(false)}>
+              {t.passwordCancel}
+            </Button>
+            <Button color="primary" isLoading={passwordVerifying} onPress={handlePasswordUnlock}>
+              {t.passwordConfirm}
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </div>
   );
 }

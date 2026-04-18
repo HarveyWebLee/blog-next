@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
     const responseData: PaginatedResponseData<UserActivity> = {
       data: activities.map((activity) => ({
         id: activity.id,
-        userId: activity.userId,
+        userId: activity.userId ?? undefined,
         action: activity.action,
         description: activity.description ?? undefined,
         metadata: activity.metadata ? JSON.parse(activity.metadata) : undefined,

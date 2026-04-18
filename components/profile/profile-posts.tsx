@@ -1,11 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Badge, Button, Card, CardBody, Chip } from "@heroui/react";
-import { BookOpen, Edit, Eye, Filter, Heart, MessageSquare, MoreHorizontal, Plus, Search, Trash2 } from "lucide-react";
+import { Button, Card, CardBody, Chip } from "@heroui/react";
+import {
+  Archive,
+  BookOpen,
+  CheckCircle2,
+  Edit,
+  Eye,
+  EyeOff,
+  FilePenLine,
+  Filter,
+  Heart,
+  KeyRound,
+  MessageSquare,
+  Plus,
+  Search,
+  Trash2,
+} from "lucide-react";
 
 import {
   PROFILE_GLASS_CARD,
@@ -51,6 +66,9 @@ export default function ProfilePosts({ lang }: ProfilePostsProps) {
           published: "Published",
           draft: "Draft",
           archived: "Archived",
+          visibilityPublic: "Public",
+          visibilityPrivate: "Private",
+          visibilityPassword: "Password",
           edit: "Edit",
           del: "Delete",
           more: "More",
@@ -70,6 +88,9 @@ export default function ProfilePosts({ lang }: ProfilePostsProps) {
             published: "公開済み",
             draft: "下書き",
             archived: "アーカイブ",
+            visibilityPublic: "公開",
+            visibilityPrivate: "非公開",
+            visibilityPassword: "パスワード保護",
             edit: "編集",
             del: "削除",
             more: "その他",
@@ -88,6 +109,9 @@ export default function ProfilePosts({ lang }: ProfilePostsProps) {
             published: "已发布",
             draft: "草稿",
             archived: "已归档",
+            visibilityPublic: "公开",
+            visibilityPrivate: "私有",
+            visibilityPassword: "密码保护",
             edit: "编辑",
             del: "删除",
             more: "更多",
@@ -98,7 +122,14 @@ export default function ProfilePosts({ lang }: ProfilePostsProps) {
           };
   const [posts, setPosts] = useState<PostData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
+  /** 输入框即时展示的关键词 */
+  const [searchInput, setSearchInput] = useState("");
+  /**
+   * 防抖后的关键词：用于列表过滤，文章较多时减少每次按键的过滤计算。
+   * 与收藏/点赞页一致，400ms。
+   */
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const searchDebounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
   useEffect(() => {
@@ -141,10 +172,26 @@ export default function ProfilePosts({ lang }: ProfilePostsProps) {
     void fetchPosts();
   }, [authLoading, isAuthenticated, user?.id, t.loadFailed]);
 
+  // 搜索防抖：输入立即更新 searchInput，过滤使用 debouncedSearch
+  useEffect(() => {
+    if (searchDebounceTimerRef.current) {
+      clearTimeout(searchDebounceTimerRef.current);
+    }
+    searchDebounceTimerRef.current = setTimeout(() => {
+      setDebouncedSearch(searchInput);
+    }, 400);
+    return () => {
+      if (searchDebounceTimerRef.current) {
+        clearTimeout(searchDebounceTimerRef.current);
+      }
+    };
+  }, [searchInput]);
+
   const filteredPosts = posts.filter((post) => {
-    const matchesSearch =
-      post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      post.excerpt?.toLowerCase().includes(searchTerm.toLowerCase());
+    const q = debouncedSearch.trim().toLowerCase();
+    const title = post.title?.toLowerCase();
+    const excerpt = post.excerpt?.toLowerCase();
+    const matchesSearch = q === "" || Boolean(title?.includes(q)) || Boolean(excerpt?.includes(q));
     const matchesStatus = statusFilter === "all" || post.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -155,6 +202,52 @@ export default function ProfilePosts({ lang }: ProfilePostsProps) {
       month: "short",
       day: "numeric",
     }).format(new Date(date));
+  };
+
+  const getStatusDisplay = (status: PostData["status"]) => {
+    switch (status) {
+      case "published":
+        return {
+          label: t.published,
+          icon: CheckCircle2,
+          color: statusColors.published,
+        };
+      case "draft":
+        return {
+          label: t.draft,
+          icon: FilePenLine,
+          color: statusColors.draft,
+        };
+      default:
+        return {
+          label: t.archived,
+          icon: Archive,
+          color: statusColors.archived,
+        };
+    }
+  };
+
+  const getVisibilityDisplay = (visibility: PostData["visibility"]) => {
+    switch (visibility) {
+      case "private":
+        return {
+          label: t.visibilityPrivate,
+          icon: EyeOff,
+          color: visibilityColors.private,
+        };
+      case "password":
+        return {
+          label: t.visibilityPassword,
+          icon: KeyRound,
+          color: visibilityColors.password,
+        };
+      default:
+        return {
+          label: t.visibilityPublic,
+          icon: Eye,
+          color: visibilityColors.public,
+        };
+    }
   };
 
   if (loading) {
@@ -212,8 +305,8 @@ export default function ProfilePosts({ lang }: ProfilePostsProps) {
               <input
                 type="text"
                 placeholder={t.search}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
                 className={`${PROFILE_NATIVE_CONTROL} w-full pl-10`}
               />
             </div>
@@ -239,53 +332,84 @@ export default function ProfilePosts({ lang }: ProfilePostsProps) {
         {filteredPosts.map((post) => (
           <Card key={post.id} className={PROFILE_GLASS_CARD_INTERACTIVE}>
             <CardBody className="p-6">
-              <div className="flex items-start gap-4">
-                {/* 文章封面 */}
-                <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-default-100">
-                  {post.featuredImage ? (
-                    <Image
-                      src={post.featuredImage}
-                      alt={post.title}
-                      width={96}
-                      height={96}
-                      unoptimized
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/40 to-secondary/35">
-                      <BookOpen className="h-8 w-8 text-white" />
+              <div className="flex flex-col gap-4 md:flex-row md:items-start">
+                <div className="w-full shrink-0 space-y-2 md:w-36">
+                  {/* 文章封面 */}
+                  <div className="relative h-24 w-full overflow-hidden rounded-xl bg-default-100">
+                    {post.featuredImage ? (
+                      <Image
+                        src={post.featuredImage}
+                        alt={post.title}
+                        width={144}
+                        height={96}
+                        unoptimized
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/40 to-secondary/35">
+                        <BookOpen className="h-8 w-8 text-white" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 统计区：移动到封面图下方 */}
+                  <div className="grid grid-cols-3 gap-1 rounded-lg border border-default-200/70 bg-default-50/40 p-2 text-xs text-default-500 dark:border-default-100/10 dark:bg-black/10">
+                    <div className="flex items-center justify-center gap-1">
+                      <Eye className="h-3.5 w-3.5" />
+                      <span>{post.viewCount}</span>
                     </div>
-                  )}
+                    <div className="flex items-center justify-center gap-1">
+                      <Heart className="h-3.5 w-3.5" />
+                      <span>{post.likeCount}</span>
+                    </div>
+                    <div className="flex items-center justify-center gap-1">
+                      <MessageSquare className="h-3.5 w-3.5" />
+                      <span>0</span>
+                    </div>
+                  </div>
                 </div>
 
                 {/* 文章信息 */}
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <h3 className="mb-2 line-clamp-2 text-lg font-semibold text-foreground">{post.title}</h3>
-                      {post.excerpt && (
-                        <p className="mb-3 line-clamp-2 text-default-600">{stripMarkdownForExcerpt(post.excerpt)}</p>
-                      )}
-
-                      {/* 文章元信息 */}
-                      <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-default-500">
-                        <div className="flex items-center space-x-1">
-                          <Eye className="w-4 h-4" />
-                          <span>{post.viewCount}</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <Heart className="w-4 h-4" />
-                          <span>{post.likeCount}</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <MessageSquare className="w-4 h-4" />
-                          <span>0</span>
-                        </div>
-                        <span>{post.publishedAt ? formatDate(post.publishedAt) : formatDate(post.createdAt)}</span>
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <h3 className="line-clamp-2 text-lg font-semibold text-foreground">{post.title}</h3>
+                      <div className="flex items-center gap-2">
+                        {(() => {
+                          const statusDisplay = getStatusDisplay(post.status);
+                          const visibilityDisplay = getVisibilityDisplay(post.visibility);
+                          const StatusIcon = statusDisplay.icon;
+                          const VisibilityIcon = visibilityDisplay.icon;
+                          return (
+                            <>
+                              <Chip
+                                size="sm"
+                                variant="flat"
+                                color={statusDisplay.color}
+                                startContent={<StatusIcon className="h-3.5 w-3.5" />}
+                              >
+                                {statusDisplay.label}
+                              </Chip>
+                              <Chip
+                                size="sm"
+                                variant="flat"
+                                color={visibilityDisplay.color}
+                                startContent={<VisibilityIcon className="h-3.5 w-3.5" />}
+                              >
+                                {visibilityDisplay.label}
+                              </Chip>
+                            </>
+                          );
+                        })()}
                       </div>
+                    </div>
 
-                      {/* 分类和标签 */}
-                      <div className="flex items-center space-x-2 mb-3">
+                    {post.excerpt && (
+                      <p className="line-clamp-2 text-default-600">{stripMarkdownForExcerpt(post.excerpt)}</p>
+                    )}
+
+                    <div className="relative md:top-1 flex flex-wrap items-center justify-between gap-2 pt-0">
+                      <div className="flex flex-1 flex-wrap items-center gap-2">
                         {post.category && (
                           <Chip size="sm" variant="flat" color="primary">
                             {post.category.name}
@@ -307,29 +431,27 @@ export default function ProfilePosts({ lang }: ProfilePostsProps) {
                           </Chip>
                         )}
                       </div>
-
-                      {/* 状态标签 */}
-                      <div className="flex items-center space-x-2">
-                        <Badge color={statusColors[post.status]} variant="flat">
-                          {post.status === "published" ? t.published : post.status === "draft" ? t.draft : t.archived}
-                        </Badge>
-                        <Badge color={visibilityColors[post.visibility]} variant="flat">
-                          {post.visibility}
-                        </Badge>
+                      <div className="ml-auto flex items-center gap-2">
+                        <Button
+                          as={Link}
+                          href={`/${routeLang}/blog/manage/edit/${post.id}`}
+                          variant="flat"
+                          size="sm"
+                          startContent={<Edit className="h-4 w-4" />}
+                          aria-label={t.edit}
+                        >
+                          {t.edit}
+                        </Button>
+                        <Button
+                          variant="flat"
+                          size="sm"
+                          color="danger"
+                          startContent={<Trash2 className="h-4 w-4" />}
+                          aria-label={t.del}
+                        >
+                          {t.del}
+                        </Button>
                       </div>
-                    </div>
-
-                    {/* 操作按钮 */}
-                    <div className="ml-0 flex shrink-0 items-center gap-1 sm:ml-4">
-                      <Button isIconOnly variant="light" size="sm" aria-label={t.edit}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button isIconOnly variant="light" size="sm" color="danger" aria-label={t.del}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                      <Button isIconOnly variant="light" size="sm" aria-label={t.more}>
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
                     </div>
                   </div>
                 </div>
@@ -345,10 +467,10 @@ export default function ProfilePosts({ lang }: ProfilePostsProps) {
           <CardBody className="p-12 text-center">
             <BookOpen className="mx-auto mb-4 h-16 w-16 text-default-300" />
             <h3 className="mb-2 text-lg font-medium text-foreground">
-              {searchTerm || statusFilter !== "all" ? t.noMatch : t.noPosts}
+              {searchInput || statusFilter !== "all" ? t.noMatch : t.noPosts}
             </h3>
             <p className="mb-6 text-default-500">
-              {searchTerm || statusFilter !== "all" ? t.noMatchDesc : t.noPostsDesc}
+              {searchInput || statusFilter !== "all" ? t.noMatchDesc : t.noPostsDesc}
             </p>
             <Button
               as={Link}

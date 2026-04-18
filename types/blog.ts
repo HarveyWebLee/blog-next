@@ -358,6 +358,8 @@ export interface UpdatePostRequest {
 export interface PostQueryParams extends PaginationParams {
   status?: PostStatus;
   visibility?: PostVisibility;
+  /** 为 true 时返回 public + password（不含 private）；优先级低于 visibility 精确筛选 */
+  includePasswordProtected?: boolean;
   authorId?: number;
   tagId?: number;
   search?: string;
@@ -567,7 +569,8 @@ export interface ProfileSocialLinks {
  * 用户活动接口
  */
 export interface UserActivity extends BaseEntity {
-  userId: number;
+  /** 参与者；访客-only 场景可能为空（与库表 user_id 可空一致） */
+  userId?: number;
   action: string;
   description?: string;
   metadata?: Record<string, any>;

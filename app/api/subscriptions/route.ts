@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db/config";
 import { emailSubscriptions, users } from "@/lib/db/schema";
 import { consumeEmailVerificationCode } from "@/lib/services/email-verification-consume";
+import { logUserActivity, maskEmailForActivityLog, UserActivityAction } from "@/lib/services/user-activity-log.service";
 import { isValidEmail } from "@/lib/utils/auth";
 import { isMysqlTableMissingError } from "@/lib/utils/mysql-error";
 import { requireAuthUser } from "@/lib/utils/request-auth";
@@ -193,6 +194,13 @@ export async function POST(request: NextRequest) {
 
     const [saved] = await db.select().from(emailSubscriptions).where(eq(emailSubscriptions.email, email)).limit(1);
 
+    logUserActivity({
+      userId: effectiveUserId,
+      action: UserActivityAction.NEWSLETTER_SUBSCRIBED,
+      metadata: { emailMasked: maskEmailForActivityLog(email) },
+      request,
+    });
+
     return NextResponse.json(
       {
         success: true,
@@ -337,6 +345,14 @@ export async function DELETE(request: NextRequest) {
         updatedAt: new Date(),
       })
       .where(eq(emailSubscriptions.id, existing.id));
+
+    const unsubUserId = auth.ok ? auth.user.userId : null;
+    logUserActivity({
+      userId: unsubUserId,
+      action: UserActivityAction.NEWSLETTER_UNSUBSCRIBED,
+      metadata: { emailMasked: maskEmailForActivityLog(email) },
+      request,
+    });
 
     return NextResponse.json({
       success: true,

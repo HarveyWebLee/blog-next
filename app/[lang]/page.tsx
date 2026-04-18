@@ -1,7 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
-import { BookOpen, Compass, LayoutGrid, Newspaper, Sparkles } from "lucide-react";
+import { BookOpen, Compass, LayoutGrid, Lock, Newspaper, Sparkles } from "lucide-react";
 
+import ProtectedReadButton from "@/components/blog/protected-read-button";
 import { HomeAmbientBackground } from "@/components/home/home-ambient-background";
 import { HomeDarkStarfield } from "@/components/home/home-dark-starfield";
 import { HomeGlassRain } from "@/components/home/home-glass-rain";
@@ -53,10 +54,10 @@ function HomePostCard({
   readMore: string;
   viewsLabel: string;
 }) {
-  const href = `/${lang}/blog/${post.slug}`;
   const excerpt = stripMarkdownForExcerpt((post.excerpt ?? "").trim());
   const authorLabel = post.author?.displayName || post.author?.username || "";
   const categoryName = post.category?.name;
+  const isPasswordProtected = post.visibility === "password";
 
   return (
     <div className="blog-card-container">
@@ -71,40 +72,78 @@ function HomePostCard({
           aria-hidden
         />
 
-        <Link
-          href={href}
-          className={`relative block shrink-0 overflow-hidden bg-white/5 dark:bg-black/20 ${
-            isHero ? "aspect-[16/10] lg:aspect-auto lg:w-[46%] lg:min-h-full" : "aspect-[16/10]"
-          }`}
-          aria-label={post.title}
-        >
-          {post.featuredImage ? (
-            <Image
-              src={post.featuredImage}
-              alt={post.title}
-              fill
-              sizes={
-                isHero ? "(max-width:1024px) 100vw, 46vw" : "(max-width:640px) 100vw, (max-width:1024px) 50vw, 33vw"
-              }
-              className="object-cover transition duration-500 group-hover:scale-[1.03]"
-              unoptimized
-            />
-          ) : (
-            <div
-              className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/25 via-white/10 to-secondary/20 dark:from-primary/30 dark:via-black/20 dark:to-secondary/25"
-              aria-hidden
-            >
-              <BookOpen className="h-14 w-14 text-foreground/30 dark:text-foreground/40" strokeWidth={1.25} />
+        {isPasswordProtected ? (
+          <div
+            className={`relative block shrink-0 overflow-hidden bg-white/5 dark:bg-black/20 ${
+              isHero ? "aspect-[16/10] lg:aspect-auto lg:w-[46%] lg:min-h-full" : "aspect-[16/10]"
+            }`}
+          >
+            {post.featuredImage ? (
+              <Image
+                src={post.featuredImage}
+                alt={post.title}
+                fill
+                sizes={
+                  isHero ? "(max-width:1024px) 100vw, 46vw" : "(max-width:640px) 100vw, (max-width:1024px) 50vw, 33vw"
+                }
+                className="object-cover transition duration-500 group-hover:scale-[1.03]"
+                unoptimized
+              />
+            ) : (
+              <div
+                className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/25 via-white/10 to-secondary/20 dark:from-primary/30 dark:via-black/20 dark:to-secondary/25"
+                aria-hidden
+              >
+                <BookOpen className="h-14 w-14 text-foreground/30 dark:text-foreground/40" strokeWidth={1.25} />
+              </div>
+            )}
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-90 lg:opacity-70" />
+            <div className="absolute right-2 top-2 z-10 rounded-full bg-black/50 p-1.5 text-white backdrop-blur">
+              <Lock className="h-4 w-4" />
             </div>
-          )}
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-90 lg:opacity-70" />
-        </Link>
+          </div>
+        ) : (
+          <Link
+            href={`/${lang}/blog/${post.slug}`}
+            className={`relative block shrink-0 overflow-hidden bg-white/5 dark:bg-black/20 ${
+              isHero ? "aspect-[16/10] lg:aspect-auto lg:w-[46%] lg:min-h-full" : "aspect-[16/10]"
+            }`}
+            aria-label={post.title}
+          >
+            {post.featuredImage ? (
+              <Image
+                src={post.featuredImage}
+                alt={post.title}
+                fill
+                sizes={
+                  isHero ? "(max-width:1024px) 100vw, 46vw" : "(max-width:640px) 100vw, (max-width:1024px) 50vw, 33vw"
+                }
+                className="object-cover transition duration-500 group-hover:scale-[1.03]"
+                unoptimized
+              />
+            ) : (
+              <div
+                className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/25 via-white/10 to-secondary/20 dark:from-primary/30 dark:via-black/20 dark:to-secondary/25"
+                aria-hidden="true"
+              >
+                <BookOpen className="h-14 w-14 text-foreground/30 dark:text-foreground/40" strokeWidth={1.25} />
+              </div>
+            )}
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-90 lg:opacity-70" />
+          </Link>
+        )}
 
         <div className="relative z-[1] flex flex-1 flex-col p-5 sm:p-6">
           <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-foreground/65 dark:text-foreground/60">
             {categoryName ? (
               <span className="inline-flex max-w-full items-center truncate rounded-lg bg-gradient-to-r from-primary/90 to-primary/70 px-2.5 py-1 text-xs font-medium text-white shadow-md backdrop-blur-sm">
                 {categoryName}
+              </span>
+            ) : null}
+            {isPasswordProtected ? (
+              <span className="inline-flex items-center gap-1 rounded-md bg-warning/20 px-2 py-1 text-xs text-warning-700 dark:text-warning-300">
+                <Lock className="h-3 w-3" />
+                {lang === "en-US" ? "Password" : lang === "ja-JP" ? "パスワード保護" : "密码保护"}
               </span>
             ) : null}
             <time dateTime={post.publishedAt ? String(post.publishedAt) : undefined}>
@@ -114,9 +153,13 @@ function HomePostCard({
           </div>
 
           <h2 className="mb-2 text-lg font-semibold tracking-tight text-foreground sm:text-xl">
-            <Link href={href} className="transition-colors hover:text-primary">
-              {post.title}
-            </Link>
+            {isPasswordProtected ? (
+              <span className="transition-colors hover:text-primary">{post.title}</span>
+            ) : (
+              <Link href={`/${lang}/blog/${post.slug}`} className="transition-colors hover:text-primary">
+                {post.title}
+              </Link>
+            )}
           </h2>
 
           {excerpt ? (
@@ -136,14 +179,15 @@ function HomePostCard({
                 </>
               ) : null}
             </span>
-            <Button
-              variant="ghost"
-              size="sm"
+            <ProtectedReadButton
+              lang={lang}
+              slug={post.slug}
+              postId={post.id}
+              postAuthorId={post.authorId}
+              isPasswordProtected={isPasswordProtected}
+              label={readMore}
               className="shrink-0 text-primary hover:bg-white/15 dark:hover:bg-white/10"
-              asChild
-            >
-              <Link href={href}>{readMore}</Link>
-            </Button>
+            />
           </div>
         </div>
       </article>
@@ -164,7 +208,7 @@ export default async function HomePage({ params }: { params: Promise<{ lang: Loc
     // 若只按 publishedAt 排序，历史上 publishedAt 为空的已发布文章会排在博客靠前、首页却靠后或进不了前 6 条。
     const postsResult = await postService.getPosts({
       status: "published",
-      visibility: "public",
+      includePasswordProtected: true,
       page: 1,
       limit: 6,
       sortOrder: "desc",

@@ -13,6 +13,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db/config";
 import { userProfiles, users } from "@/lib/db/schema";
 import { resolveProfileEmailUpdateOrError, verifyProfileEmailCodeOrError } from "@/lib/services/profile-email.service";
+import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
 import { requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, UpdateProfileRequest, UserProfile } from "@/types/blog";
 
@@ -232,6 +233,14 @@ export async function POST(request: NextRequest) {
         .where(eq(users.id, decoded.userId));
     }
 
+    logUserActivity({
+      userId: decoded.userId,
+      action: UserActivityAction.PROFILE_UPDATED,
+      description: "创建个人资料",
+      metadata: { phase: "create" },
+      request,
+    });
+
     return NextResponse.json<ApiResponse>(
       {
         success: true,
@@ -363,6 +372,14 @@ export async function PUT(request: NextRequest) {
         .set({ avatar: avatarNormalized, updatedAt: new Date() })
         .where(eq(users.id, decoded.userId));
     }
+
+    logUserActivity({
+      userId: decoded.userId,
+      action: UserActivityAction.PROFILE_UPDATED,
+      description: "更新个人资料",
+      metadata: { phase: "update", emailChanged: emailNormalized !== undefined },
+      request,
+    });
 
     return NextResponse.json<ApiResponse>({
       success: true,

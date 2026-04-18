@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@heroui/button";
 import { Card, CardBody, CardHeader } from "@heroui/card";
@@ -31,6 +31,7 @@ import {
 
 import { FeaturedImageUpload } from "@/components/blog/featured-image-upload";
 import SimpleEditor from "@/components/blog/simple-editor";
+import { CategoryTreeSelect } from "@/components/ui/category-tree-select";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { useCategories } from "@/lib/hooks/useCategories";
 import { useTags } from "@/lib/hooks/useTags";
@@ -268,8 +269,16 @@ export default function EditBlogPage() {
   const [post, setPost] = useState<PostManageDetailData | null>(null);
 
   // 获取分类和标签数据
-  const { categories, loading: categoriesLoading } = useCategories({ autoFetch: true });
+  const { categories } = useCategories({ autoFetch: true });
   const { tags, loading: tagsLoading, fetchTags } = useTags({ autoFetch: true });
+  const selectableCategories = useMemo(() => categories.filter((category) => category.isActive), [categories]);
+
+  // 标签颜色标准化：确保渲染时得到合法的 hex 颜色值
+  const resolveTagColor = (tag: Tag) => {
+    if (!tag.color) return "#64748b";
+    const trimmed = tag.color.trim();
+    return trimmed.startsWith("#") ? trimmed : `#${trimmed}`;
+  };
 
   const [formData, setFormData] = useState<UpdatePostRequest>({
     title: "",
@@ -375,6 +384,17 @@ export default function EditBlogPage() {
       return { ...prev, tagIds: newTagIds };
     });
   };
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    void fetchTags({
+      page: 1,
+      limit: 200,
+      isActive: true,
+      sortBy: "sortOrder",
+      sortOrder: "asc",
+    });
+  }, [fetchTags, isAuthenticated]);
 
   // 提交表单
   const handleSubmit = async (e: React.FormEvent) => {
@@ -601,24 +621,14 @@ export default function EditBlogPage() {
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start md:gap-x-0">
                 <div className="min-w-0 space-y-1 md:border-r md:border-default-200 md:pr-5 lg:pr-6 dark:md:border-default-100/15">
-                  <Select
+                  <CategoryTreeSelect
                     label={t.selectCategory}
                     placeholder={t.selectCategoryPlaceholder}
-                    selectedKeys={formData.categoryId ? new Set([formData.categoryId.toString()]) : new Set()}
-                    onSelectionChange={(keys) => {
-                      const selectedKey = Array.from(keys)[0] as string;
-                      handleInputChange("categoryId", selectedKey ? parseInt(selectedKey) : undefined);
-                    }}
-                    variant="bordered"
-                    size="md"
-                    startContent={<Folder className="h-4 w-4 text-default-400" />}
-                    className="w-full"
-                    isLoading={categoriesLoading}
-                  >
-                    {categories.map((category) => (
-                      <SelectItem key={category.id.toString()}>{category.name}</SelectItem>
-                    ))}
-                  </Select>
+                    noneLabel={t.selectCategoryPlaceholder}
+                    categories={selectableCategories}
+                    value={formData.categoryId}
+                    onChange={(categoryId) => handleInputChange("categoryId", categoryId)}
+                  />
                   <p className="text-xs text-default-400">{t.selectCategoryHint}</p>
                 </div>
 
@@ -635,9 +645,15 @@ export default function EditBlogPage() {
                         <Chip
                           key={tag.id}
                           size="sm"
-                          color={formData.tagIds?.includes(tag.id) ? "primary" : "default"}
                           variant={formData.tagIds?.includes(tag.id) ? "solid" : "bordered"}
-                          className="cursor-pointer transition-transform hover:scale-[1.02]"
+                          className="cursor-pointer border transition-transform hover:scale-[1.02]"
+                          style={{
+                            borderColor: resolveTagColor(tag),
+                            backgroundColor: formData.tagIds?.includes(tag.id)
+                              ? `${resolveTagColor(tag)}22`
+                              : "transparent",
+                            color: resolveTagColor(tag),
+                          }}
                           onClick={() => handleTagToggle(tag.id)}
                         >
                           {tag.name}

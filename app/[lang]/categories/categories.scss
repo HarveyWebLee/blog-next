@@ -426,12 +426,18 @@ $card-shadow-hover:
     border-left: 4px solid var(--heroui-success-300);
     margin-left: 6rem;
   }
+
+  // 展开子分类时允许内容自然撑开，避免子分类区域被裁切
+  &.expanded {
+    overflow: visible;
+  }
 }
 
 .category-card-content {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: auto;
+  min-height: 100%;
   padding: 2rem;
   position: relative;
   z-index: 1;

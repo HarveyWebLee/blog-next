@@ -15,6 +15,7 @@ import { and, count, eq, ne } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { postTags, tags } from "@/lib/db/schema";
+import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
 import { requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, Tag, UpdateTagRequest } from "@/types/blog";
 
@@ -206,6 +207,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       .where(and(eq(tags.id, tagId), eq(tags.ownerId, auth.user.userId)))
       .limit(1);
 
+    logUserActivity({
+      userId: auth.user.userId,
+      action: UserActivityAction.TAG_UPDATED,
+      description: updatedTag?.name,
+      metadata: { tagId, slug: updatedTag?.slug },
+      request,
+    });
+
     return NextResponse.json({
       success: true,
       data: updatedTag,
@@ -288,6 +297,14 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
         { status: 409 }
       );
     }
+
+    logUserActivity({
+      userId: auth.user.userId,
+      action: UserActivityAction.TAG_DELETED,
+      description: existingTag.name,
+      metadata: { tagId, slug: existingTag.slug },
+      request,
+    });
 
     // 删除标签
     await db.delete(tags).where(and(eq(tags.id, tagId), eq(tags.ownerId, auth.user.userId)));

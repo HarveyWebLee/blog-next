@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { userProfiles, users } from "@/lib/db/schema";
+import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
 import { requireInMemorySuperRoot } from "@/lib/utils/authz";
 import { mapDbUserToAdminManagedUserRow } from "@/lib/utils/map-db-user-to-admin-row";
 import type { AdminUserDetail, AdminUserPatchBody, ApiResponse } from "@/types/blog";
@@ -197,6 +198,18 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     };
 
     const detail = applyRootRoleSemantic(detailRaw, gate.user.userId);
+
+    logUserActivity({
+      userId: gate.user.userId,
+      action: UserActivityAction.ADMIN_USER_UPDATED,
+      description: `管理端更新用户 #${id}`,
+      metadata: {
+        targetUserId: id,
+        patch: { role: body.role, status: body.status },
+      },
+      request,
+    });
+
     return NextResponse.json<ApiResponse<AdminUserDetail>>({
       success: true,
       data: detail,

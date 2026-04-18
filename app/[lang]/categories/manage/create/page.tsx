@@ -6,22 +6,12 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import {
-  Button,
-  Card,
-  CardBody,
-  CardHeader,
-  Chip,
-  Divider,
-  Input,
-  Select,
-  SelectItem,
-  Switch,
-  Textarea,
-} from "@heroui/react";
+import { Button, Card, CardBody, CardHeader, Chip, Divider, Input, Switch, Textarea } from "@heroui/react";
 import { ArrowLeft, Eye, FileText, Folder, Plus } from "lucide-react";
 
+import { CategoryTreeSelect } from "@/components/ui/category-tree-select";
 import { generateRandomUrlAlias, message } from "@/lib/utils";
+import { clientBearerHeaders } from "@/lib/utils/client-bearer-auth";
 import { Locale } from "@/types";
 import { ApiResponse, Category, CreateCategoryRequest } from "@/types/blog";
 
@@ -161,7 +151,9 @@ export default function CreateCategoryPage() {
   // 获取分类列表（用于选择父分类）
   const fetchCategories = async () => {
     try {
-      const response = await fetch("/api/categories?limit=100");
+      const response = await fetch("/api/categories?limit=100", {
+        headers: { ...clientBearerHeaders() },
+      });
       const result: ApiResponse<{ data: Category[]; pagination: any }> = await response.json();
 
       if (result.success && result.data) {
@@ -196,6 +188,7 @@ export default function CreateCategoryPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...clientBearerHeaders(),
         },
         body: JSON.stringify({
           ...formData,
@@ -287,22 +280,14 @@ export default function CreateCategoryPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-3">
-                    <label className="text-sm font-medium text-foreground">{t.parent}</label>
-                    <Select
+                    <CategoryTreeSelect
+                      label={t.parent}
                       placeholder={t.parentPlaceholder}
-                      selectedKeys={formData.parentId ? [formData.parentId.toString()] : []}
-                      onSelectionChange={(keys) => {
-                        const selectedKey = Array.from(keys)[0] as string;
-                        setFormData({
-                          ...formData,
-                          parentId: selectedKey ? parseInt(selectedKey) : undefined,
-                        });
-                      }}
-                    >
-                      {categories.map((category) => (
-                        <SelectItem key={category.id.toString()}>{category.name}</SelectItem>
-                      ))}
-                    </Select>
+                      noneLabel={t.none}
+                      categories={categories}
+                      value={formData.parentId}
+                      onChange={(parentId) => setFormData({ ...formData, parentId })}
+                    />
                     <p className="text-xs text-default-500">{t.parentDesc}</p>
                   </div>
 

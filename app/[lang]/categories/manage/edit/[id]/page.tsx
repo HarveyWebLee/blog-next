@@ -4,7 +4,7 @@
 
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Badge,
@@ -15,15 +15,15 @@ import {
   Chip,
   Divider,
   Input,
-  Select,
-  SelectItem,
   Spinner,
   Switch,
   Textarea,
 } from "@heroui/react";
 import { ArrowLeft, Calendar, Edit, Eye, FileText, Folder, Save } from "lucide-react";
 
+import { CategoryTreeSelect } from "@/components/ui/category-tree-select";
 import { message } from "@/lib/utils";
+import { clientBearerHeaders } from "@/lib/utils/client-bearer-auth";
 import { Locale } from "@/types";
 import { ApiResponse, Category, UpdateCategoryRequest } from "@/types/blog";
 
@@ -77,6 +77,7 @@ const EDIT_TEXT: Record<Locale, Record<string, string>> = {
     updatedAt: "更新时间",
     postCount: "文章数量",
     currentStatus: "当前状态",
+    none: "无",
     postUnit: "篇",
   },
   "en-US": {
@@ -119,6 +120,7 @@ const EDIT_TEXT: Record<Locale, Record<string, string>> = {
     updatedAt: "Updated At",
     postCount: "Posts",
     currentStatus: "Current Status",
+    none: "None",
     postUnit: "posts",
   },
   "ja-JP": {
@@ -161,6 +163,7 @@ const EDIT_TEXT: Record<Locale, Record<string, string>> = {
     updatedAt: "更新日",
     postCount: "記事数",
     currentStatus: "現在の状態",
+    none: "なし",
     postUnit: "件",
   },
 };
@@ -182,10 +185,36 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
   const [lang, setLang] = useState<Locale>("zh-CN");
   const t = EDIT_TEXT[lang];
 
+  // 编辑页父分类禁用列表：当前分类及其后代不可选，避免循环层级
+  const disabledParentIds = useMemo(() => {
+    if (!category) return [];
+    const blocked = new Set<number>([category.id]);
+    const childrenMap = new Map<number, number[]>();
+    for (const cat of categories) {
+      if (cat.parentId == null) continue;
+      const list = childrenMap.get(cat.parentId) || [];
+      list.push(cat.id);
+      childrenMap.set(cat.parentId, list);
+    }
+    const stack = [category.id];
+    while (stack.length > 0) {
+      const current = stack.pop()!;
+      const children = childrenMap.get(current) || [];
+      for (const childId of children) {
+        if (blocked.has(childId)) continue;
+        blocked.add(childId);
+        stack.push(childId);
+      }
+    }
+    return Array.from(blocked);
+  }, [categories, category]);
+
   const fetchCategory = useCallback(
     async (categoryId: string) => {
       try {
-        const response = await fetch(`/api/categories/${categoryId}`);
+        const response = await fetch(`/api/categories/${categoryId}`, {
+          headers: { ...clientBearerHeaders() },
+        });
         const result: ApiResponse<Category & { postCount: number }> = await response.json();
 
         if (result.success && result.data) {
@@ -215,7 +244,9 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
 
   const fetchCategories = useCallback(async () => {
     try {
-      const response = await fetch("/api/categories?limit=100");
+      const response = await fetch("/api/categories?limit=100", {
+        headers: { ...clientBearerHeaders() },
+      });
       const result: ApiResponse<{ data: Category[]; pagination: any }> = await response.json();
 
       if (result.success && result.data) {
@@ -245,6 +276,7 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
+          ...clientBearerHeaders(),
         },
         body: JSON.stringify(formData),
       });
@@ -372,22 +404,15 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-3">
-                    <label className="text-sm font-medium text-foreground">{t.parent}</label>
-                    <Select
+                    <CategoryTreeSelect
+                      label={t.parent}
                       placeholder={t.parentPlaceholder}
-                      selectedKeys={formData.parentId ? [formData.parentId.toString()] : []}
-                      onSelectionChange={(keys) => {
-                        const selectedKey = Array.from(keys)[0] as string;
-                        setFormData({
-                          ...formData,
-                          parentId: selectedKey ? parseInt(selectedKey) : undefined,
-                        });
-                      }}
-                    >
-                      {categories.map((cat) => (
-                        <SelectItem key={cat.id.toString()}>{cat.name}</SelectItem>
-                      ))}
-                    </Select>
+                      noneLabel={t.none}
+                      categories={categories}
+                      value={formData.parentId}
+                      disabledIds={disabledParentIds}
+                      onChange={(parentId) => setFormData({ ...formData, parentId })}
+                    />
                     <p className="text-xs text-default-500">{t.parentDesc}</p>
                   </div>
 

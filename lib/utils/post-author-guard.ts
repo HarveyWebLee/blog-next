@@ -19,7 +19,7 @@ export function resolvePostAuthorId(post: PostData | null): number | null {
  * 校验：已登录且当前用户可改删该文章。
  * 规则：
  * - 普通用户：仅作者本人可改删
- * - 内存态超级管理员（id=0 + role=super_admin + isRoot=true）：可改删任意文章
+ * - 超级管理员 root 会话（role=super_admin + isRoot=true）：可改删任意文章
  * @returns 成功时携带已加载的 post，失败时直接返回 HTTP 响应
  */
 export async function requirePostAuthorMutation(

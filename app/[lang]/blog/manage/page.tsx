@@ -40,16 +40,28 @@ function isPostOwner(post: PostData, userId: number | undefined): boolean {
 }
 
 /** 作者展示名优先级：displayName > username > 用户#ID */
-function resolveAuthorName(post: PostData, unknownText: string): string {
+function resolveAuthorName(post: PostData, unknownText: string, currentUser?: User | null): string {
   const displayName = post.author?.displayName?.trim();
   if (displayName) return displayName;
   const username = post.author?.username?.trim();
   if (username) return username;
+  // 兜底：当作者就是当前登录用户但关联用户信息缺失时，优先用登录态昵称
+  if (currentUser?.id != null && post.authorId === currentUser.id) {
+    const currentDisplayName = currentUser.displayName?.trim();
+    if (currentDisplayName) return currentDisplayName;
+    const currentUsername = currentUser.username?.trim();
+    if (currentUsername) return currentUsername;
+  }
   return `${unknownText} #${post.authorId}`;
 }
 
 /** 作者头像：无自定义头像时使用统一默认头像 */
-function resolveAuthorAvatar(post: PostData): string {
+function resolveAuthorAvatar(post: PostData, currentUser?: User | null): string {
+  if (post.author?.avatar) return post.author.avatar;
+  // 兜底：作者是当前登录用户时，尝试使用登录态头像
+  if (currentUser?.id != null && post.authorId === currentUser.id && currentUser.avatar) {
+    return currentUser.avatar;
+  }
   return post.author?.avatar || "/images/avatar.jpeg";
 }
 
@@ -233,7 +245,6 @@ export default function BlogManagePage() {
   const [selectedPostIds, setSelectedPostIds] = useState<number[]>([]);
 
   const fetchPosts = useCallback(async () => {
-    // 注意：超级管理员可能使用 id=0，不能用 !user?.id 判断，否则会误判为未登录并导致列表一直 loading
     if (user?.id == null) return;
     // 读取 applyVersion：用户重复点击「应用/重置」且已应用条件与当前一致时，React 可能跳过 applied* 更新，仍需重新请求列表
     void applyVersion;
@@ -673,8 +684,8 @@ export default function BlogManagePage() {
               {posts.map((post) => {
                 const canManage = isSuperAdmin || isPostOwner(post, user?.id);
                 const viewHref = `/${lang}/blog/${post.slug}`;
-                const authorName = resolveAuthorName(post, t.unknown);
-                const authorAvatar = resolveAuthorAvatar(post);
+                const authorName = resolveAuthorName(post, t.unknown, user);
+                const authorAvatar = resolveAuthorAvatar(post, user);
                 return (
                   <Card
                     key={post.id}

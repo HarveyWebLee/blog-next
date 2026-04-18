@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { postService } from "@/lib/services/post.service";
 import { subscriptionService } from "@/lib/services/subscription.service";
+import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
 import { createErrorResponse, createSuccessResponse } from "@/lib/utils";
 import { requirePostAuthorMutation } from "@/lib/utils/post-author-guard";
 import { UpdatePostRequest } from "@/types/blog";
@@ -114,6 +115,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       });
     }
 
+    logUserActivity({
+      userId: guard.user.userId,
+      action: UserActivityAction.POST_UPDATED,
+      description: updatedPostCore?.title,
+      metadata: { postId, slug: updatedPostCore?.slug },
+      request,
+    });
+
     // 返回成功响应
     return NextResponse.json(createSuccessResponse(updatedPost, "文章更新成功"), { status: 200 });
   } catch (error) {
@@ -161,6 +170,10 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       return guard.response;
     }
 
+    // 删除前记录标题等，供活动日志使用
+    const delTitle = (guard.post as { title?: string }).title;
+    const delSlug = (guard.post as { slug?: string }).slug;
+
     // 调用服务层删除文章
     const result = await postService.deletePost(postId);
 
@@ -169,6 +182,14 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
         status: 500,
       });
     }
+
+    logUserActivity({
+      userId: guard.user.userId,
+      action: UserActivityAction.POST_DELETED,
+      description: delTitle,
+      metadata: { postId, slug: delSlug },
+      request,
+    });
 
     // 返回成功响应
     return NextResponse.json(createSuccessResponse(null, "文章删除成功"), {
@@ -244,6 +265,14 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         excerpt: updatedPostCore.excerpt,
       });
     }
+
+    logUserActivity({
+      userId: guard.user.userId,
+      action: UserActivityAction.POST_UPDATED,
+      description: updatedPostCore?.title,
+      metadata: { postId, slug: updatedPostCore?.slug, patch: true },
+      request,
+    });
 
     // 返回成功响应
     return NextResponse.json(createSuccessResponse(updatedPost, "文章更新成功"), { status: 200 });

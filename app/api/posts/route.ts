@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { postService } from "@/lib/services/post.service";
 import { subscriptionService } from "@/lib/services/subscription.service";
+import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
 import { createErrorResponse, createSuccessResponse } from "@/lib/utils";
 import { isJwtInMemorySuperRoot } from "@/lib/utils/authz";
 import { getAuthUserFromRequest } from "@/lib/utils/request-auth";
@@ -35,6 +36,7 @@ export async function GET(request: NextRequest) {
       sortOrder,
       status: (searchParams.get("status") as any) || undefined,
       visibility: (searchParams.get("visibility") as any) || undefined,
+      includePasswordProtected: searchParams.get("includePasswordProtected") === "true",
       authorId: searchParams.get("authorId") ? parseInt(searchParams.get("authorId")!) : undefined,
       tagId: searchParams.get("tagId") ? parseInt(searchParams.get("tagId")!) : undefined,
       search: searchParams.get("search") || undefined,
@@ -126,6 +128,16 @@ export async function POST(request: NextRequest) {
         title: postCore.title,
         slug: postCore.slug,
         excerpt: postCore.excerpt,
+      });
+    }
+
+    if (postCore?.id) {
+      logUserActivity({
+        userId: viewer.userId,
+        action: UserActivityAction.POST_CREATED,
+        description: postCore.title,
+        metadata: { postId: postCore.id, slug: postCore.slug, status: postCore.status },
+        request,
       });
     }
 

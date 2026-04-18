@@ -5,7 +5,7 @@
 
 "use client";
 
-import { MouseEvent, useCallback, useEffect, useRef, useState } from "react";
+import { MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   Button,
@@ -39,6 +39,7 @@ import {
   Users,
 } from "lucide-react";
 
+import { CategoryTreeSelect } from "@/components/ui/category-tree-select";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { useCategories } from "@/lib/hooks/useCategories";
 import { generateRandomUrlAlias, message } from "@/lib/utils";
@@ -85,12 +86,15 @@ const CATEGORY_PAGE_TEXT: Record<
     formName: string;
     formSlug: string;
     formDescription: string;
+    formParent: string;
     formStatus: string;
     active: string;
     inactive: string;
     formNamePlaceholder: string;
     formSlugPlaceholder: string;
     formDescriptionPlaceholder: string;
+    formParentPlaceholder: string;
+    formParentNone: string;
     deleteConfirmTitle: string;
     deleteConfirmDesc: (name: string) => string;
     deleteWarning: string;
@@ -137,12 +141,15 @@ const CATEGORY_PAGE_TEXT: Record<
     formName: "分类名称",
     formSlug: "分类标识",
     formDescription: "分类描述",
+    formParent: "父分类",
     formStatus: "分类状态",
     active: "活跃",
     inactive: "停用",
     formNamePlaceholder: "请输入分类名称",
     formSlugPlaceholder: "默认自动生成 8 位随机码",
     formDescriptionPlaceholder: "可选，介绍该分类用途",
+    formParentPlaceholder: "选择父分类（可选）",
+    formParentNone: "无父分类",
     deleteConfirmTitle: "删除分类",
     deleteConfirmDesc: (name) => `确定要删除分类「${name}」吗？`,
     deleteWarning: "若该分类下有文章或子分类，将无法删除。",
@@ -188,12 +195,15 @@ const CATEGORY_PAGE_TEXT: Record<
     formName: "Name",
     formSlug: "Slug",
     formDescription: "Description",
+    formParent: "Parent",
     formStatus: "Status",
     active: "Active",
     inactive: "Inactive",
     formNamePlaceholder: "Enter category name",
     formSlugPlaceholder: "Auto-generated 8-char random slug",
     formDescriptionPlaceholder: "Optional description",
+    formParentPlaceholder: "Select parent category (optional)",
+    formParentNone: "No parent",
     deleteConfirmTitle: "Delete Category",
     deleteConfirmDesc: (name) => `Delete category "${name}"?`,
     deleteWarning: "If this category has posts or children, deletion will fail.",
@@ -239,12 +249,15 @@ const CATEGORY_PAGE_TEXT: Record<
     formName: "カテゴリー名",
     formSlug: "スラッグ",
     formDescription: "説明",
+    formParent: "親カテゴリー",
     formStatus: "状態",
     active: "有効",
     inactive: "無効",
     formNamePlaceholder: "カテゴリー名を入力",
     formSlugPlaceholder: "既定で8文字ランダム生成",
     formDescriptionPlaceholder: "任意の説明",
+    formParentPlaceholder: "親カテゴリーを選択（任意）",
+    formParentNone: "親なし",
     deleteConfirmTitle: "カテゴリー削除",
     deleteConfirmDesc: (name) => `カテゴリー「${name}」を削除しますか？`,
     deleteWarning: "記事や子カテゴリーがある場合は削除できません。",
@@ -423,14 +436,10 @@ function CategoryCard({
             </div>
           </div>
         </div>
-      </div>
 
-      {/* 子分类展示 */}
-      {hasChildren && isExpanded && (
-        <div className="children-section">
-          <div className="children-divider"></div>
-          <div className="children-grid">
-            {category.children?.map((child) => (
+        {/* 子分类展示：放到内容区内部，避免受卡片外层布局裁切 */}
+        {hasChildren && isExpanded
+          ? category.children?.map((child) => (
               <CategoryCard
                 key={child.id}
                 category={child}
@@ -440,10 +449,9 @@ function CategoryCard({
                 onEdit={onEdit}
                 onDelete={onDelete}
               />
-            ))}
-          </div>
-        </div>
-      )}
+            ))
+          : null}
+      </div>
     </div>
   );
 }
@@ -627,7 +635,37 @@ export default function CategoriesPage() {
     activeCategories: number;
     inactiveCategories: number;
   } | null>(null);
-  const [formData, setFormData] = useState({ name: "", slug: "", description: "", isActive: true });
+  const [formData, setFormData] = useState({
+    name: "",
+    slug: "",
+    description: "",
+    parentId: undefined as number | undefined,
+    isActive: true,
+  });
+
+  // 编辑时排除自身及其所有后代，避免形成循环层级
+  const disabledParentIds = useMemo(() => {
+    if (!editingCategory) return [];
+    const blockedIds = new Set<number>([editingCategory.id]);
+    const childrenMap = new Map<number, number[]>();
+    for (const category of categories) {
+      if (category.parentId == null) continue;
+      const siblings = childrenMap.get(category.parentId) || [];
+      siblings.push(category.id);
+      childrenMap.set(category.parentId, siblings);
+    }
+    const stack = [editingCategory.id];
+    while (stack.length > 0) {
+      const current = stack.pop()!;
+      const children = childrenMap.get(current) || [];
+      for (const childId of children) {
+        if (blockedIds.has(childId)) continue;
+        blockedIds.add(childId);
+        stack.push(childId);
+      }
+    }
+    return Array.from(blockedIds);
+  }, [categories, editingCategory]);
 
   const fetchStatsSummary = useCallback(async () => {
     try {
@@ -654,7 +692,13 @@ export default function CategoriesPage() {
   const openCreateModal = () => {
     if (!isAuthenticated) return void router.push(`/${locale}/auth/login`);
     setEditingCategory(null);
-    setFormData({ name: "", slug: generateRandomUrlAlias(8), description: "", isActive: true });
+    setFormData({
+      name: "",
+      slug: generateRandomUrlAlias(8),
+      description: "",
+      parentId: undefined,
+      isActive: true,
+    });
     setIsEditorOpen(true);
   };
   const openEditModal = (category: Category) => {
@@ -664,6 +708,7 @@ export default function CategoriesPage() {
       name: category.name || "",
       slug: category.slug || "",
       description: category.description || "",
+      parentId: category.parentId,
       isActive: Boolean(category.isActive),
     });
     setIsEditorOpen(true);
@@ -687,6 +732,7 @@ export default function CategoriesPage() {
           name: formData.name.trim(),
           slug: formData.slug.trim() || generateRandomUrlAlias(8),
           description: formData.description.trim(),
+          parentId: formData.parentId,
           isActive: formData.isActive,
         }),
       });
@@ -817,6 +863,17 @@ export default function CategoriesPage() {
               value={formData.description}
               onValueChange={(value) => setFormData((prev) => ({ ...prev, description: value }))}
               minRows={3}
+            />
+            <CategoryTreeSelect
+              label={t.formParent}
+              placeholder={t.formParentPlaceholder}
+              noneLabel={t.formParentNone}
+              categories={categories}
+              value={formData.parentId}
+              disabledIds={disabledParentIds}
+              onChange={(parentId) => {
+                setFormData((prev) => ({ ...prev, parentId }));
+              }}
             />
             <div className="flex items-center justify-between rounded-lg border border-default-200 p-3">
               <span className="text-sm">{t.formStatus}</span>

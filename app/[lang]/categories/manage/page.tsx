@@ -5,8 +5,8 @@
 
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useParams } from "next/navigation";
 import {
   Badge,
   Button,
@@ -34,6 +34,7 @@ import {
   TableColumn,
   TableHeader,
   TableRow,
+  Textarea,
 } from "@heroui/react";
 import {
   BarChart3,
@@ -49,7 +50,9 @@ import {
   Trash2,
 } from "lucide-react";
 
-import { message } from "@/lib/utils";
+import { CategoryTreeSelect } from "@/components/ui/category-tree-select";
+import { generateRandomUrlAlias, message } from "@/lib/utils";
+import { clientBearerHeaders } from "@/lib/utils/client-bearer-auth";
 import { Locale } from "@/types";
 import { ApiResponse, Category, CategoryQueryParams, PaginatedResponseData } from "@/types/blog";
 
@@ -92,6 +95,21 @@ const MANAGE_TEXT: Record<
     cancel: string;
     deleteFailed: string;
     updateFailed: string;
+    editCategory: string;
+    createCategoryModal: string;
+    save: string;
+    saving: string;
+    saveFailed: string;
+    nameRequired: string;
+    nameLabel: string;
+    slugLabel: string;
+    descLabel: string;
+    statusLabel: string;
+    parentLabel: string;
+    parentPlaceholder: string;
+    parentNone: string;
+    sortOrderLabel: string;
+    sortOrderDesc: string;
   }
 > = {
   "zh-CN": {
@@ -126,6 +144,21 @@ const MANAGE_TEXT: Record<
     cancel: "取消",
     deleteFailed: "删除分类失败",
     updateFailed: "更新分类状态失败",
+    editCategory: "编辑分类",
+    createCategoryModal: "新建分类",
+    save: "保存",
+    saving: "保存中...",
+    saveFailed: "保存分类失败",
+    nameRequired: "分类名称不能为空",
+    nameLabel: "分类名称",
+    slugLabel: "分类标识",
+    descLabel: "分类描述",
+    statusLabel: "启用状态",
+    parentLabel: "父分类",
+    parentPlaceholder: "选择父分类（可选）",
+    parentNone: "无（顶级分类）",
+    sortOrderLabel: "排序顺序",
+    sortOrderDesc: "数字越小排序越靠前",
   },
   "en-US": {
     pageTitle: "Category Management",
@@ -159,6 +192,21 @@ const MANAGE_TEXT: Record<
     cancel: "Cancel",
     deleteFailed: "Failed to delete category",
     updateFailed: "Failed to update category status",
+    editCategory: "Edit Category",
+    createCategoryModal: "Create Category",
+    save: "Save",
+    saving: "Saving...",
+    saveFailed: "Failed to save category",
+    nameRequired: "Category name is required",
+    nameLabel: "Category Name",
+    slugLabel: "Slug",
+    descLabel: "Description",
+    statusLabel: "Active",
+    parentLabel: "Parent Category",
+    parentPlaceholder: "Select parent (optional)",
+    parentNone: "None (top-level)",
+    sortOrderLabel: "Sort Order",
+    sortOrderDesc: "Smaller number appears first",
   },
   "ja-JP": {
     pageTitle: "カテゴリー管理",
@@ -192,6 +240,21 @@ const MANAGE_TEXT: Record<
     cancel: "キャンセル",
     deleteFailed: "カテゴリーの削除に失敗しました",
     updateFailed: "状態更新に失敗しました",
+    editCategory: "カテゴリー編集",
+    createCategoryModal: "カテゴリー作成",
+    save: "保存",
+    saving: "保存中...",
+    saveFailed: "カテゴリーの保存に失敗しました",
+    nameRequired: "カテゴリー名は必須です",
+    nameLabel: "カテゴリー名",
+    slugLabel: "スラッグ",
+    descLabel: "説明",
+    statusLabel: "有効状態",
+    parentLabel: "親カテゴリー",
+    parentPlaceholder: "親カテゴリーを選択（任意）",
+    parentNone: "なし（トップレベル）",
+    sortOrderLabel: "並び順",
+    sortOrderDesc: "小さい数字ほど先頭に表示",
   },
 };
 
@@ -199,13 +262,14 @@ const MANAGE_TEXT: Record<
  * 分类管理页面组件
  */
 export default function CategoriesManagePage() {
-  const router = useRouter();
   const params = useParams<{ lang: string }>();
   const locale = resolveLocale(params.lang);
   const t = MANAGE_TEXT[locale];
 
   // 状态管理
   const [categories, setCategories] = useState<Category[]>([]);
+  /** 弹窗父分类树：一次性拉取较多数据用于层级选择（与创建页一致） */
+  const [treeCategories, setTreeCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -216,10 +280,24 @@ export default function CategoriesManagePage() {
   const [limit] = useState(10);
   const [statusFilter, setStatusFilter] = useState<boolean | undefined>(undefined);
 
+  /** 搜索防抖定时器：避免输入每个字符都触发一次列表接口 */
+  const searchDebounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // 模态框状态
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null);
+  const [formData, setFormData] = useState({
+    name: "",
+    slug: "",
+    description: "",
+    parentId: undefined as number | undefined,
+    sortOrder: 0,
+    isActive: true,
+  });
 
   const fetchCategories = useCallback(
     async (params: Partial<CategoryQueryParams> = {}) => {
@@ -234,7 +312,9 @@ export default function CategoriesManagePage() {
           ...(params.isActive !== undefined && { isActive: params.isActive.toString() }),
         });
 
-        const response = await fetch(`/api/categories?${queryParams}`);
+        const response = await fetch(`/api/categories?${queryParams}`, {
+          headers: { ...clientBearerHeaders() },
+        });
         const result: ApiResponse<PaginatedResponseData<Category>> = await response.json();
 
         if (result.success && result.data) {
@@ -262,9 +342,9 @@ export default function CategoriesManagePage() {
     try {
       const baseParams = "page=1&limit=1&sortBy=createdAt&sortOrder=desc";
       const [allRes, activeRes, inactiveRes] = await Promise.all([
-        fetch(`/api/categories?${baseParams}`),
-        fetch(`/api/categories?${baseParams}&isActive=true`),
-        fetch(`/api/categories?${baseParams}&isActive=false`),
+        fetch(`/api/categories?${baseParams}`, { headers: { ...clientBearerHeaders() } }),
+        fetch(`/api/categories?${baseParams}&isActive=true`, { headers: { ...clientBearerHeaders() } }),
+        fetch(`/api/categories?${baseParams}&isActive=false`, { headers: { ...clientBearerHeaders() } }),
       ]);
 
       const [allJson, activeJson, inactiveJson] = (await Promise.all([
@@ -289,11 +369,55 @@ export default function CategoriesManagePage() {
     }
   }, []);
 
+  const fetchTreeCategories = useCallback(async () => {
+    try {
+      const response = await fetch("/api/categories?limit=500&sortBy=sortOrder&sortOrder=asc", {
+        headers: { ...clientBearerHeaders() },
+      });
+      const result: ApiResponse<PaginatedResponseData<Category>> = await response.json();
+      if (result.success && result.data) {
+        setTreeCategories(result.data.data);
+      }
+    } catch (error) {
+      console.error("获取父分类选项失败:", error);
+    }
+  }, []);
+
+  const disabledParentIds = useMemo(() => {
+    if (editingCategoryId == null) return [];
+    const blocked = new Set<number>([editingCategoryId]);
+    const childrenMap = new Map<number, number[]>();
+    for (const cat of treeCategories) {
+      if (cat.parentId == null) continue;
+      const list = childrenMap.get(cat.parentId) || [];
+      list.push(cat.id);
+      childrenMap.set(cat.parentId, list);
+    }
+    const stack = [editingCategoryId];
+    while (stack.length > 0) {
+      const current = stack.pop()!;
+      const children = childrenMap.get(current) || [];
+      for (const childId of children) {
+        if (blocked.has(childId)) continue;
+        blocked.add(childId);
+        stack.push(childId);
+      }
+    }
+    return Array.from(blocked);
+  }, [editingCategoryId, treeCategories]);
+
   // 搜索处理
   const handleSearch = (query: string) => {
     setSearchQuery(query);
     setCurrentPage(1);
-    fetchCategories({ search: query, page: 1 });
+
+    if (searchDebounceTimerRef.current) {
+      clearTimeout(searchDebounceTimerRef.current);
+    }
+
+    searchDebounceTimerRef.current = setTimeout(() => {
+      fetchCategories({ search: query, page: 1 });
+    }, 400);
   };
 
   // 状态筛选处理
@@ -318,6 +442,7 @@ export default function CategoriesManagePage() {
 
       const response = await fetch(`/api/categories/${selectedCategory.id}`, {
         method: "DELETE",
+        headers: { ...clientBearerHeaders() },
       });
 
       const result: ApiResponse<null> = await response.json();
@@ -344,6 +469,71 @@ export default function CategoriesManagePage() {
     setIsDeleteModalOpen(true);
   };
 
+  const openCreateModal = () => {
+    setEditingCategoryId(null);
+    setFormData({
+      name: "",
+      slug: generateRandomUrlAlias(8),
+      description: "",
+      parentId: undefined,
+      sortOrder: 0,
+      isActive: true,
+    });
+    void fetchTreeCategories();
+    setIsEditModalOpen(true);
+  };
+
+  const openEditModal = (category: Category) => {
+    setEditingCategoryId(category.id);
+    setFormData({
+      name: category.name,
+      slug: category.slug,
+      description: category.description || "",
+      parentId: category.parentId || undefined,
+      sortOrder: category.sortOrder ?? 0,
+      isActive: category.isActive ?? true,
+    });
+    void fetchTreeCategories();
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveCategory = async () => {
+    if (!formData.name.trim()) {
+      message.warning(t.nameRequired);
+      return;
+    }
+    try {
+      setSaveLoading(true);
+      const isEdit = editingCategoryId != null;
+      const endpoint = isEdit ? `/api/categories/${editingCategoryId}` : "/api/categories";
+      const method = isEdit ? "PUT" : "POST";
+      const response = await fetch(endpoint, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          ...clientBearerHeaders(),
+        },
+        body: JSON.stringify({
+          ...formData,
+          slug: formData.slug.trim() || generateRandomUrlAlias(8),
+        }),
+      });
+      const result: ApiResponse<Category> = await response.json();
+      if (!result.success) {
+        message.error(result.message || t.saveFailed);
+        return;
+      }
+      setIsEditModalOpen(false);
+      fetchCategories();
+      fetchSummary();
+    } catch (error) {
+      console.error("保存分类失败:", error);
+      message.error(t.saveFailed);
+    } finally {
+      setSaveLoading(false);
+    }
+  };
+
   // 切换分类状态
   const toggleCategoryStatus = async (category: Category) => {
     try {
@@ -351,6 +541,7 @@ export default function CategoriesManagePage() {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
+          ...clientBearerHeaders(),
         },
         body: JSON.stringify({ isActive: !category.isActive }),
       });
@@ -373,6 +564,19 @@ export default function CategoriesManagePage() {
     fetchCategories();
     fetchSummary();
   }, [fetchCategories, fetchSummary]);
+
+  useEffect(() => {
+    void fetchTreeCategories();
+  }, [fetchTreeCategories]);
+
+  // 卸载时清除搜索防抖定时器，避免离开后仍触发列表请求
+  useEffect(() => {
+    return () => {
+      if (searchDebounceTimerRef.current) {
+        clearTimeout(searchDebounceTimerRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -462,7 +666,7 @@ export default function CategoriesManagePage() {
             <Button
               color="primary"
               startContent={<Plus className="w-4 h-4" />}
-              onPress={() => router.push(`/${params.lang}/categories/manage/create`)}
+              onPress={openCreateModal}
               className="lg:ml-auto"
             >
               {t.createCategory}
@@ -494,11 +698,7 @@ export default function CategoriesManagePage() {
               <Folder className="w-16 h-16 text-default-300 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-default-600 mb-2">{t.noData}</h3>
               <p className="text-default-500 mb-4">{t.noDataDesc}</p>
-              <Button
-                color="primary"
-                startContent={<Plus className="w-4 h-4" />}
-                onPress={() => router.push(`/${params.lang}/categories/manage/create`)}
-              >
+              <Button color="primary" startContent={<Plus className="w-4 h-4" />} onPress={openCreateModal}>
                 {t.createCategory}
               </Button>
             </div>
@@ -575,7 +775,7 @@ export default function CategoriesManagePage() {
                             <DropdownItem
                               key="edit"
                               startContent={<Edit className="w-4 h-4" />}
-                              onPress={() => router.push(`/${params.lang}/categories/manage/edit/${category.id}`)}
+                              onPress={() => openEditModal(category)}
                             >
                               {t.edit}
                             </DropdownItem>
@@ -613,6 +813,65 @@ export default function CategoriesManagePage() {
           )}
         </CardBody>
       </Card>
+
+      <Modal isOpen={isEditModalOpen} onOpenChange={setIsEditModalOpen} size="2xl">
+        <ModalContent>
+          <ModalHeader>{editingCategoryId ? t.editCategory : t.createCategoryModal}</ModalHeader>
+          <ModalBody>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <Input
+                label={t.nameLabel}
+                value={formData.name}
+                onValueChange={(value) => setFormData((prev) => ({ ...prev, name: value }))}
+                isRequired
+              />
+              <Input
+                label={t.slugLabel}
+                value={formData.slug}
+                onValueChange={(value) => setFormData((prev) => ({ ...prev, slug: value }))}
+              />
+            </div>
+            <Textarea
+              label={t.descLabel}
+              value={formData.description}
+              onValueChange={(value) => setFormData((prev) => ({ ...prev, description: value }))}
+              minRows={3}
+            />
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <CategoryTreeSelect
+                label={t.parentLabel}
+                placeholder={t.parentPlaceholder}
+                noneLabel={t.parentNone}
+                categories={treeCategories}
+                value={formData.parentId}
+                disabledIds={disabledParentIds}
+                onChange={(parentId) => setFormData((prev) => ({ ...prev, parentId }))}
+              />
+              <Input
+                type="number"
+                label={t.sortOrderLabel}
+                description={t.sortOrderDesc}
+                value={String(formData.sortOrder)}
+                onValueChange={(value) => setFormData((prev) => ({ ...prev, sortOrder: parseInt(value, 10) || 0 }))}
+              />
+            </div>
+            <Switch
+              isSelected={formData.isActive}
+              onValueChange={(checked) => setFormData((prev) => ({ ...prev, isActive: checked }))}
+            >
+              {t.statusLabel}
+            </Switch>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="light" onPress={() => setIsEditModalOpen(false)}>
+              {t.cancel}
+            </Button>
+            <Button color="primary" onPress={handleSaveCategory} isLoading={saveLoading}>
+              {saveLoading ? t.saving : t.save}
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
 
       {/* 删除确认模态框 */}
       <Modal isOpen={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen} size="sm">

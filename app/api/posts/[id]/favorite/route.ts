@@ -7,6 +7,7 @@ import { and, eq } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { posts, userFavorites } from "@/lib/db/schema";
+import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
 import { createErrorResponse, createSuccessResponse } from "@/lib/utils";
 import { findMysqlDriverError } from "@/lib/utils/mysql-error";
 import { requireAuthUser } from "@/lib/utils/request-auth";
@@ -102,12 +103,18 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       favorited = true;
     }
 
+    const favoriteCount = await getFavoriteCount(postId);
+    logUserActivity({
+      userId: auth.user.userId,
+      action: favorited ? UserActivityAction.POST_FAVORITED : UserActivityAction.POST_UNFAVORITED,
+      metadata: { postId, favoriteCount },
+      request,
+    });
     return NextResponse.json(
-      createSuccessResponse(
-        { favorited, favoriteCount: await getFavoriteCount(postId) },
-        favorited ? "收藏成功" : "取消收藏成功"
-      ),
-      { status: 200 }
+      createSuccessResponse({ favorited, favoriteCount }, favorited ? "收藏成功" : "取消收藏成功"),
+      {
+        status: 200,
+      }
     );
   } catch (error) {
     console.error(

@@ -5,7 +5,7 @@ import { Button } from "@heroui/button";
 import { Card, CardBody, CardFooter, CardHeader } from "@heroui/card";
 import { Chip } from "@heroui/chip";
 import dayjs from "dayjs";
-import { ArrowRight, Calendar, Clock, Eye, Folder, Heart, MessageCircle, Tag } from "lucide-react";
+import { ArrowRight, BookOpen, Calendar, Clock, Eye, Folder, Heart, Lock, MessageCircle, Star } from "lucide-react";
 
 import { stripMarkdownForExcerpt } from "@/lib/utils/markdown-plain";
 import { PostData } from "@/types/blog";
@@ -55,6 +55,8 @@ export function PostCard({
   };
   const authorLabel =
     post.author?.displayName?.trim() || resolveRoleName(post.author?.role) || post.author?.username?.trim() || "—";
+  /** 统一头部元信息行高度：无分类/标签时也保留占位，避免不同卡片标题起始位置错位 */
+  const hasMetaRowContent = post.visibility === "password" || Boolean(post.category) || Boolean(post.tags?.length);
   const t =
     lang === "en-US"
       ? {
@@ -93,7 +95,7 @@ export function PostCard({
 
       {/* 主卡片 - 使用flex布局确保高度一致 */}
       <Card
-        className="blog-card relative w-full border-0 backdrop-blur-xl bg-white/10 dark:bg-black/10 hover:bg-white/20 dark:hover:bg-black/20 transition-all duration-500 hover:scale-105 hover:shadow-2xl hover:shadow-primary/20 cursor-pointer overflow-hidden"
+        className="blog-card relative w-full cursor-pointer overflow-hidden border-0 bg-white/10 backdrop-blur-xl transition-all duration-500 hover:-translate-y-1 hover:bg-white/20 hover:shadow-2xl hover:shadow-primary/20 dark:bg-black/10 dark:hover:bg-black/20"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onClick={(e) => {
@@ -107,10 +109,21 @@ export function PostCard({
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-secondary to-accent" />
 
         {/* 头部区域 - 固定高度 */}
-        <CardHeader className="blog-card-header pb-2">
+        <CardHeader className="blog-card-header pb-3">
           <div className="flex flex-col gap-3 w-full">
             {/* 分类和标签组合展示区域 */}
-            <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex min-h-8 items-center justify-between flex-wrap gap-2">
+              {post.visibility === "password" && (
+                <Chip
+                  size="sm"
+                  variant="flat"
+                  color="warning"
+                  startContent={<Lock className="h-3.5 w-3.5" />}
+                  className="bg-warning/20 text-warning-700 dark:text-warning-300"
+                >
+                  {lang === "en-US" ? "Password" : lang === "ja-JP" ? "パスワード保護" : "密码保护"}
+                </Chip>
+              )}
               {/* 分类标签 - 更突出的设计 */}
               {post.category && (
                 <div className="relative group/category">
@@ -167,15 +180,16 @@ export function PostCard({
                   )}
                 </div>
               )}
+              {!hasMetaRowContent && <span className="invisible h-8 w-px" aria-hidden="true" />}
             </div>
 
             {/* 标题 - 固定行数 */}
-            <h3 className="text-lg font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2 min-h-[3.5rem]">
+            <h3 className="min-h-[3.25rem] line-clamp-2 text-lg font-semibold text-foreground transition-colors group-hover:text-primary">
               {post.title}
             </h3>
 
             {/* 摘要 - 固定行数 */}
-            <p className="text-small text-default-600 line-clamp-3 min-h-[4.5rem]">
+            <p className="min-h-[3.25rem] line-clamp-2 text-small leading-6 text-default-600">
               {stripMarkdownForExcerpt(post.excerpt || "") || t.emptyExcerpt}
             </p>
           </div>
@@ -184,24 +198,33 @@ export function PostCard({
         {/* 主体内容 - 使用flex-grow确保填充剩余空间 */}
         <CardBody className="blog-card-body py-2">
           {/* 特色图片 - 固定高度 */}
-          {post.featuredImage && (
-            <div className="relative w-full h-48 mb-4 rounded-lg overflow-hidden flex-shrink-0">
-              <Image
-                src={post.featuredImage}
-                alt={post.title}
-                fill
-                className="object-cover group-hover:scale-110 transition-transform duration-500"
-              />
-              {/* 图片底部轻遮罩（悬停）：仅氛围，不叠分类文案（分类仍在卡片头部展示） */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            </div>
-          )}
+          <div className="relative w-full h-48 mb-4 rounded-lg overflow-hidden flex-shrink-0">
+            {post.featuredImage ? (
+              <>
+                <Image
+                  src={post.featuredImage}
+                  alt={post.title}
+                  fill
+                  className="object-cover group-hover:scale-110 transition-transform duration-500"
+                />
+                {/* 图片底部轻遮罩（悬停）：仅氛围，不叠分类文案（分类仍在卡片头部展示） */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              </>
+            ) : (
+              <div
+                className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/25 via-white/10 to-secondary/20 dark:from-primary/30 dark:via-black/20 dark:to-secondary/25"
+                aria-hidden="true"
+              >
+                <BookOpen className="w-12 h-12 text-white/80 drop-shadow-md" />
+              </div>
+            )}
+          </div>
 
           {/* 元信息 - 固定在底部 */}
-          <div className="meta-info mt-auto">
+          <div className="meta-info mt-auto rounded-xl border border-white/10 bg-white/5 p-3 backdrop-blur-md">
             <div className="flex flex-col gap-2 text-small text-default-500">
               {/* 作者和发布时间 */}
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <Avatar
                     size="sm"
@@ -220,7 +243,7 @@ export function PostCard({
               </div>
 
               {/* 统计信息 */}
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-1">
                     <Eye className="w-3 h-3" />
@@ -243,8 +266,8 @@ export function PostCard({
         </CardBody>
 
         {/* 底部按钮 - 固定在底部 */}
-        <CardFooter className="blog-card-footer relative z-10 pt-2 border-t border-white/10 dark:border-white/5">
-          <div className="flex items-center justify-between w-full">
+        <CardFooter className="blog-card-footer relative z-10 border-t border-white/10 pt-3 dark:border-white/5">
+          <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-3">
             <Button
               size="sm"
               variant={isLiked ? "solid" : "flat"}
@@ -252,9 +275,9 @@ export function PostCard({
               startContent={<Heart className={`w-4 h-4 transition-all ${isLiked ? "fill-current" : ""}`} />}
               isLoading={likeLoading}
               onPress={() => onToggleLike?.()}
-              className={`font-semibold tracking-wide button-hover-effect ${isLiked ? "bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 shadow-lg hover:shadow-xl animate-button-pulse" : "backdrop-blur-xl bg-white/10 dark:bg-black/10 hover:bg-danger/20 dark:hover:bg-danger/20"}`}
+              className={`button-hover-effect font-semibold tracking-wide ${isLiked ? "animate-button-pulse bg-gradient-to-r from-red-500 to-pink-500 shadow-lg hover:from-red-600 hover:to-pink-600 hover:shadow-xl" : "bg-white/10 backdrop-blur-xl hover:bg-danger/20 dark:bg-black/10 dark:hover:bg-danger/20"}`}
             >
-              {isLiked ? t.liked : t.like} ({post.likeCount || 0})
+              {t.like} ({post.likeCount || 0})
             </Button>
 
             <Button
@@ -262,11 +285,11 @@ export function PostCard({
               variant={isFavorited ? "solid" : "flat"}
               color="secondary"
               isLoading={favoriteLoading}
-              startContent={<Tag className={`w-4 h-4 transition-all ${isFavorited ? "fill-current" : ""}`} />}
+              startContent={<Star className={`w-4 h-4 transition-all ${isFavorited ? "fill-current" : ""}`} />}
               onPress={() => onToggleFavorite?.()}
-              className="font-semibold tracking-wide button-hover-effect backdrop-blur-xl bg-white/10 dark:bg-black/10 hover:bg-secondary/20 dark:hover:bg-secondary/20"
+              className="button-hover-effect bg-primary/22 text-primary-700 font-semibold tracking-wide backdrop-blur-xl hover:bg-primary/30 dark:border dark:border-primary/25 dark:bg-primary/25 dark:text-white dark:hover:bg-primary/35"
             >
-              {isFavorited ? t.favorited : t.favorite} ({post.favoriteCount || 0})
+              {t.favorite} ({post.favoriteCount || 0})
             </Button>
 
             <Button
@@ -277,7 +300,7 @@ export function PostCard({
                 <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1 duration-300" />
               }
               onPress={() => onView?.()}
-              className="font-semibold tracking-wide border-2 border-primary/20 hover:border-primary/40 hover:bg-primary/10 hover:shadow-[0_0_20px_rgba(var(--primary),0.3)] button-hover-effect"
+              className="button-hover-effect border-2 border-primary/25 bg-primary/5 font-semibold tracking-wide hover:border-primary/50 hover:bg-primary/15 hover:shadow-[0_0_20px_rgba(var(--primary),0.3)]"
             >
               {t.readMore}
             </Button>

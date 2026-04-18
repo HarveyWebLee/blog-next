@@ -256,6 +256,9 @@ export class PostService {
       // 可见性过滤
       if (params.visibility) {
         conditions.push(eq(posts.visibility, params.visibility));
+      } else if (params.includePasswordProtected) {
+        // 列表场景允许展示公开 + 密码保护文章，显式排除 private
+        conditions.push(inArray(posts.visibility, ["public", "password"]));
       }
 
       // 作者过滤

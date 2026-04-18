@@ -17,7 +17,7 @@ import {
   ModalFooter,
   ModalHeader,
 } from "@heroui/react";
-import { BookOpen, Eye, Filter, Lock, MessageSquare, Search, Star } from "lucide-react";
+import { BookOpen, Eye, Filter, Heart, Lock, MessageSquare, Search } from "lucide-react";
 
 import {
   PROFILE_GLASS_CARD,
@@ -28,13 +28,20 @@ import { useAuth } from "@/lib/contexts/auth-context";
 import { message } from "@/lib/utils";
 import { clientBearerHeaders } from "@/lib/utils/client-bearer-auth";
 import { stripMarkdownForExcerpt } from "@/lib/utils/markdown-plain";
-import type { ApiResponse, PaginatedResponseData, UserFavorite } from "@/types/blog";
+import type { ApiResponse, PaginatedResponseData, PostData } from "@/types/blog";
 
-interface ProfileFavoritesProps {
+type UserLikeRecord = {
+  postId: number;
+  userId: number;
+  createdAt: Date;
+  post?: PostData;
+};
+
+interface ProfileLikesProps {
   lang: string;
 }
 
-export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
+export default function ProfileLikes({ lang }: ProfileLikesProps) {
   const params = useParams();
   const router = useRouter();
   const routeLang = typeof params?.lang === "string" ? params.lang : "zh-CN";
@@ -43,20 +50,20 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
   const t =
     lang === "en-US"
       ? {
-          title: "My Favorites",
-          subtitle: "Posts you have favorited",
-          loadFailed: "Failed to load favorites",
-          removeFailed: "Failed to unfavorite",
+          title: "My Likes",
+          subtitle: "Posts you have liked",
+          loadFailed: "Failed to load likes",
+          removeFailed: "Failed to unlike",
           total: "posts",
-          search: "Search favorite posts...",
+          search: "Search liked posts...",
           allCategories: "All Categories",
           readPost: "Read",
-          remove: "Unfavorite",
-          favoritedAt: "Favorited at",
-          emptyMatch: "No matching favorites",
-          empty: "No favorites yet",
+          remove: "Unlike",
+          likedAt: "Liked at",
+          emptyMatch: "No matching liked posts",
+          empty: "No likes yet",
           emptyMatchDesc: "Try adjusting filters",
-          emptyDesc: "Start saving posts you like",
+          emptyDesc: "Start liking posts you enjoy",
           browse: "Browse Posts",
           passwordTitle: "Password Required",
           passwordHint: "This post is protected. Enter password to continue.",
@@ -68,20 +75,20 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
         }
       : lang === "ja-JP"
         ? {
-            title: "お気に入り",
-            subtitle: "お気に入りの記事一覧",
-            loadFailed: "お気に入りの取得に失敗しました",
-            removeFailed: "お気に入り解除に失敗しました",
+            title: "いいねした記事",
+            subtitle: "あなたがいいねした記事一覧",
+            loadFailed: "いいね一覧の取得に失敗しました",
+            removeFailed: "いいね解除に失敗しました",
             total: "件",
-            search: "お気に入り記事を検索...",
+            search: "いいねした記事を検索...",
             allCategories: "すべてのカテゴリー",
             readPost: "記事を読む",
-            remove: "お気に入り解除",
-            favoritedAt: "お気に入り登録",
-            emptyMatch: "一致するお気に入りがありません",
-            empty: "お気に入りがありません",
+            remove: "いいね解除",
+            likedAt: "いいね日時",
+            emptyMatch: "一致する記事がありません",
+            empty: "いいねした記事がありません",
             emptyMatchDesc: "条件を調整してください",
-            emptyDesc: "気に入った記事を保存しましょう",
+            emptyDesc: "気に入った記事にいいねしましょう",
             browse: "記事を見る",
             passwordTitle: "パスワードが必要です",
             passwordHint: "この記事はパスワード保護されています。入力後に閲覧できます。",
@@ -92,20 +99,20 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
             passwordTag: "パスワード保護",
           }
         : {
-            title: "我的收藏",
-            subtitle: "您收藏的文章列表",
-            loadFailed: "获取收藏列表失败",
-            removeFailed: "取消收藏失败",
+            title: "我的点赞",
+            subtitle: "您点赞过的文章列表",
+            loadFailed: "获取点赞列表失败",
+            removeFailed: "取消点赞失败",
             total: "篇文章",
-            search: "搜索收藏的文章...",
+            search: "搜索点赞的文章...",
             allCategories: "全部分类",
             readPost: "阅读文章",
-            remove: "取消收藏",
-            favoritedAt: "收藏于",
-            emptyMatch: "没有找到匹配的收藏",
-            empty: "还没有收藏任何文章",
+            remove: "取消点赞",
+            likedAt: "点赞于",
+            emptyMatch: "没有找到匹配的点赞",
+            empty: "还没有点赞任何文章",
             emptyMatchDesc: "尝试调整搜索条件或筛选器",
-            emptyDesc: "开始收藏您喜欢的文章吧",
+            emptyDesc: "开始给喜欢的文章点赞吧",
             browse: "浏览文章",
             passwordTitle: "需要文章密码",
             passwordHint: "该文章已开启密码保护，请先输入密码后再阅读。",
@@ -115,13 +122,14 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
             passwordInvalid: "密码错误，请重试",
             passwordTag: "密码保护",
           };
-  const [favorites, setFavorites] = useState<UserFavorite[]>([]);
+
+  const [likes, setLikes] = useState<UserLikeRecord[]>([]);
   const [loading, setLoading] = useState(true);
   /** 输入框即时展示的关键词 */
   const [searchInput, setSearchInput] = useState("");
   /**
-   * 防抖后的关键词：用于列表过滤，避免收藏较多时每次按键都做全表字符串匹配。
-   * 延迟与标签/管理页搜索请求一致（400ms），交互节奏统一。
+   * 防抖后的关键词：用于列表过滤，避免点赞较多时每次按键都做全表字符串匹配。
+   * 延迟与收藏页等保持一致（400ms）。
    */
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const searchDebounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -133,17 +141,15 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
   const [pendingPostSlug, setPendingPostSlug] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchFavorites = async () => {
+    const fetchLikes = async () => {
       try {
-        const response = await fetch("/api/profile/favorites?page=1&limit=100", {
-          headers: {
-            ...clientBearerHeaders(),
-          },
+        const response = await fetch("/api/profile/likes?page=1&limit=100", {
+          headers: { ...clientBearerHeaders() },
         });
-        const json = (await response.json()) as ApiResponse<PaginatedResponseData<UserFavorite>>;
+        const json = (await response.json()) as ApiResponse<PaginatedResponseData<UserLikeRecord>>;
         if (!json.success || !json.data) {
           message.error(json.message || t.loadFailed);
-          setFavorites([]);
+          setLikes([]);
           return;
         }
         const list = json.data.data
@@ -151,27 +157,27 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
           .map((item) => ({
             ...item,
             createdAt: new Date(item.createdAt),
-            updatedAt: new Date(item.updatedAt),
             post: item.post
               ? {
                   ...item.post,
-                  publishedAt: item.post.publishedAt ? new Date(item.post.publishedAt) : undefined,
+                  /** PostData.publishedAt 为 Date | null，不可用 undefined */
+                  publishedAt: item.post.publishedAt ? new Date(item.post.publishedAt) : null,
                   createdAt: new Date(item.post.createdAt),
                   updatedAt: new Date(item.post.updatedAt),
                 }
               : undefined,
-          })) as UserFavorite[];
-        setFavorites(list);
+          }));
+        setLikes(list);
       } catch (error) {
-        console.error("获取收藏列表失败:", error);
+        console.error("获取点赞列表失败:", error);
         message.error(t.loadFailed);
-        setFavorites([]);
+        setLikes([]);
       } finally {
         setLoading(false);
       }
     };
 
-    void fetchFavorites();
+    void fetchLikes();
   }, [t.loadFailed]);
 
   // 搜索防抖：输入立即更新 searchInput，过滤使用 debouncedSearch
@@ -189,17 +195,18 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
     };
   }, [searchInput]);
 
-  const filteredFavorites = favorites.filter((favorite) => {
+  const filteredLikes = likes.filter((item) => {
+    const post = item.post;
     const q = debouncedSearch.trim().toLowerCase();
-    const title = favorite.post?.title?.toLowerCase();
-    const excerpt = favorite.post?.excerpt?.toLowerCase();
+    const title = post?.title?.toLowerCase();
+    const excerpt = post?.excerpt?.toLowerCase();
     const matchesSearch = q === "" || Boolean(title?.includes(q)) || Boolean(excerpt?.includes(q));
-    const matchesCategory = categoryFilter === "all" || favorite.post?.category?.slug === categoryFilter;
+    const matchesCategory = categoryFilter === "all" || post?.category?.slug === categoryFilter;
     return matchesSearch && matchesCategory;
   });
 
   const categoryOptions = Array.from(
-    new Set(favorites.map((favorite) => favorite.post?.category?.slug).filter((slug): slug is string => Boolean(slug)))
+    new Set(likes.map((item) => item.post?.category?.slug).filter((slug): slug is string => Boolean(slug)))
   );
 
   const formatDate = (date: Date) => {
@@ -210,29 +217,25 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
     }).format(date);
   };
 
-  const handleRemoveFavorite = async (favoriteId: number) => {
+  const handleUnlike = async (postId: number) => {
     try {
-      const favorite = favorites.find((item) => item.id === favoriteId);
-      if (!favorite) return;
-      const response = await fetch(`/api/profile/favorites?postId=${favorite.postId}`, {
+      const response = await fetch(`/api/profile/likes?postId=${postId}`, {
         method: "DELETE",
-        headers: {
-          ...clientBearerHeaders(),
-        },
+        headers: { ...clientBearerHeaders() },
       });
       const json = (await response.json()) as ApiResponse;
       if (!json.success) {
         message.error(json.message || t.removeFailed);
         return;
       }
-      setFavorites((prev) => prev.filter((fav) => fav.id !== favoriteId));
+      setLikes((prev) => prev.filter((item) => item.postId !== postId));
     } catch (error) {
-      console.error("取消收藏失败:", error);
+      console.error("取消点赞失败:", error);
       message.error(t.removeFailed);
     }
   };
 
-  const handleReadPost = async (post: NonNullable<UserFavorite["post"]>) => {
+  const handleReadPost = async (post: PostData) => {
     const isPasswordPost = post.visibility === "password";
     const isAuthor = Boolean(user?.id && post.authorId && user.id === post.authorId);
     if (!isPasswordPost || isAuthor) {
@@ -302,18 +305,16 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
 
   return (
     <div className="space-y-6">
-      {/* 页面头部 */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">{t.title}</h1>
           <p className="text-default-500">{t.subtitle}</p>
         </div>
         <div className="text-sm text-default-500">
-          {favorites.length} {t.total}
+          {likes.length} {t.total}
         </div>
       </div>
 
-      {/* 搜索和筛选 */}
       <Card className={PROFILE_GLASS_CARD}>
         <CardBody className="p-4">
           <div className="flex flex-col gap-4 sm:flex-row">
@@ -346,17 +347,15 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
         </CardBody>
       </Card>
 
-      {/* 收藏列表 */}
       <div className="space-y-4">
-        {filteredFavorites.map((favorite) => {
-          const post = favorite.post;
+        {filteredLikes.map((item) => {
+          const post = item.post;
           if (!post) return null;
           return (
-            <Card key={favorite.id} className={PROFILE_GLASS_CARD_INTERACTIVE}>
+            <Card key={`${item.userId}-${item.postId}`} className={PROFILE_GLASS_CARD_INTERACTIVE}>
               <CardBody className="p-6">
                 <div className="flex flex-col gap-4 md:flex-row md:items-start">
                   <div className="w-full shrink-0 space-y-2 md:w-36">
-                    {/* 文章封面 */}
                     <div className="relative h-24 w-full overflow-hidden rounded-xl bg-default-100">
                       {post.featuredImage ? (
                         <Image
@@ -368,20 +367,19 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
                           className="h-full w-full object-cover"
                         />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-secondary/40 to-primary/35">
+                        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-danger/40 to-warning/35">
                           <BookOpen className="h-8 w-8 text-white" />
                         </div>
                       )}
                     </div>
 
-                    {/* 统计区：移动到封面图下方 */}
                     <div className="grid grid-cols-3 gap-1 rounded-lg border border-default-200/70 bg-default-50/40 p-2 text-xs text-default-500 dark:border-default-100/10 dark:bg-black/10">
                       <div className="flex items-center justify-center gap-1">
                         <Eye className="h-3.5 w-3.5" />
                         <span>{post.viewCount ?? 0}</span>
                       </div>
                       <div className="flex items-center justify-center gap-1">
-                        <Star className="h-3.5 w-3.5" />
+                        <Heart className="h-3.5 w-3.5" />
                         <span>{post.likeCount ?? 0}</span>
                       </div>
                       <div className="flex items-center justify-center gap-1">
@@ -391,14 +389,13 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
                     </div>
                   </div>
 
-                  {/* 文章信息 */}
                   <div className="min-w-0 flex-1">
                     <div className="space-y-3">
                       <div className="flex items-start justify-between gap-3">
                         <h3 className="min-w-0 flex-1 line-clamp-2 text-lg font-semibold text-foreground">
                           {post.title}
                         </h3>
-                        {post.visibility === "password" && (
+                        {post.visibility === "password" ? (
                           <Chip
                             size="sm"
                             variant="flat"
@@ -408,7 +405,7 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
                           >
                             {t.passwordTag}
                           </Chip>
-                        )}
+                        ) : null}
                         <div className="flex max-w-[45%] shrink-0 items-center gap-2">
                           <Avatar
                             src={post.author?.avatar}
@@ -420,9 +417,10 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
                           </span>
                         </div>
                       </div>
-                      {post.excerpt && (
+
+                      {post.excerpt ? (
                         <p className="line-clamp-2 text-default-600">{stripMarkdownForExcerpt(post.excerpt)}</p>
-                      )}
+                      ) : null}
 
                       <div className="flex flex-wrap items-center gap-2">
                         {post.tags?.slice(0, 3).map((tag) => (
@@ -435,20 +433,20 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
                             {tag.name}
                           </Chip>
                         ))}
-                        {post.tags && post.tags.length > 3 && (
+                        {post.tags && post.tags.length > 3 ? (
                           <Chip size="sm" variant="flat">
                             +{post.tags.length - 3}
                           </Chip>
-                        )}
+                        ) : null}
                       </div>
 
                       <div className="flex flex-wrap items-center justify-between gap-2 md:-mt-3">
                         <div className="flex min-w-0 items-center gap-2">
-                          {post.category && (
+                          {post.category ? (
                             <Chip size="sm" variant="flat" color="primary">
                               {post.category.name}
                             </Chip>
-                          )}
+                          ) : null}
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
                           <Button
@@ -466,11 +464,11 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
                             size="sm"
                             color="danger"
                             aria-label={t.remove}
-                            onPress={() => handleRemoveFavorite(favorite.id)}
+                            onPress={() => handleUnlike(item.postId)}
                           >
-                            <Star className="h-4 w-4 fill-current" />
+                            <Heart className="h-4 w-4 fill-current" />
                           </Button>
-                          <span className="text-xs text-default-500">{formatDate(favorite.createdAt)}</span>
+                          <span className="text-xs text-default-500">{formatDate(item.createdAt)}</span>
                         </div>
                       </div>
                     </div>
@@ -482,11 +480,10 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
         })}
       </div>
 
-      {/* 空状态 */}
-      {filteredFavorites.length === 0 && !loading && (
+      {filteredLikes.length === 0 && !loading && (
         <Card className={PROFILE_GLASS_CARD}>
           <CardBody className="p-12 text-center">
-            <Star className="mx-auto mb-4 h-16 w-16 text-default-300" />
+            <Heart className="mx-auto mb-4 h-16 w-16 text-default-300" />
             <h3 className="mb-2 text-lg font-medium text-foreground">
               {searchInput || categoryFilter !== "all" ? t.emptyMatch : t.empty}
             </h3>

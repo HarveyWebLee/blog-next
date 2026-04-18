@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { useParams } from "next/navigation";
-import { Button, Card, CardBody } from "@heroui/react";
+import { Card, CardBody } from "@heroui/react";
 import { Bell, BookOpen, Eye, Heart, MessageSquare, Star, UserPlus, Users } from "lucide-react";
 
 import { PROFILE_GLASS_CARD } from "@/components/profile/profile-ui-presets";
@@ -36,16 +34,12 @@ const toneIconWrap: Record<(typeof statsItems)[number]["tone"], string> = {
 };
 
 export default function ProfileStats({ lang }: ProfileStatsProps) {
-  const params = useParams();
-  const routeLang = typeof params?.lang === "string" ? params.lang : "zh-CN";
-
   const t =
     lang === "en-US"
       ? {
           loadFailed: "Unable to load statistics",
           title: "Statistics",
           lastActivity: "Last activity",
-          quickActions: ["View My Posts", "Manage Favorites", "View Notifications", "Activity Log"],
           labels: {
             totalPosts: "My Posts",
             totalComments: "My Comments",
@@ -62,7 +56,6 @@ export default function ProfileStats({ lang }: ProfileStatsProps) {
             loadFailed: "統計情報を読み込めません",
             title: "データ統計",
             lastActivity: "最終アクティビティ",
-            quickActions: ["自分の記事を見る", "お気に入り管理", "通知を見る", "アクティビティログ"],
             labels: {
               totalPosts: "自分の記事",
               totalComments: "自分のコメント",
@@ -78,7 +71,6 @@ export default function ProfileStats({ lang }: ProfileStatsProps) {
             loadFailed: "无法加载统计信息",
             title: "数据统计",
             lastActivity: "最后活动",
-            quickActions: ["查看我的文章", "管理收藏", "查看通知", "活动日志"],
             labels: {
               totalPosts: "我的文章",
               totalComments: "我的评论",
@@ -154,13 +146,6 @@ export default function ProfileStats({ lang }: ProfileStatsProps) {
     );
   }
 
-  const quickLinks = [
-    `/${routeLang}/profile/posts`,
-    `/${routeLang}/profile/favorites`,
-    `/${routeLang}/profile/notifications`,
-    `/${routeLang}/profile`,
-  ] as const;
-
   return (
     <Card className={PROFILE_GLASS_CARD}>
       <CardBody className="p-6">
@@ -198,29 +183,6 @@ export default function ProfileStats({ lang }: ProfileStatsProps) {
               </div>
             );
           })}
-        </div>
-
-        {/* 快速操作：与博客筛选区按钮风格一致 */}
-        <div className="mt-6 border-t border-white/10 pt-6 dark:border-white/10">
-          <div className="flex flex-wrap gap-2">
-            {t.quickActions.map((label, idx) => (
-              <Button
-                key={label}
-                as={Link}
-                href={quickLinks[idx]}
-                size="sm"
-                variant="flat"
-                color={idx === 0 ? "primary" : idx === 1 ? "secondary" : idx === 2 ? "warning" : "default"}
-                className={
-                  idx === 0
-                    ? "border border-primary/20 bg-primary/10 text-primary backdrop-blur-xl"
-                    : "border border-white/15 bg-white/10 backdrop-blur-xl dark:border-white/10 dark:bg-black/10"
-                }
-              >
-                {label}
-              </Button>
-            ))}
-          </div>
         </div>
       </CardBody>
     </Card>

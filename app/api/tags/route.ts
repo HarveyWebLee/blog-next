@@ -14,6 +14,7 @@ import { and, asc, count, desc, eq, like, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { postTags, tags } from "@/lib/db/schema";
+import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
 import { requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, CreateTagRequest, PaginatedResponseData, Tag, TagQueryParams } from "@/types/blog";
 
@@ -230,6 +231,16 @@ export async function POST(request: NextRequest) {
       .from(tags)
       .where(and(eq(tags.name, body.name), eq(tags.ownerId, auth.user.userId)))
       .limit(1);
+
+    if (newTag) {
+      logUserActivity({
+        userId: auth.user.userId,
+        action: UserActivityAction.TAG_CREATED,
+        description: newTag.name,
+        metadata: { tagId: newTag.id, slug: newTag.slug },
+        request,
+      });
+    }
 
     return NextResponse.json({
       success: true,

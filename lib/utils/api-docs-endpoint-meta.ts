@@ -9,6 +9,7 @@ export const API_DOCS_GROUP_DESCRIPTIONS: Record<string, string> = {
   admin: "超级管理员专用：数据库用户列表与单用户详情/部分更新（非站点 admin 角色；见各接口）",
   profile: "当前登录用户个人资料、统计、动态、收藏与通知",
   posts: "文章 CRUD、按 slug 查询、浏览量",
+  comments: "前台博客评论提交（匿名或登录）",
   categories: "分类 CRUD",
   tags: "标签 CRUD",
   subscriptions: "邮件订阅查询、订阅、退订（访客须验证码）",
@@ -106,11 +107,18 @@ export const API_DOCS_ENDPOINT_DESCRIPTIONS: Record<string, Partial<Record<strin
     GET: "当前用户是否已赞与点赞总数（匿名仅返回总数）",
     POST: "切换点赞（需 Bearer）",
   },
+  "/api/posts/{id}/share": {
+    POST: "记录分享打点（匿名或 Bearer）；用于用户活动日志",
+  },
+  "/api/comments": {
+    POST: "提交博客评论（文章存在且开启评论；匿名或登录）",
+  },
   "/api/posts/engagement": {
     GET: "批量查询多篇文章的点赞/收藏状态（Query: ids）；登录用户返回真实状态",
   },
   "/api/posts/slug/{slug}": {
-    GET: "按 slug 获取已发布文章",
+    GET: "按 slug 获取文章详情（密码保护文章未校验时仅返回摘要）",
+    PATCH: "校验密码保护文章密码，成功后返回可阅读数据",
   },
   "/api/categories": {
     GET: "分类列表（分页/搜索/状态/父分类过滤；仅当前登录用户）",
@@ -258,7 +266,14 @@ export const API_DOCS_AUTH_HINTS: Record<string, Partial<Record<string, string>>
     GET: "Query: ids。未登录：匿名占位；已登录：真实状态。",
   },
   "/api/posts/slug/{slug}": {
-    GET: "无需 Bearer（公开已发布）。",
+    GET: "无需 Bearer。密码保护文章可携带 query.password 进行只读校验。",
+    PATCH: "无需 Bearer。Body：{ password }，用于密码保护文章解锁验证。",
+  },
+  "/api/comments": {
+    POST: "可选 Bearer（匿名亦可）。Body：postId、content；匿名可带 authorName/authorEmail；登录写入 authorId。",
+  },
+  "/api/posts/{id}/share": {
+    POST: "可选 Bearer。匿名亦可调用，用于分享行为打点与用户活动日志。",
   },
   "/api/categories": {
     GET: "必须：Authorization: Bearer。支持 page/limit/sortBy/sortOrder/search/isActive/parentId，结果仅当前登录用户 ownerId 下数据。",

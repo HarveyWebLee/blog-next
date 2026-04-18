@@ -29,6 +29,7 @@ export class PostsAPI {
     if (params.search) searchParams.append("search", params.search);
     if (params.status) searchParams.append("status", params.status);
     if (params.visibility) searchParams.append("visibility", params.visibility);
+    if (params.includePasswordProtected) searchParams.append("includePasswordProtected", "true");
     if (params.authorId) searchParams.append("authorId", params.authorId.toString());
     if (params.tagId != null) searchParams.append("tagId", params.tagId.toString());
     if (params.sortBy) searchParams.append("sortBy", params.sortBy);

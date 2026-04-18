@@ -7,6 +7,7 @@ import { and, eq } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { posts, userPostLikes } from "@/lib/db/schema";
+import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
 import { createErrorResponse, createSuccessResponse, toJsonSafeInt } from "@/lib/utils";
 import { findMysqlDriverError } from "@/lib/utils/mysql-error";
 import { requireAuthUser } from "@/lib/utils/request-auth";
@@ -117,6 +118,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     const likeCount = await getLikeCount(postId);
+    logUserActivity({
+      userId: auth.user.userId,
+      action: liked ? UserActivityAction.POST_LIKED : UserActivityAction.POST_UNLIKED,
+      metadata: { postId, likeCount },
+      request,
+    });
     return NextResponse.json(createSuccessResponse({ liked, likeCount }, liked ? "点赞成功" : "取消点赞成功"), {
       status: 200,
     });

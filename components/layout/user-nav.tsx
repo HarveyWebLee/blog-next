@@ -151,7 +151,7 @@ export function UserNav() {
             key="categories"
             description={t.categoriesDesc}
             startContent={<LibraryBig width="1em" height="1em" className={iconClasses} />}
-            href={`/${lang}/categories/manage`}
+            href={`/${lang}/categories`}
           >
             {t.categories}
           </DropdownItem>
@@ -159,7 +159,7 @@ export function UserNav() {
             key="tags"
             description={t.tagsDesc}
             startContent={<TagIcon width="1em" height="1em" className={iconClasses} />}
-            href={`/${lang}/tags/manage`}
+            href={`/${lang}/tags`}
           >
             {t.tags}
           </DropdownItem>

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Avatar } from "@heroui/avatar";
 import { Button } from "@heroui/button";
 import { Card, CardBody, CardHeader } from "@heroui/card";
@@ -14,7 +14,6 @@ import { Textarea } from "@heroui/react";
 import { Spinner } from "@heroui/spinner";
 import {
   ArrowLeft,
-  Bookmark,
   BookOpen,
   Calendar,
   Edit,
@@ -23,6 +22,7 @@ import {
   Lock,
   MessageCircle,
   Share2,
+  Star,
   ThumbsUp,
 } from "lucide-react";
 
@@ -35,6 +35,7 @@ import { PostData } from "@/types/blog";
 export default function BlogDetailPage({ params }: { params: Promise<{ lang: string; slug: string }> }) {
   const [resolvedParams, setResolvedParams] = useState<{ lang: string; slug: string } | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [post, setPost] = useState<PostData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -141,7 +142,9 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
     const fetchPost = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/posts/slug/${resolvedParams.slug}?includeRelations=true`);
+        const passwordParam = searchParams.get("password");
+        const passwordQuery = passwordParam ? `&password=${encodeURIComponent(passwordParam)}` : "";
+        const response = await fetch(`/api/posts/slug/${resolvedParams.slug}?includeRelations=true${passwordQuery}`);
         const result = await response.json();
 
         if (result.success) {
@@ -151,7 +154,6 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
           if (postData.visibility === "password" && !postData.passwordVerified) {
             setShowPasswordForm(true);
           }
-          console.log("postData", postData);
           setPost(postData);
           setLikeCount(postData.likeCount || 0);
           setFavoriteCount(postData.favoriteCount || 0);
@@ -173,7 +175,7 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
     };
 
     fetchPost();
-  }, [resolvedParams?.slug, router, t.fetchFailed]);
+  }, [resolvedParams?.slug, router, searchParams, t.fetchFailed]);
 
   useEffect(() => {
     if (!post?.id) return;
@@ -220,12 +222,7 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
 
       if (result.success) {
         setShowPasswordForm(false);
-        // 重新获取博客数据
-        const postResponse = await fetch(`/api/posts/slug/${resolvedParams?.slug}?includeRelations=true`);
-        const postResult = await postResponse.json();
-        if (postResult.success) {
-          setPost(postResult.data);
-        }
+        setPost(result.data);
       } else {
         setPasswordError(t.passwordWrong);
       }
@@ -336,6 +333,36 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
       message.error("收藏失败");
     } finally {
       setFavoriteLoading(false);
+    }
+  };
+
+  /** 记录分享打点（可选登录），并优先使用系统分享或复制链接 */
+  const handleShare = async () => {
+    if (!post?.id) return;
+    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+    try {
+      await fetch(`/api/posts/${post.id}/share`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+    } catch {
+      // 打点失败不阻断后续分享
+    }
+    const url = typeof window !== "undefined" ? window.location.href : "";
+    const title = post.title || "";
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({ title, url });
+      } catch {
+        /* 用户取消系统分享 */
+      }
+    } else if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(url);
+        message.success(lang === "en-US" ? "Link copied" : lang === "ja-JP" ? "リンクをコピーしました" : "链接已复制");
+      } catch {
+        message.error(lang === "en-US" ? "Copy failed" : lang === "ja-JP" ? "コピーに失敗しました" : "复制失败");
+      }
     }
   };
 
@@ -454,7 +481,7 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
     <div className="blog-detail-container">
       <div className="space-y-8 animate-blog-fade-in-up">
         {/* 返回按钮 - 使用渐变色样式 */}
-        <div className="animate-blog-slide-in-right">
+        <div className="animate-blog-slide-in-right flex items-center justify-between gap-3">
           <Button
             variant="bordered"
             size="md"
@@ -464,6 +491,20 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
           >
             返回上一页
           </Button>
+          {/* 仅文章作者本人可见编辑入口（与 /api/posts/[id] PUT 权限一致） */}
+          {isAuthenticated && user != null && (post.authorId === user.id || post.author?.id === user.id) && (
+            <Button
+              variant="flat"
+              color="primary"
+              size="lg"
+              as={Link}
+              href={`/${lang}/blog/manage/edit/${post.id}`}
+              startContent={<Edit className="w-5 h-5" />}
+              className="button-hover-effect animate-blog-scale-in delay-400 shadow-sm hover:shadow-md"
+            >
+              {t.editArticle}
+            </Button>
+          )}
         </div>
 
         {/* 博客头部信息 - 使用渐变色样式 */}
@@ -475,24 +516,12 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
                 <div className="space-y-4 flex-1">
                   <h1 className="text-4xl lg:text-5xl font-bold blog-title-gradient leading-tight">{post.title}</h1>
                   {post.excerpt && (
-                    <p className="text-xl text-default-600 leading-relaxed">{stripMarkdownForExcerpt(post.excerpt)}</p>
+                    <p className="w-full text-xl text-default-600 leading-relaxed">
+                      {stripMarkdownForExcerpt(post.excerpt)}
+                    </p>
                   )}
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
-                  <Chip
-                    color={getStatusColor(post.status)}
-                    variant="flat"
-                    size="lg"
-                    className={`animate-blog-scale-in delay-200 ${
-                      post.status === "published"
-                        ? "status-published"
-                        : post.status === "draft"
-                          ? "status-draft"
-                          : "status-archived"
-                    }`}
-                  >
-                    {post.status === "published" ? t.published : post.status === "draft" ? t.draft : t.archived}
-                  </Chip>
                   {post.visibility === "private" && (
                     <Chip color="secondary" variant="flat" size="lg" className="animate-blog-scale-in delay-300">
                       🔒 私有
@@ -553,6 +582,23 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
                   <Heart className="w-4 h-4" />
                   <span>{post.likeCount} 个赞</span>
                 </div>
+                {/* 文章状态移动到元信息区右侧，避免在标题区独占一列 */}
+                <div className="w-full sm:w-auto sm:ml-auto flex justify-end">
+                  <Chip
+                    color={getStatusColor(post.status)}
+                    variant="flat"
+                    size="lg"
+                    className={`animate-blog-scale-in delay-200 ${
+                      post.status === "published"
+                        ? "status-published"
+                        : post.status === "draft"
+                          ? "status-draft"
+                          : "status-archived"
+                    }`}
+                  >
+                    {post.status === "published" ? t.published : post.status === "draft" ? t.draft : t.archived}
+                  </Chip>
+                </div>
               </div>
 
               {/* 分类和标签 - 使用渐变色样式 */}
@@ -607,7 +653,8 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
           <div className="animate-blog-fade-in-up delay-300 mt-4">
             <Card className="glass-enhanced">
               <CardBody className="p-6">
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex flex-col sm:flex-row justify-between gap-4">
+                  {/* 左侧保留互动按钮，分享按钮独立放在右侧，避免混在同一组里 */}
                   <div className="flex items-center gap-3">
                     <Button
                       variant="flat"
@@ -624,39 +671,28 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
                     </Button>
                     <Button
                       variant="flat"
-                      color="primary"
-                      size="lg"
-                      startContent={<Share2 className="w-5 h-5" />}
-                      className="button-hover-effect animate-blog-scale-in delay-200 gradient-button-primary"
-                    >
-                      分享文章
-                    </Button>
-                    <Button
-                      variant="flat"
                       color={isFavorited ? "secondary" : "default"}
                       size="lg"
                       isLoading={favoriteLoading}
                       onPress={handleFavorite}
-                      startContent={<Bookmark className="w-5 h-5" />}
+                      startContent={<Star className="w-5 h-5" />}
                       className="button-hover-effect animate-blog-scale-in delay-300 gradient-button-secondary"
                     >
-                      {isFavorited ? t.favorited : t.favorite} ({favoriteCount})
+                      {t.favorite} ({favoriteCount})
                     </Button>
                   </div>
-
-                  {/* 仅文章作者本人可见编辑入口（与 /api/posts/[id] PUT 权限一致） */}
-                  {isAuthenticated && user != null && (post.authorId === user.id || post.author?.id === user.id) && (
+                  <div className="self-end sm:self-auto">
                     <Button
-                      variant="bordered"
+                      variant="flat"
+                      color="primary"
                       size="lg"
-                      as={Link}
-                      href={`/${lang}/blog/manage/edit/${post.id}`}
-                      startContent={<Edit className="w-5 h-5" />}
-                      className="button-hover-effect animate-blog-scale-in delay-400"
+                      startContent={<Share2 className="w-5 h-5" />}
+                      className="button-hover-effect animate-blog-scale-in delay-200 gradient-button-primary"
+                      onPress={() => void handleShare()}
                     >
-                      {t.editArticle}
+                      分享文章
                     </Button>
-                  )}
+                  </div>
                 </div>
               </CardBody>
             </Card>

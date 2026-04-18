@@ -5,8 +5,8 @@
 
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useParams } from "next/navigation";
 import {
   Badge,
   Button,
@@ -34,6 +34,7 @@ import {
   TableColumn,
   TableHeader,
   TableRow,
+  Textarea,
 } from "@heroui/react";
 import {
   BarChart3,
@@ -51,14 +52,29 @@ import {
   Trash2,
 } from "lucide-react";
 
-import { useAuth } from "@/lib/contexts/auth-context";
-import { message } from "@/lib/utils";
+import { generateRandomUrlAlias, message } from "@/lib/utils";
+import { clientBearerHeaders } from "@/lib/utils/client-bearer-auth";
 import { Locale } from "@/types";
 import { ApiResponse, PaginatedResponseData, Tag, TagQueryParams } from "@/types/blog";
 
 const resolveLocale = (lang: string): Locale => {
   if (lang === "en-US" || lang === "ja-JP") return lang;
   return "zh-CN";
+};
+
+/** 将用户输入规范为 #RRGGBB；无法解析时返回 null */
+const normalizeHexColor = (raw: string): string | null => {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  let hex = trimmed.startsWith("#") ? trimmed.slice(1) : trimmed;
+  if (!/^[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/.test(hex)) return null;
+  if (hex.length === 3) {
+    hex = hex
+      .split("")
+      .map((c) => c + c)
+      .join("");
+  }
+  return `#${hex.toLowerCase()}`;
 };
 
 const T: Record<Locale, Record<string, string>> = {
@@ -93,6 +109,19 @@ const T: Record<Locale, Record<string, string>> = {
     deleting: "删除中...",
     totalCount: "个标签",
     postUnit: "篇",
+    editTag: "编辑标签",
+    createTag: "新建标签",
+    nameRequired: "标签名称不能为空",
+    save: "保存",
+    saving: "保存中...",
+    saveFailed: "保存标签失败",
+    nameLabel: "标签名称",
+    slugLabel: "标签标识",
+    descLabel: "标签描述",
+    colorLabel: "标签颜色",
+    hexColor: "十六进制颜色",
+    invalidColor: "请输入有效的十六进制颜色（如 #667eea 或 667eea）",
+    statusLabel: "启用状态",
   },
   "en-US": {
     title: "Tag Management",
@@ -125,6 +154,19 @@ const T: Record<Locale, Record<string, string>> = {
     deleting: "Deleting...",
     totalCount: "tags",
     postUnit: "posts",
+    editTag: "Edit Tag",
+    createTag: "Create Tag",
+    nameRequired: "Tag name is required",
+    save: "Save",
+    saving: "Saving...",
+    saveFailed: "Failed to save tag",
+    nameLabel: "Tag Name",
+    slugLabel: "Slug",
+    descLabel: "Description",
+    colorLabel: "Color",
+    hexColor: "Hex color",
+    invalidColor: "Enter a valid hex color (e.g. #667eea or 667eea)",
+    statusLabel: "Active",
   },
   "ja-JP": {
     title: "タグ管理",
@@ -157,6 +199,19 @@ const T: Record<Locale, Record<string, string>> = {
     deleting: "削除中...",
     totalCount: "件",
     postUnit: "件",
+    editTag: "タグ編集",
+    createTag: "タグ作成",
+    nameRequired: "タグ名は必須です",
+    save: "保存",
+    saving: "保存中...",
+    saveFailed: "タグの保存に失敗しました",
+    nameLabel: "タグ名",
+    slugLabel: "スラッグ",
+    descLabel: "説明",
+    colorLabel: "色",
+    hexColor: "16進カラー",
+    invalidColor: "有効な16進色を入力してください（例: #667eea または 667eea）",
+    statusLabel: "有効状態",
   },
 };
 
@@ -164,9 +219,7 @@ const T: Record<Locale, Record<string, string>> = {
  * 标签管理页面组件
  */
 export default function TagsManagePage() {
-  const router = useRouter();
   const params = useParams<{ lang: string }>();
-  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const locale = resolveLocale(params.lang);
   const t = T[locale];
 
@@ -182,10 +235,25 @@ export default function TagsManagePage() {
   const [limit] = useState(10);
   const [statusFilter, setStatusFilter] = useState<boolean | undefined>(undefined);
 
+  /** 搜索防抖定时器：避免输入每个字符都触发一次列表接口 */
+  const searchDebounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // 模态框状态
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedTag, setSelectedTag] = useState<Tag | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [editingTagId, setEditingTagId] = useState<number | null>(null);
+  const [formData, setFormData] = useState({
+    name: "",
+    slug: "",
+    description: "",
+    color: "#667eea",
+    isActive: true,
+  });
+  /** 与取色器同步的十六进制展示（允许输入过程中的中间态） */
+  const [colorHexInput, setColorHexInput] = useState("#667eea");
 
   const fetchTags = useCallback(
     async (params: Partial<TagQueryParams> = {}) => {
@@ -200,7 +268,9 @@ export default function TagsManagePage() {
           ...(params.isActive !== undefined && { isActive: params.isActive.toString() }),
         });
 
-        const response = await fetch(`/api/tags?${queryParams}`);
+        const response = await fetch(`/api/tags?${queryParams}`, {
+          headers: { ...clientBearerHeaders() },
+        });
         const result: ApiResponse<PaginatedResponseData<Tag>> = await response.json();
 
         if (result.success && result.data) {
@@ -228,9 +298,9 @@ export default function TagsManagePage() {
     try {
       const baseParams = "page=1&limit=1&sortBy=createdAt&sortOrder=desc";
       const [allRes, activeRes, inactiveRes] = await Promise.all([
-        fetch(`/api/tags?${baseParams}`),
-        fetch(`/api/tags?${baseParams}&isActive=true`),
-        fetch(`/api/tags?${baseParams}&isActive=false`),
+        fetch(`/api/tags?${baseParams}`, { headers: { ...clientBearerHeaders() } }),
+        fetch(`/api/tags?${baseParams}&isActive=true`, { headers: { ...clientBearerHeaders() } }),
+        fetch(`/api/tags?${baseParams}&isActive=false`, { headers: { ...clientBearerHeaders() } }),
       ]);
 
       const [allJson, activeJson, inactiveJson] = (await Promise.all([
@@ -259,7 +329,14 @@ export default function TagsManagePage() {
   const handleSearch = (query: string) => {
     setSearchQuery(query);
     setCurrentPage(1);
-    fetchTags({ search: query, page: 1 });
+
+    if (searchDebounceTimerRef.current) {
+      clearTimeout(searchDebounceTimerRef.current);
+    }
+
+    searchDebounceTimerRef.current = setTimeout(() => {
+      fetchTags({ search: query, page: 1 });
+    }, 400);
   };
 
   // 状态筛选处理
@@ -284,6 +361,7 @@ export default function TagsManagePage() {
 
       const response = await fetch(`/api/tags/${selectedTag.id}`, {
         method: "DELETE",
+        headers: { ...clientBearerHeaders() },
       });
 
       const result: ApiResponse<null> = await response.json();
@@ -310,6 +388,79 @@ export default function TagsManagePage() {
     setIsDeleteModalOpen(true);
   };
 
+  const openCreateModal = () => {
+    setEditingTagId(null);
+    setFormData({
+      name: "",
+      slug: generateRandomUrlAlias(8),
+      description: "",
+      color: "#667eea",
+      isActive: true,
+    });
+    setColorHexInput("#667eea");
+    setIsEditModalOpen(true);
+  };
+
+  const openEditModal = (tag: Tag) => {
+    setEditingTagId(tag.id);
+    const nextColor = tag.color || "#667eea";
+    setFormData({
+      name: tag.name,
+      slug: tag.slug,
+      description: tag.description || "",
+      color: nextColor,
+      isActive: tag.isActive ?? true,
+    });
+    setColorHexInput(nextColor);
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveTag = async () => {
+    if (!formData.name.trim()) {
+      message.warning(t.nameRequired);
+      return;
+    }
+
+    try {
+      setSaveLoading(true);
+      const normalizedFromInput = normalizeHexColor(colorHexInput);
+      const finalColor = normalizedFromInput ?? normalizeHexColor(formData.color);
+      if (!finalColor) {
+        message.warning(t.invalidColor);
+        setSaveLoading(false);
+        return;
+      }
+      const isEdit = editingTagId != null;
+      const endpoint = isEdit ? `/api/tags/${editingTagId}` : "/api/tags";
+      const method = isEdit ? "PUT" : "POST";
+      const response = await fetch(endpoint, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          ...clientBearerHeaders(),
+        },
+        body: JSON.stringify({
+          ...formData,
+          color: finalColor,
+          slug: formData.slug.trim() || generateRandomUrlAlias(8),
+        }),
+      });
+      const result: ApiResponse<Tag> = await response.json();
+      if (!result.success) {
+        message.error(result.message || t.saveFailed);
+        return;
+      }
+      setIsEditModalOpen(false);
+      fetchTags();
+      fetchSummary();
+    } catch (error) {
+      console.error("保存标签失败:", error);
+      message.error(t.saveFailed);
+    } finally {
+      setSaveLoading(false);
+    }
+  };
+
   // 切换标签状态
   const toggleTagStatus = async (tag: Tag) => {
     try {
@@ -317,6 +468,7 @@ export default function TagsManagePage() {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
+          ...clientBearerHeaders(),
         },
         body: JSON.stringify({ isActive: !tag.isActive }),
       });
@@ -336,14 +488,18 @@ export default function TagsManagePage() {
   };
 
   useEffect(() => {
-    if (isAuthLoading) return;
-    if (!isAuthenticated) {
-      router.replace(`/${params.lang}/auth/login`);
-      return;
-    }
     fetchTags();
     fetchSummary();
-  }, [fetchTags, fetchSummary, isAuthLoading, isAuthenticated, params.lang, router]);
+  }, [fetchTags, fetchSummary]);
+
+  // 卸载时清除搜索防抖定时器，避免离开后仍触发列表请求
+  useEffect(() => {
+    return () => {
+      if (searchDebounceTimerRef.current) {
+        clearTimeout(searchDebounceTimerRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -433,7 +589,7 @@ export default function TagsManagePage() {
             <Button
               color="primary"
               startContent={<Plus className="w-4 h-4" />}
-              onPress={() => router.push(`/${params.lang}/tags/manage/create`)}
+              onPress={openCreateModal}
               className="lg:ml-auto"
             >
               {t.create}
@@ -465,11 +621,7 @@ export default function TagsManagePage() {
               <TagIcon className="w-16 h-16 text-default-300 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-default-600 mb-2">{t.noData}</h3>
               <p className="text-default-500 mb-4">{t.noDataDesc}</p>
-              <Button
-                color="primary"
-                startContent={<Plus className="w-4 h-4" />}
-                onPress={() => router.push(`/${params.lang}/tags/manage/create`)}
-              >
+              <Button color="primary" startContent={<Plus className="w-4 h-4" />} onPress={openCreateModal}>
                 {t.create}
               </Button>
             </div>
@@ -549,7 +701,7 @@ export default function TagsManagePage() {
                             <DropdownItem
                               key="edit"
                               startContent={<Edit className="w-4 h-4" />}
-                              onPress={() => router.push(`/${params.lang}/tags/manage/edit/${tag.id}`)}
+                              onPress={() => openEditModal(tag)}
                             >
                               {t.edit}
                             </DropdownItem>
@@ -587,6 +739,75 @@ export default function TagsManagePage() {
           )}
         </CardBody>
       </Card>
+
+      <Modal isOpen={isEditModalOpen} onOpenChange={setIsEditModalOpen} size="2xl">
+        <ModalContent>
+          <ModalHeader>{editingTagId ? t.editTag : t.createTag}</ModalHeader>
+          <ModalBody>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <Input
+                label={t.nameLabel}
+                value={formData.name}
+                onValueChange={(value) => setFormData((prev) => ({ ...prev, name: value }))}
+                isRequired
+              />
+              <Input
+                label={t.slugLabel}
+                value={formData.slug}
+                onValueChange={(value) => setFormData((prev) => ({ ...prev, slug: value }))}
+              />
+            </div>
+            <Textarea
+              label={t.descLabel}
+              value={formData.description}
+              onValueChange={(value) => setFormData((prev) => ({ ...prev, description: value }))}
+              minRows={3}
+            />
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-foreground">{t.colorLabel}</p>
+                <div className="flex flex-wrap items-end gap-3">
+                  <Input
+                    type="color"
+                    aria-label={t.colorLabel}
+                    className="w-20 min-w-[5rem]"
+                    value={formData.color}
+                    onValueChange={(value) => {
+                      setFormData((prev) => ({ ...prev, color: value }));
+                      setColorHexInput(value);
+                    }}
+                  />
+                  <Input
+                    label={t.hexColor}
+                    placeholder="#667eea"
+                    className="min-w-[12rem] flex-1"
+                    value={colorHexInput}
+                    onValueChange={(value) => {
+                      setColorHexInput(value);
+                      const n = normalizeHexColor(value);
+                      if (n) setFormData((prev) => ({ ...prev, color: n }));
+                    }}
+                  />
+                </div>
+              </div>
+              <Switch
+                isSelected={formData.isActive}
+                onValueChange={(checked) => setFormData((prev) => ({ ...prev, isActive: checked }))}
+              >
+                {t.statusLabel}
+              </Switch>
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="light" onPress={() => setIsEditModalOpen(false)}>
+              {t.cancel}
+            </Button>
+            <Button color="primary" onPress={handleSaveTag} isLoading={saveLoading}>
+              {saveLoading ? t.saving : t.save}
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
 
       {/* 删除确认模态框 */}
       <Modal isOpen={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen} size="sm">

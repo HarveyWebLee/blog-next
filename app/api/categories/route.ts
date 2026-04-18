@@ -14,6 +14,7 @@ import { and, asc, count, desc, eq, like } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { categories } from "@/lib/db/schema";
+import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
 import { requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, Category, CategoryQueryParams, CreateCategoryRequest, PaginatedResponseData } from "@/types/blog";
 
@@ -220,6 +221,16 @@ export async function POST(request: NextRequest) {
       .from(categories)
       .where(and(eq(categories.name, body.name), eq(categories.ownerId, auth.user.userId)))
       .limit(1);
+
+    if (newCategory) {
+      logUserActivity({
+        userId: auth.user.userId,
+        action: UserActivityAction.CATEGORY_CREATED,
+        description: newCategory.name,
+        metadata: { categoryId: newCategory.id, slug: newCategory.slug },
+        request,
+      });
+    }
 
     return NextResponse.json({
       success: true,

@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@heroui/button";
 import { Card, CardBody, CardHeader } from "@heroui/card";
@@ -24,7 +24,6 @@ import {
   Filter,
   Grid3X3,
   Hash,
-  Heart,
   Layers,
   List,
   Palette,
@@ -33,7 +32,6 @@ import {
   SortAsc,
   SortDesc,
   Sparkles,
-  Star,
   Tag as TagIcon,
   Trash2,
   TrendingUp,
@@ -296,7 +294,6 @@ function TagCard({
   t: (typeof TAG_PAGE_TEXT)[Locale];
 }) {
   const [isHovered, setIsHovered] = useState(false);
-  const [isLiked, setIsLiked] = useState(false);
 
   return (
     <div
@@ -329,9 +326,9 @@ function TagCard({
           }}
         />
 
-        <CardBody className="relative flex min-h-0 flex-1 flex-col overflow-hidden p-6">
-          {/* 标签头部：标题两行 + 描述两行占位，避免有无描述时卡片高低不一 */}
-          <div className="mb-4 flex shrink-0 items-start justify-between gap-2">
+        <CardBody className="relative flex min-h-0 flex-1 flex-col overflow-hidden p-5 sm:p-6">
+          {/* 头部：信息与数量角标分栏，保证视觉重心稳定 */}
+          <div className="mb-4 flex shrink-0 items-start justify-between gap-3">
             <div className="flex min-w-0 flex-1 items-start gap-3">
               <div className="relative shrink-0">
                 <div
@@ -344,10 +341,10 @@ function TagCard({
               </div>
 
               <div className="min-w-0 flex-1">
-                <h3 className="line-clamp-2 min-h-[3.25rem] text-xl font-bold leading-snug text-foreground transition-colors duration-300 group-hover:text-primary">
+                <h3 className="line-clamp-2 min-h-[3.25rem] text-lg font-bold leading-snug text-foreground transition-colors duration-300 group-hover:text-primary sm:text-xl">
                   {tag.name}
                 </h3>
-                <p className="mt-1 line-clamp-2 min-h-[2.5rem] text-sm text-default-600 transition-colors duration-300 group-hover:text-default-700 dark:group-hover:text-default-300">
+                <p className="mt-1 line-clamp-2 min-h-[2.5rem] text-sm leading-5 text-default-600 transition-colors duration-300 group-hover:text-default-700 dark:group-hover:text-default-300">
                   {tag.description?.trim() ? tag.description : "\u00a0"}
                 </p>
               </div>
@@ -369,8 +366,8 @@ function TagCard({
             </div>
           </div>
 
-          {/* 标签统计信息 */}
-          <div className="mb-4 grid shrink-0 grid-cols-2 gap-4">
+          {/* 统计信息：统一放进面板，信息密度更均衡 */}
+          <div className="mb-4 grid shrink-0 grid-cols-1 gap-2 rounded-xl border border-white/10 bg-white/5 p-3 backdrop-blur-md sm:grid-cols-2">
             <div className="flex items-center gap-2 text-sm text-default-600">
               <Calendar className="h-4 w-4 shrink-0" />
               <span className="leading-snug">
@@ -393,29 +390,12 @@ function TagCard({
               onClick={(e) => e.stopPropagation()}
               onKeyDown={(e) => e.stopPropagation()}
             >
-              <Button
-                size="sm"
-                variant="light"
-                isIconOnly
-                className="text-default-500 hover:text-red-500 transition-colors duration-300"
-                onPress={() => setIsLiked(!isLiked)}
-              >
-                <Heart className={`w-4 h-4 ${isLiked ? "fill-red-500 text-red-500" : ""}`} />
-              </Button>
-              <Button
-                size="sm"
-                variant="light"
-                isIconOnly
-                className="text-default-500 hover:text-primary transition-colors duration-300"
-              >
-                <Star className="w-4 h-4" />
-              </Button>
-              {onDelete && (
+              {onEdit && (
                 <Button
                   size="sm"
                   variant="light"
                   isIconOnly
-                  className="text-default-500 hover:text-warning transition-colors duration-300"
+                  className="text-default-500 transition-colors duration-300 hover:bg-warning/15 hover:text-warning"
                   onPress={() => onEdit?.(tag)}
                 >
                   <Edit3 className="w-4 h-4" />
@@ -426,7 +406,7 @@ function TagCard({
                   size="sm"
                   variant="light"
                   isIconOnly
-                  className="text-default-500 hover:text-danger transition-colors duration-300"
+                  className="text-default-500 transition-colors duration-300 hover:bg-danger/15 hover:text-danger"
                   onPress={() => onDelete(tag)}
                 >
                   <Trash2 className="w-4 h-4" />
@@ -434,9 +414,9 @@ function TagCard({
               )}
             </div>
 
-            <div className="flex items-center gap-1 text-xs text-default-500">
-              <Zap className="w-3 h-3" />
-              <span>{tag.isActive ? t.activeTag : t.inactiveTag}</span>
+            <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-1 text-xs text-default-500">
+              <Zap className="h-3 w-3" />
+              <span className="max-w-[110px] truncate">{tag.isActive ? t.activeTag : t.inactiveTag}</span>
             </div>
           </div>
         </CardBody>
@@ -793,6 +773,8 @@ export default function TagsPage() {
   const [deletingTag, setDeletingTag] = useState<Tag | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+  // 搜索请求防抖定时器：避免输入每个字符都触发一次接口调用
+  const searchDebounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     slug: "",
@@ -820,9 +802,26 @@ export default function TagsPage() {
     setSearchQuery(query);
     // 搜索时重置到第一页
     setPage(1);
-    // 触发 API 调用
-    fetchTags({ search: query, page: 1 });
+
+    // 先清理上一次尚未触发的请求，确保只发送最后一次输入对应的查询
+    if (searchDebounceTimerRef.current) {
+      clearTimeout(searchDebounceTimerRef.current);
+    }
+
+    // 防抖后再触发请求，减少接口压力并提升输入流畅度
+    searchDebounceTimerRef.current = setTimeout(() => {
+      fetchTags({ search: query, page: 1 });
+    }, 400);
   };
+
+  // 组件卸载时清理防抖定时器，避免页面切换后仍触发异步请求
+  useEffect(() => {
+    return () => {
+      if (searchDebounceTimerRef.current) {
+        clearTimeout(searchDebounceTimerRef.current);
+      }
+    };
+  }, []);
 
   // 处理筛选切换
   const handleToggleActive = (show: boolean) => {

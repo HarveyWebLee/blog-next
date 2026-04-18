@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Button } from "@heroui/react";
-import { Bell, BookOpen, FileCode2, FolderTree, Heart, Menu, Settings, Tags, User, Users } from "lucide-react";
+import { Bell, BookOpen, FileCode2, FolderTree, Heart, Menu, Settings, Star, Tags, User, Users } from "lucide-react";
 
 import { PROFILE_PAGE_BG } from "@/components/profile/profile-ui-presets";
 import { useAuth } from "@/lib/contexts/auth-context";
@@ -29,13 +29,14 @@ export default function ProfileLayout({ children, lang, dict: _dict }: ProfileLa
         ? {
             overview: "Overview",
             posts: "My Posts",
+            likes: "My Likes",
             favorites: "My Favorites",
             notifications: "Notifications",
             settings: "Settings",
+            categories: "Category Manage",
+            tags: "Tag Manage",
             accountsAdmin: "Accounts",
             apiDocs: "API Docs",
-            categoryManage: "Category Management",
-            tagManage: "Tag Management",
             pageTitle: "Profile",
             pageSubtitle: "Account and content hub",
             openMenu: "Menu",
@@ -44,13 +45,14 @@ export default function ProfileLayout({ children, lang, dict: _dict }: ProfileLa
           ? {
               overview: "概要",
               posts: "自分の記事",
+              likes: "自分のいいね",
               favorites: "お気に入り",
               notifications: "通知",
               settings: "アカウント設定",
+              categories: "カテゴリ管理",
+              tags: "タグ管理",
               accountsAdmin: "アカウント管理",
               apiDocs: "APIドキュメント",
-              categoryManage: "カテゴリー管理",
-              tagManage: "タグ管理",
               pageTitle: "プロフィール",
               pageSubtitle: "アカウントとコンテンツ",
               openMenu: "メニュー",
@@ -58,13 +60,14 @@ export default function ProfileLayout({ children, lang, dict: _dict }: ProfileLa
           : {
               overview: "概览",
               posts: "我的文章",
+              likes: "我的点赞",
               favorites: "我的收藏",
               notifications: "通知中心",
               settings: "账户设置",
+              categories: "分类管理",
+              tags: "标签管理",
               accountsAdmin: "账户管理",
               apiDocs: "API 文档",
-              categoryManage: "分类管理",
-              tagManage: "标签管理",
               pageTitle: "个人中心",
               pageSubtitle: "账户与内容入口",
               openMenu: "目录",
@@ -78,11 +81,12 @@ export default function ProfileLayout({ children, lang, dict: _dict }: ProfileLa
     }[] = [
       { key: "overview", label: L.overview, icon: User, href: "/profile" },
       { key: "posts", label: L.posts, icon: BookOpen, href: "/profile/posts" },
-      { key: "favorites", label: L.favorites, icon: Heart, href: "/profile/favorites" },
+      { key: "likes", label: L.likes, icon: Heart, href: "/profile/likes" },
+      { key: "favorites", label: L.favorites, icon: Star, href: "/profile/favorites" },
       { key: "notifications", label: L.notifications, icon: Bell, href: "/profile/notifications" },
+      { key: "categories-manage", label: L.categories, icon: FolderTree, href: "/profile/categories" },
+      { key: "tags-manage", label: L.tags, icon: Tags, href: "/profile/tags" },
       { key: "settings", label: L.settings, icon: Settings, href: "/profile/settings" },
-      { key: "category-manage", label: L.categoryManage, icon: FolderTree, href: "/categories/manage" },
-      { key: "tag-manage", label: L.tagManage, icon: Tags, href: "/tags/manage" },
     ];
     if (user?.role === "super_admin") {
       base.splice(5, 0, {

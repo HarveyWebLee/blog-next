@@ -334,13 +334,16 @@ export const userPreferences = mysqlTable(
 /**
  * 用户活动日志表
  * 记录用户的各种活动
+ *
+ * - `user_id` 可为空：访客订阅等无法绑定账号时仅存 metadata（如邮箱哈希/脱敏邮箱），不参与「当前用户活动流」筛选。
+ * - `action` 预留较长枚举名空间，便于服务端统一打点（post_created、newsletter_subscribed 等）。
  */
 export const userActivities = mysqlTable(
   "user_activities",
   {
     id: int("id").primaryKey().autoincrement(),
-    userId: int("user_id").notNull(), // 用户ID
-    action: varchar("action", { length: 50 }).notNull(), // 活动类型
+    userId: int("user_id"), // 参与者用户ID（可空：访客或系统归因场景）
+    action: varchar("action", { length: 100 }).notNull(), // 活动类型（打点枚举名）
     description: text("description"), // 活动描述
     metadata: text("metadata"), // 额外数据（JSON格式）
     ipAddress: varchar("ip_address", { length: 45 }), // IP地址
@@ -351,6 +354,8 @@ export const userActivities = mysqlTable(
     index("user_idx").on(table.userId),
     index("action_idx").on(table.action),
     index("created_idx").on(table.createdAt),
+    /** 用户活动时间线：WHERE user_id = ? ORDER BY created_at DESC */
+    index("user_created_idx").on(table.userId, table.createdAt),
   ]
 );
 

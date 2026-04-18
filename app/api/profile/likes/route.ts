@@ -1,20 +1,24 @@
 /**
- * 用户收藏API路由
- * 提供用户收藏文章的管理接口
- *
- * GET /api/profile/favorites - 获取用户收藏列表
- * POST /api/profile/favorites - 收藏文章
- * DELETE /api/profile/favorites - 取消收藏
+ * 用户点赞列表 API
+ * GET /api/profile/likes - 获取当前用户点赞的文章列表
+ * DELETE /api/profile/likes?postId=1 - 取消点赞
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { and, count, desc, eq } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
-import { categories, posts, userFavorites, users } from "@/lib/db/schema";
+import { categories, posts, userPostLikes, users } from "@/lib/db/schema";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
 import { requireAuthUser } from "@/lib/utils/request-auth";
-import { ApiResponse, FavoritePostRequest, PaginatedResponseData, PostData, UserFavorite } from "@/types/blog";
+import { ApiResponse, PaginatedResponseData, PostData } from "@/types/blog";
+
+type ProfileLikeItem = {
+  userId: number;
+  postId: number;
+  createdAt: Date;
+  post?: PostData;
+};
 
 export async function GET(request: NextRequest) {
   try {
@@ -29,20 +33,17 @@ export async function GET(request: NextRequest) {
         { status: 401 }
       );
     }
-    const decoded = auth.user;
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
     const offset = (page - 1) * limit;
 
-    // 获取用户收藏列表（Drizzle MySQL 的 .select 不支持多层嵌套对象，改为扁平列再在内存中组装）
-    const favoriteRows = await db
+    const likeRows = await db
       .select({
-        favId: userFavorites.id,
-        favUserId: userFavorites.userId,
-        refPostId: userFavorites.postId,
-        favCreatedAt: userFavorites.createdAt,
+        likeUserId: userPostLikes.userId,
+        likePostId: userPostLikes.postId,
+        likeCreatedAt: userPostLikes.createdAt,
         postId: posts.id,
         postTitle: posts.title,
         postSlug: posts.slug,
@@ -59,31 +60,28 @@ export async function GET(request: NextRequest) {
         catName: categories.name,
         catSlug: categories.slug,
       })
-      .from(userFavorites)
-      .leftJoin(posts, eq(userFavorites.postId, posts.id))
+      .from(userPostLikes)
+      .leftJoin(posts, eq(userPostLikes.postId, posts.id))
       .leftJoin(users, eq(posts.authorId, users.id))
       .leftJoin(categories, eq(posts.categoryId, categories.id))
-      .where(eq(userFavorites.userId, decoded.userId))
-      .orderBy(desc(userFavorites.createdAt))
+      .where(eq(userPostLikes.userId, auth.user.userId))
+      .orderBy(desc(userPostLikes.createdAt))
       .limit(limit)
       .offset(offset);
 
-    // 获取总数
     const totalResult = await db
       .select({ count: count() })
-      .from(userFavorites)
-      .where(eq(userFavorites.userId, decoded.userId));
+      .from(userPostLikes)
+      .where(eq(userPostLikes.userId, auth.user.userId));
 
     const total = totalResult[0]?.count ?? 0;
     const totalPages = Math.ceil(total / limit);
 
-    const responseData: PaginatedResponseData<UserFavorite> = {
-      data: favoriteRows.map((row) => ({
-        id: row.favId,
-        userId: row.favUserId,
-        postId: row.refPostId,
-        createdAt: row.favCreatedAt,
-        updatedAt: row.favCreatedAt,
+    const responseData: PaginatedResponseData<ProfileLikeItem> = {
+      data: likeRows.map((row) => ({
+        userId: row.likeUserId,
+        postId: row.likePostId,
+        createdAt: row.likeCreatedAt,
         post:
           row.postId != null
             ? ({
@@ -102,6 +100,7 @@ export async function GET(request: NextRequest) {
                 allowComments: true,
                 viewCount: row.postViewCount ?? 0,
                 likeCount: row.postLikeCount ?? 0,
+                favoriteCount: 0,
                 publishedAt: row.postPublishedAt,
                 author: {
                   id: row.authorId ?? 0,
@@ -115,8 +114,8 @@ export async function GET(request: NextRequest) {
                   status: "active",
                   emailVerified: false,
                   lastLoginAt: undefined,
-                  createdAt: row.favCreatedAt,
-                  updatedAt: row.favCreatedAt,
+                  createdAt: row.likeCreatedAt,
+                  updatedAt: row.likeCreatedAt,
                 },
                 category: row.catId
                   ? {
@@ -127,15 +126,15 @@ export async function GET(request: NextRequest) {
                       parentId: null,
                       sortOrder: 0,
                       isActive: true,
-                      createdAt: row.favCreatedAt,
-                      updatedAt: row.favCreatedAt,
+                      createdAt: row.likeCreatedAt,
+                      updatedAt: row.likeCreatedAt,
                     }
                   : null,
                 tags: [],
                 comments: [],
                 readTime: 0,
-                createdAt: row.favCreatedAt,
-                updatedAt: row.favCreatedAt,
+                createdAt: row.likeCreatedAt,
+                updatedAt: row.likeCreatedAt,
               } as unknown as PostData)
             : undefined,
       })),
@@ -149,114 +148,18 @@ export async function GET(request: NextRequest) {
       },
     };
 
-    return NextResponse.json<ApiResponse<PaginatedResponseData<UserFavorite>>>({
+    return NextResponse.json<ApiResponse<PaginatedResponseData<ProfileLikeItem>>>({
       success: true,
       data: responseData,
-      message: "收藏列表获取成功",
+      message: "点赞列表获取成功",
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("获取收藏列表失败:", error);
+    console.error("获取点赞列表失败:", error);
     return NextResponse.json<ApiResponse>(
       {
         success: false,
-        message: "获取收藏列表失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
-  }
-}
-
-export async function POST(request: NextRequest) {
-  try {
-    const auth = requireAuthUser(request);
-    if (!auth.ok) {
-      return NextResponse.json<ApiResponse>(
-        {
-          success: false,
-          message: auth.reason === "missing" ? "未提供认证令牌" : "无效的认证令牌",
-          timestamp: new Date().toISOString(),
-        },
-        { status: 401 }
-      );
-    }
-    const decoded = auth.user;
-
-    const body: FavoritePostRequest = await request.json();
-    const { postId } = body;
-
-    if (!postId) {
-      return NextResponse.json<ApiResponse>(
-        {
-          success: false,
-          message: "文章ID不能为空",
-          timestamp: new Date().toISOString(),
-        },
-        { status: 400 }
-      );
-    }
-
-    // 检查文章是否存在
-    const post = await db.select().from(posts).where(eq(posts.id, postId)).limit(1);
-
-    if (post.length === 0) {
-      return NextResponse.json<ApiResponse>(
-        {
-          success: false,
-          message: "文章不存在",
-          timestamp: new Date().toISOString(),
-        },
-        { status: 404 }
-      );
-    }
-
-    // 检查是否已经收藏
-    const existingFavorite = await db
-      .select()
-      .from(userFavorites)
-      .where(and(eq(userFavorites.userId, decoded.userId), eq(userFavorites.postId, postId)))
-      .limit(1);
-
-    if (existingFavorite.length > 0) {
-      return NextResponse.json<ApiResponse>(
-        {
-          success: false,
-          message: "已经收藏过该文章",
-          timestamp: new Date().toISOString(),
-        },
-        { status: 400 }
-      );
-    }
-
-    const [insertResult] = await db.insert(userFavorites).values({
-      userId: decoded.userId,
-      postId: postId,
-    });
-
-    logUserActivity({
-      userId: decoded.userId,
-      action: UserActivityAction.POST_FAVORITED,
-      metadata: { postId, source: "profile_favorites_post" },
-      request,
-    });
-
-    return NextResponse.json<ApiResponse>(
-      {
-        success: true,
-        data: { id: insertResult.insertId },
-        message: "收藏成功",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 201 }
-    );
-  } catch (error) {
-    console.error("收藏文章失败:", error);
-    return NextResponse.json<ApiResponse>(
-      {
-        success: false,
-        message: "收藏文章失败",
+        message: "获取点赞列表失败",
         error: error instanceof Error ? error.message : "未知错误",
         timestamp: new Date().toISOString(),
       },
@@ -278,12 +181,10 @@ export async function DELETE(request: NextRequest) {
         { status: 401 }
       );
     }
-    const decoded = auth.user;
 
     const { searchParams } = new URL(request.url);
-    const postId = searchParams.get("postId");
-
-    if (!postId) {
+    const postId = Number(searchParams.get("postId"));
+    if (!Number.isFinite(postId) || postId <= 0) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
@@ -294,30 +195,39 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // 删除收藏
     await db
-      .delete(userFavorites)
-      .where(and(eq(userFavorites.userId, decoded.userId), eq(userFavorites.postId, parseInt(postId))));
+      .delete(userPostLikes)
+      .where(and(eq(userPostLikes.userId, auth.user.userId), eq(userPostLikes.postId, postId)));
+
+    const rows = await db.select({ likeCount: posts.likeCount }).from(posts).where(eq(posts.id, postId)).limit(1);
+    const current = Math.max(Number(rows[0]?.likeCount || 0), 0);
+    await db
+      .update(posts)
+      .set({
+        likeCount: Math.max(current - 1, 0),
+        updatedAt: new Date(),
+      })
+      .where(eq(posts.id, postId));
 
     logUserActivity({
-      userId: decoded.userId,
-      action: UserActivityAction.POST_UNFAVORITED,
-      metadata: { postId: parseInt(postId, 10), source: "profile_favorites_delete" },
+      userId: auth.user.userId,
+      action: UserActivityAction.POST_UNLIKED,
+      metadata: { postId, source: "profile_likes_delete" },
       request,
     });
 
     return NextResponse.json<ApiResponse>({
       success: true,
       data: null,
-      message: "取消收藏成功",
+      message: "取消点赞成功",
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("取消收藏失败:", error);
+    console.error("取消点赞失败:", error);
     return NextResponse.json<ApiResponse>(
       {
         success: false,
-        message: "取消收藏失败",
+        message: "取消点赞失败",
         error: error instanceof Error ? error.message : "未知错误",
         timestamp: new Date().toISOString(),
       },
