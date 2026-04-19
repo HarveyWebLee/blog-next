@@ -242,6 +242,15 @@ New-Item -ItemType Directory -Force -Path "$HOME\.ssh"
 ssh-keygen -t ed25519 -C "github-actions-deploy" -f "$HOME\.ssh\github_actions_deploy"
 ```
 
+mac 示例
+
+```
+ssh-keygen -t ed25519 -C "github-actions-deploy" -f "$HOME/.ssh/github_actions_deploy"
+# or
+
+ssh-keygen -t ed25519 -C "github-actions-deploy" -f ~/.ssh/github_actions_deploy
+```
+
 - 私钥内容（填 `SERVER_SSH_KEY`）：
   `Get-Content "$HOME\.ssh\github_actions_deploy" -Raw`
 - 公钥内容（加入服务器 `~/.ssh/authorized_keys`）：
