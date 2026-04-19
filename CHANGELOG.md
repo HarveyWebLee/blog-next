@@ -1,3 +1,9 @@
+# [1.4.0](https://github.com/HarveyWebLee/blog-next/compare/v1.3.2...v1.4.0) (2026-04-19)
+
+### Features
+
+- **blog:** 新增博客氛围层与视觉效果 ([fd9aa34](https://github.com/HarveyWebLee/blog-next/commit/fd9aa34a8122cbae7f97fd44554e14aa193b5355))
+
 ## [1.3.2](https://github.com/HarveyWebLee/blog-next/compare/v1.3.1...v1.3.2) (2026-04-16)
 
 ### Performance Improvements
