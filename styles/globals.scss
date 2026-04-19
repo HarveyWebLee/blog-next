@@ -42,6 +42,16 @@
       0px 0px 5px 0px color-mix(in srgb, var(--blog-color-bg-end) 20%, transparent),
       0px 2px 10px 0px color-mix(in srgb, var(--blog-color-bg-end) 40%, transparent),
       0px 0px 1px 0px color-mix(in srgb, var(--blog-color-bg-end) 60%, transparent);
+
+    /*
+     * 极光专用色（与 UI 主色区分开）：选与灰紫页背景（~277°）同冷色系、典型极光带色（玫紫 ↔ 青绿），
+     * 只追求整体协调感，不把 --heroui-primary 当极光填色。
+     */
+    --blog-aurora-curtain-rose: oklch(0.65 0.13 305);
+    --blog-aurora-curtain-mint: oklch(0.74 0.11 172);
+    --blog-aurora-curtain-azure: oklch(0.6 0.095 252);
+    /* 星场中心点：略冷白，与夜空融，不绑主色 */
+    --blog-aurora-star-glow: rgb(244 242 250 / 0.9);
   }
 }
 
@@ -519,17 +529,18 @@
   background-size: 200px 100%;
 }
 
-/* 玻璃态效果增强 */
+/* 玻璃态效果增强（博客详情等）：再略减不透明度与模糊，便于透出底层 WebGL */
 .glass-enhanced {
-  backdrop-filter: blur(20px);
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.028);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
 
 .dark .glass-enhanced {
-  background: rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.028);
+  border: 1px solid rgba(255, 255, 255, 0.07);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 

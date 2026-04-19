@@ -200,7 +200,7 @@ export function BlogSidebar({ lang = "zh-CN" }: { lang?: string }) {
   return (
     <div className="space-y-6">
       {/* 热门文章 */}
-      <Card className="border-0 backdrop-blur-xl bg-white/10 dark:bg-black/10 hover:bg-white/20 dark:hover:bg-black/20 transition-all duration-300 animate-fade-in-up">
+      <Card className="border-0 backdrop-blur-md bg-white/[0.025] dark:bg-black/[0.025] hover:bg-white/[0.055] dark:hover:bg-black/[0.055] transition-all duration-300 animate-fade-in-up">
         <CardHeader className="flex gap-3">
           <div className="p-2 rounded-full bg-gradient-to-br from-success/20 to-warning/20">
             <TrendingUp className="w-5 h-5 text-success" />
@@ -216,13 +216,13 @@ export function BlogSidebar({ lang = "zh-CN" }: { lang?: string }) {
               <div key={post.slug} className="animate-fade-in-up" style={{ animationDelay: `${index * 100}ms` }}>
                 <Link href={`/${lang}/blog/${post.slug}`} className="block group">
                   {/* 悬停不用 scale，避免侧栏/卡片内出现临时滚动条；用边框与阴影做层次即可 */}
-                  <div className="flex items-start gap-3 rounded-lg border border-transparent bg-white/5 p-3 backdrop-blur-xl transition-colors duration-300 dark:bg-black/5 hover:border-primary/20 hover:bg-white/10 dark:hover:border-primary/25 dark:hover:bg-black/10">
+                  <div className="flex items-start gap-3 rounded-lg border border-transparent bg-white/[0.02] p-3 backdrop-blur-md transition-colors duration-300 dark:bg-black/[0.02] hover:border-primary/20 hover:bg-white/[0.048] dark:hover:border-primary/25 dark:hover:bg-black/[0.055]">
                     <div className="flex-shrink-0">
                       <Chip
                         size="sm"
                         color={index === 0 ? "warning" : index === 1 ? "secondary" : "default"}
                         variant="solid"
-                        className="backdrop-blur-xl"
+                        className="backdrop-blur-sm"
                       >
                         {index + 1}
                       </Chip>
@@ -249,7 +249,7 @@ export function BlogSidebar({ lang = "zh-CN" }: { lang?: string }) {
       </Card>
 
       {/* 订阅 */}
-      <Card className="border-0 backdrop-blur-xl bg-gradient-to-br from-primary/10 via-secondary/10 to-accent/10 hover:from-primary/20 hover:via-secondary/20 hover:to-accent/20 transition-all duration-300 animate-fade-in-up">
+      <Card className="border-0 backdrop-blur-md bg-gradient-to-br from-primary/[0.03] via-secondary/[0.03] to-accent/[0.03] hover:from-primary/[0.075] hover:via-secondary/[0.075] hover:to-accent/[0.075] transition-all duration-300 animate-fade-in-up">
         <CardHeader className="flex gap-3">
           <div className="p-2 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20">
             <Mail className="w-5 h-5 text-primary" />
@@ -270,9 +270,9 @@ export function BlogSidebar({ lang = "zh-CN" }: { lang?: string }) {
                 variant="bordered"
                 size="sm"
                 classNames={{
-                  input: "bg-white/10 dark:bg-black/10 backdrop-blur-xl",
+                  input: "bg-white/[0.03] dark:bg-black/[0.03] backdrop-blur-md",
                   inputWrapper:
-                    "bg-white/10 dark:bg-black/10 backdrop-blur-xl border-white/20 dark:border-white/10 hover:border-primary/50 focus-within:border-primary",
+                    "bg-white/[0.03] dark:bg-black/[0.03] backdrop-blur-md border-white/15 dark:border-white/10 hover:border-primary/50 focus-within:border-primary",
                 }}
               />
               <Input
@@ -285,9 +285,9 @@ export function BlogSidebar({ lang = "zh-CN" }: { lang?: string }) {
                 variant="bordered"
                 size="sm"
                 classNames={{
-                  input: "bg-white/10 dark:bg-black/10 backdrop-blur-xl",
+                  input: "bg-white/[0.03] dark:bg-black/[0.03] backdrop-blur-md",
                   inputWrapper:
-                    "bg-white/10 dark:bg-black/10 backdrop-blur-xl border-white/20 dark:border-white/10 hover:border-primary/50 focus-within:border-primary",
+                    "bg-white/[0.03] dark:bg-black/[0.03] backdrop-blur-md border-white/15 dark:border-white/10 hover:border-primary/50 focus-within:border-primary",
                 }}
               />
               <Button

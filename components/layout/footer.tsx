@@ -8,6 +8,7 @@ import { Divider } from "@heroui/divider";
 import { Input } from "@heroui/input";
 import { BookOpen, ClipboardList, Home, Mail, Scale, Shield } from "lucide-react";
 
+import { FooterFishSwim } from "@/components/layout/footer-fish-swim";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { useNewsletterGuestSubscription } from "@/lib/hooks/useNewsletterGuestSubscription";
 import { message } from "@/lib/utils";
@@ -234,13 +235,15 @@ export function Footer() {
     "group flex items-center gap-2.5 rounded-lg py-1.5 text-sm text-default-600 transition-colors hover:text-primary dark:text-default-400 dark:hover:text-primary";
 
   return (
-    <footer className="blog-border-x-box-shadow relative mt-auto overflow-hidden bg-background">
+    <footer className="blog-border-x-box-shadow relative mt-auto bg-background">
       {/* 与首页氛围呼应的轻渐变，不抢主内容 */}
       <div
-        className="pointer-events-none absolute inset-0 bg-gradient-to-b from-primary/[0.06] via-transparent to-secondary/[0.05]"
+        className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-b from-primary/[0.06] via-transparent to-secondary/[0.05]"
         aria-hidden
       />
-      <div className="relative container mx-auto px-4 pt-10 pb-6 md:pt-14 md:pb-8">
+      {/* Canvas 小鱼游动：顶层装饰层，pointer-events-none 不挡底部交互（见 footer-fish-swim.tsx） */}
+      <FooterFishSwim />
+      <div className="relative z-20 container mx-auto px-4 pt-10 pb-6 md:pt-14 md:pb-8">
         {/* 顶栏渐变条：与 PostCard / 首页文章卡同一视觉语言 */}
         <div
           className="mb-8 h-1 max-w-32 rounded-full bg-gradient-to-r from-primary via-secondary to-accent md:mb-10"

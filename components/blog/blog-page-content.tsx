@@ -327,8 +327,8 @@ export function BlogPageContent({ lang, initialTagId }: BlogPageContentProps) {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
-        <Card className="mx-auto max-w-md border-0 bg-white/10 backdrop-blur-xl animate-fade-in-up dark:bg-black/10">
+      <div className="min-h-screen">
+        <Card className="mx-auto max-w-md border-0 bg-white/[0.025] backdrop-blur-md animate-fade-in-up dark:bg-black/[0.025]">
           <CardBody className="p-8 text-center">
             <div className="mb-4 text-danger">
               <RefreshCwIcon className="mx-auto mb-4 h-12 w-12 animate-pulse" />
@@ -340,7 +340,7 @@ export function BlogPageContent({ lang, initialTagId }: BlogPageContentProps) {
               variant="solid"
               startContent={<RefreshCwIcon className="h-4 w-4" />}
               onPress={() => window.location.reload()}
-              className="min-w-0 border border-primary/20 bg-primary/10 px-3 text-primary backdrop-blur-xl hover:bg-primary/20 dark:bg-black/10 dark:hover:bg-black/20"
+              className="min-w-0 border border-primary/20 bg-primary/[0.04] px-3 text-primary backdrop-blur-md hover:bg-primary/12 dark:bg-black/[0.03] dark:hover:bg-black/[0.08]"
             >
               {t.reload}
             </Button>
@@ -351,11 +351,11 @@ export function BlogPageContent({ lang, initialTagId }: BlogPageContentProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+    <div className="min-h-screen">
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-4">
         <div className="lg:col-span-3">
           {activeTagId != null && Number.isFinite(activeTagId) && activeTagId > 0 && (
-            <Card className="mb-6 border-0 bg-white/10 backdrop-blur-xl animate-fade-in-up dark:bg-black/10">
+            <Card className="mb-6 border-0 bg-white/[0.025] backdrop-blur-md animate-fade-in-up dark:bg-black/[0.025]">
               <CardBody className="flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-start gap-3">
                   <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-secondary/25 to-accent/20 text-secondary">
@@ -377,7 +377,7 @@ export function BlogPageContent({ lang, initialTagId }: BlogPageContentProps) {
             </Card>
           )}
 
-          <Card className="mb-8 border-0 bg-white/10 backdrop-blur-xl animate-fade-in-up dark:bg-black/10">
+          <Card className="mb-8 border-0 bg-white/[0.025] backdrop-blur-md animate-fade-in-up dark:bg-black/[0.025]">
             <CardHeader className="flex gap-3">
               <div className="flex w-full items-start justify-between gap-3">
                 <div className="flex items-start gap-3">
@@ -394,7 +394,7 @@ export function BlogPageContent({ lang, initialTagId }: BlogPageContentProps) {
                     variant="flat"
                     startContent={<FilePlus2Icon className="h-4 w-4" />}
                     onPress={() => router.push(`/${lang}/blog/manage/create`)}
-                    className="min-w-0 border border-primary/20 bg-primary/10 px-3 text-primary backdrop-blur-xl hover:bg-primary/20"
+                    className="min-w-0 border border-primary/20 bg-primary/[0.04] px-3 text-primary backdrop-blur-md hover:bg-primary/12"
                   >
                     {t.createDoc}
                   </Button>
@@ -413,9 +413,9 @@ export function BlogPageContent({ lang, initialTagId }: BlogPageContentProps) {
                     variant="bordered"
                     size="md"
                     classNames={{
-                      input: "bg-white/10 backdrop-blur-xl dark:bg-black/10",
+                      input: "bg-white/[0.03] backdrop-blur-md dark:bg-black/[0.03]",
                       inputWrapper:
-                        "border-white/20 bg-white/10 backdrop-blur-xl hover:border-primary/50 focus-within:border-primary dark:border-white/10 dark:bg-black/10",
+                        "border-white/15 bg-white/[0.03] backdrop-blur-md hover:border-primary/50 focus-within:border-primary dark:border-white/10 dark:bg-black/[0.03]",
                     }}
                   />
                   {searchValue ? (
@@ -436,7 +436,7 @@ export function BlogPageContent({ lang, initialTagId }: BlogPageContentProps) {
                   size="md"
                   classNames={{
                     trigger:
-                      "border-white/20 bg-white/10 backdrop-blur-xl hover:bg-white/20 dark:border-white/10 dark:bg-black/10 dark:hover:bg-black/20",
+                      "border-white/15 bg-white/[0.03] backdrop-blur-md hover:bg-white/[0.055] dark:border-white/10 dark:bg-black/[0.03] dark:hover:bg-black/[0.055]",
                     value: "text-foreground",
                   }}
                 >
@@ -451,14 +451,14 @@ export function BlogPageContent({ lang, initialTagId }: BlogPageContentProps) {
           </Card>
 
           {loading ? (
-            <Card className="border-0 bg-white/10 backdrop-blur-xl animate-fade-in-up dark:bg-black/10">
+            <Card className="border-0 bg-white/[0.025] backdrop-blur-md animate-fade-in-up dark:bg-black/[0.025]">
               <CardBody className="py-12 text-center">
                 <Spinner size="lg" color="primary" />
                 <p className="mt-4 text-default-500">{t.loading}</p>
               </CardBody>
             </Card>
           ) : posts.length === 0 ? (
-            <Card className="border-0 bg-white/10 backdrop-blur-xl animate-fade-in-up dark:bg-black/10">
+            <Card className="border-0 bg-white/[0.025] backdrop-blur-md animate-fade-in-up dark:bg-black/[0.025]">
               <CardBody className="py-12 text-center">
                 <BookOpenIcon className="mx-auto mb-4 h-16 w-16 text-default-300 animate-float" />
                 <h3 className="mb-2 text-xl font-semibold">{t.emptyTitle}</h3>
@@ -475,7 +475,7 @@ export function BlogPageContent({ lang, initialTagId }: BlogPageContentProps) {
                   startContent={<TrendingUpIcon className="h-4 w-4" />}
                   variant="flat"
                   color="primary"
-                  className="bg-white/10 backdrop-blur-xl dark:bg-black/10"
+                  className="bg-white/[0.03] backdrop-blur-md dark:bg-black/[0.03]"
                 >
                   {pagination.total} {t.totalFound}
                 </Chip>
@@ -483,7 +483,7 @@ export function BlogPageContent({ lang, initialTagId }: BlogPageContentProps) {
                   startContent={<CalendarIcon className="h-4 w-4" />}
                   variant="flat"
                   color="secondary"
-                  className="bg-white/10 backdrop-blur-xl dark:bg-black/10"
+                  className="bg-white/[0.03] backdrop-blur-md dark:bg-black/[0.03]"
                 >
                   {t.pagePrefix} {pagination.page} {t.pageMiddle} {pagination.totalPages}
                   {t.pageSuffix ? ` ${t.pageSuffix}` : ""}
@@ -509,7 +509,7 @@ export function BlogPageContent({ lang, initialTagId }: BlogPageContentProps) {
               </div>
 
               {pagination.totalPages > 1 ? (
-                <div className="mx-auto w-full max-w-3xl animate-fade-in-up rounded-2xl border-[3px] border-foreground/15 bg-white/20 px-2 py-1 backdrop-blur-xl dark:border-white/15 dark:bg-black/20">
+                <div className="mx-auto w-full max-w-3xl animate-fade-in-up rounded-2xl border-[3px] border-foreground/15 bg-white/[0.055] px-2 py-1 backdrop-blur-md dark:border-white/15 dark:bg-black/[0.055]">
                   <BlogPagination
                     page={pagination.page}
                     totalPages={pagination.totalPages}

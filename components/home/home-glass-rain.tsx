@@ -8,6 +8,7 @@
  * 仅浅色主题挂载；深色主题不渲染，首页继续只显示下雪（HomeDarkStarfield）。
  *
  * 性能：requestAnimationFrame、Tab 不可见跳过渲染、DPR 上限、reduced-motion 降强度。
+ * （不与博客 WebGL 性能工具耦合，便于单独调整首页视觉效果。）
  */
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";

@@ -93,9 +93,9 @@ export function PostCard({
       {/* 背景光效 */}
       <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/20 via-secondary/10 to-accent/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl" />
 
-      {/* 主卡片 - 使用flex布局确保高度一致 */}
+      {/* 主卡片：底色与磨砂刻意偏淡，便于透出博客页 fixed WebGL 水波纹/极光 */}
       <Card
-        className="blog-card relative w-full cursor-pointer overflow-hidden border-0 bg-white/10 backdrop-blur-xl transition-all duration-500 hover:-translate-y-1 hover:bg-white/20 hover:shadow-2xl hover:shadow-primary/20 dark:bg-black/10 dark:hover:bg-black/20"
+        className="blog-card relative w-full cursor-pointer overflow-hidden border-0 bg-white/[0.025] backdrop-blur-md transition-all duration-500 hover:-translate-y-1 hover:bg-white/[0.065] hover:shadow-2xl hover:shadow-primary/20 dark:bg-black/[0.025] dark:hover:bg-black/[0.065]"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onClick={(e) => {
@@ -133,7 +133,7 @@ export function PostCard({
                     variant="shadow"
                     color="primary"
                     startContent={<Folder className="w-3.5 h-3.5" />}
-                    className="relative backdrop-blur-xl bg-gradient-to-r from-primary/90 to-primary/70 text-white font-medium shadow-lg transition-all duration-300 hover:scale-105"
+                    className="relative backdrop-blur-sm bg-gradient-to-r from-primary/90 to-primary/70 text-white font-medium shadow-lg transition-all duration-300 hover:scale-105"
                   >
                     {post.category.name}
                   </Chip>
@@ -157,7 +157,7 @@ export function PostCard({
                         size="sm"
                         variant="dot"
                         classNames={{
-                          base: "relative backdrop-blur-lg bg-white/20 dark:bg-black/20 border border-white/30 dark:border-white/10 transition-all duration-300 hover:scale-105 hover:bg-white/30 dark:hover:bg-black/30",
+                          base: "relative backdrop-blur-sm bg-white/[0.06] dark:bg-black/[0.06] border border-white/25 dark:border-white/10 transition-all duration-300 hover:scale-105 hover:bg-white/[0.11] dark:hover:bg-black/[0.11]",
                           content: "text-xs font-medium px-2",
                           dot: "w-1.5 h-1.5",
                         }}
@@ -173,7 +173,7 @@ export function PostCard({
                     <Chip
                       size="sm"
                       variant="flat"
-                      className="text-xs backdrop-blur-lg bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10"
+                      className="text-xs backdrop-blur-sm bg-white/[0.03] dark:bg-black/[0.03] border border-white/15 dark:border-white/10"
                     >
                       +{post.tags.length - 2}
                     </Chip>
@@ -212,7 +212,7 @@ export function PostCard({
               </>
             ) : (
               <div
-                className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/25 via-white/10 to-secondary/20 dark:from-primary/30 dark:via-black/20 dark:to-secondary/25"
+                className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/25 via-white/5 to-secondary/20 dark:from-primary/30 dark:via-black/12 dark:to-secondary/25"
                 aria-hidden="true"
               >
                 <BookOpen className="w-12 h-12 text-white/80 drop-shadow-md" />
@@ -221,7 +221,7 @@ export function PostCard({
           </div>
 
           {/* 元信息 - 固定在底部 */}
-          <div className="meta-info mt-auto rounded-xl border border-white/10 bg-white/5 p-3 backdrop-blur-md">
+          <div className="meta-info mt-auto rounded-xl border border-white/8 bg-white/[0.02] p-3 backdrop-blur-sm dark:border-white/8 dark:bg-black/[0.02]">
             <div className="flex flex-col gap-2 text-small text-default-500">
               {/* 作者和发布时间 */}
               <div className="flex items-center justify-between gap-2">
@@ -230,7 +230,7 @@ export function PostCard({
                     size="sm"
                     src={post.author?.avatar || undefined}
                     name={authorLabel}
-                    className="w-6 h-6 backdrop-blur-xl bg-white/10 dark:bg-black/10"
+                    className="w-6 h-6 backdrop-blur-md bg-white/[0.03] dark:bg-black/[0.03]"
                   />
                   <span className="truncate text-xs">{authorLabel}</span>
                 </div>
@@ -266,7 +266,7 @@ export function PostCard({
         </CardBody>
 
         {/* 底部按钮 - 固定在底部 */}
-        <CardFooter className="blog-card-footer relative z-10 border-t border-white/10 pt-3 dark:border-white/5">
+        <CardFooter className="blog-card-footer relative z-10 border-t border-white/8 pt-3 dark:border-white/[0.06]">
           <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-3">
             <Button
               size="sm"
@@ -275,7 +275,7 @@ export function PostCard({
               startContent={<Heart className={`w-4 h-4 transition-all ${isLiked ? "fill-current" : ""}`} />}
               isLoading={likeLoading}
               onPress={() => onToggleLike?.()}
-              className={`button-hover-effect font-semibold tracking-wide ${isLiked ? "animate-button-pulse bg-gradient-to-r from-red-500 to-pink-500 shadow-lg hover:from-red-600 hover:to-pink-600 hover:shadow-xl" : "bg-white/10 backdrop-blur-xl hover:bg-danger/20 dark:bg-black/10 dark:hover:bg-danger/20"}`}
+              className={`button-hover-effect font-semibold tracking-wide ${isLiked ? "animate-button-pulse bg-gradient-to-r from-red-500 to-pink-500 shadow-lg hover:from-red-600 hover:to-pink-600 hover:shadow-xl" : "bg-white/[0.03] backdrop-blur-md hover:bg-danger/20 dark:bg-black/[0.03] dark:hover:bg-danger/20"}`}
             >
               {t.like} ({post.likeCount || 0})
             </Button>
@@ -287,7 +287,7 @@ export function PostCard({
               isLoading={favoriteLoading}
               startContent={<Star className={`w-4 h-4 transition-all ${isFavorited ? "fill-current" : ""}`} />}
               onPress={() => onToggleFavorite?.()}
-              className="button-hover-effect bg-primary/22 text-primary-700 font-semibold tracking-wide backdrop-blur-xl hover:bg-primary/30 dark:border dark:border-primary/25 dark:bg-primary/25 dark:text-white dark:hover:bg-primary/35"
+              className="button-hover-effect bg-primary/22 text-primary-700 font-semibold tracking-wide backdrop-blur-md hover:bg-primary/30 dark:border dark:border-primary/25 dark:bg-primary/25 dark:text-white dark:hover:bg-primary/35"
             >
               {t.favorite} ({post.favoriteCount || 0})
             </Button>
