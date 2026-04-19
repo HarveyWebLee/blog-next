@@ -1,0 +1,44 @@
+.blog-water-ripple-overlay {
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+
+  &__svg-defs {
+    height: 0;
+    overflow: hidden;
+    position: absolute;
+    visibility: hidden;
+    width: 0;
+  }
+
+  &__surface {
+    /* 仅显示“水波纹理”，不渲染整屏实色底 */
+    background:
+      repeating-linear-gradient(96deg, transparent 0 9px, rgb(182 225 255 / 0.1) 10px 12px, transparent 13px 25px),
+      repeating-linear-gradient(88deg, transparent 0 14px, rgb(160 214 255 / 0.08) 15px 17px, transparent 18px 30px),
+      linear-gradient(180deg, rgb(170 229 255 / 0.08) 0%, rgb(165 201 255 / 0.05) 40%, transparent 86%);
+    filter: url(#blog-water-ripple-overlay-filter);
+    inset: 0;
+    mix-blend-mode: screen;
+    opacity: 0.4;
+    position: absolute;
+
+    @media (prefers-reduced-motion: no-preference) {
+      animation: blog-water-ripple-overlay-drift 20s ease-in-out infinite alternate;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      animation: none;
+    }
+  }
+}
+
+@keyframes blog-water-ripple-overlay-drift {
+  from {
+    transform: translate3d(0, 0, 0) scale(1.01);
+  }
+
+  to {
+    transform: translate3d(0, -10px, 0) scale(1.03);
+  }
+}

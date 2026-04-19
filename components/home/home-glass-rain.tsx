@@ -14,6 +14,8 @@ import { useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
 import * as THREE from "three";
 
+import { attachCoalescedResize, BLOG_GL_MAX_DPR, runTabVisibleRafLoop } from "@/lib/utils/blog-webgl-performance";
+
 /** 顶点着色器：全屏四边形，下传 vUv */
 const vertexShader = /* glsl */ `
 varying vec2 vUv;
@@ -34,6 +36,7 @@ uniform vec2 uResolution;
 uniform float uDark;
 uniform float uIntensity;
 uniform float uStaticMotion;
+uniform float uScrollOptimized;
 
 varying vec2 vUv;
 
@@ -143,12 +146,20 @@ void main() {
   float t = uTime;
   float w = Drops(uvA, t);
 
-  /* 数值微分制造「玻璃边缘高光」，弱化依赖 textureLod 的折射 */
-  vec2 px = vec2(1.2 / max(uResolution.x, 1.0), 1.2 / max(uResolution.y, 1.0)) * aspect;
-  float wx = Drops(uvA + vec2(px.x, 0.0), t);
-  float wy = Drops(uvA + vec2(0.0, px.y), t);
-  float grad = abs(w - wx) + abs(w - wy);
-  float spec = pow(clamp(grad * 6.0, 0.0, 1.0), 1.8);
+  float spec = 0.0;
+  /*
+   * 滚动中启用轻量分支：跳过两次额外 Drops 采样（wx/wy），
+   * 保留主雨滴下落（w）并给一个便宜近似高光，提升滚动中的连续性。
+   */
+  if (uScrollOptimized < 0.5) {
+    vec2 px = vec2(1.2 / max(uResolution.x, 1.0), 1.2 / max(uResolution.y, 1.0)) * aspect;
+    float wx = Drops(uvA + vec2(px.x, 0.0), t);
+    float wy = Drops(uvA + vec2(0.0, px.y), t);
+    float grad = abs(w - wx) + abs(w - wy);
+    spec = pow(clamp(grad * 6.0, 0.0, 1.0), 1.8);
+  } else {
+    spec = pow(clamp(w * 0.9, 0.0, 1.0), 1.25) * 0.26;
+  }
 
   float a = clamp(w * 0.62 * uIntensity + spec * 0.28 * uIntensity, 0.0, 1.0);
   vec3 cool = mix(vec3(0.78, 0.88, 1.0), vec3(0.55, 0.72, 0.95), uDark);
@@ -159,12 +170,13 @@ void main() {
 }
 `;
 
-const MAX_DPR = 1.75;
+const MAX_DPR = Math.min(1.75, BLOG_GL_MAX_DPR + 0.47);
+/** 最后一次 scroll 后继续视作滚动中的窗口时长 */
+const SCROLL_HOLD_MS = 180;
 
 /** 实际 Three.js 画布；仅在浅色主题下挂载 */
 function HomeGlassRainCanvas() {
   const mountRef = useRef<HTMLDivElement>(null);
-  const rafRef = useRef<number>(0);
 
   useEffect(() => {
     const el = mountRef.current;
@@ -184,6 +196,7 @@ function HomeGlassRainCanvas() {
         uDark: { value: 0 },
         uIntensity: { value: 1 },
         uStaticMotion: { value: 1 },
+        uScrollOptimized: { value: 0 },
       },
       transparent: true,
       depthWrite: false,
@@ -198,7 +211,7 @@ function HomeGlassRainCanvas() {
       antialias: false,
       powerPreference: "high-performance",
     });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_DPR));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, MAX_DPR));
     renderer.setClearColor(0x000000, 0);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     el.appendChild(renderer.domElement);
@@ -208,38 +221,46 @@ function HomeGlassRainCanvas() {
 
     const clock = new THREE.Clock();
 
-    const resize = () => {
+    const resize = (w: number, h: number) => {
       if (!el || disposed) return;
-      const w = el.clientWidth;
-      const h = el.clientHeight;
       material.uniforms.uResolution.value.set(w, h);
       renderer.setSize(w, h, false);
     };
 
-    const ro = new ResizeObserver(() => resize());
-    ro.observe(el);
-    resize();
+    const { dispose: disposeResize } = attachCoalescedResize(el, resize);
+    let scrollUntil = 0;
+    const onScroll = () => {
+      scrollUntil = performance.now() + SCROLL_HOLD_MS;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
 
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const baseIntensity = reduceMotion ? 0.35 : 1.0;
+    const baseStaticMotion = reduceMotion ? 0.0 : 1.0;
     if (reduceMotion) {
-      material.uniforms.uIntensity.value = 0.35;
-      material.uniforms.uStaticMotion.value = 0.0;
+      material.uniforms.uIntensity.value = baseIntensity;
+      material.uniforms.uStaticMotion.value = baseStaticMotion;
     }
 
-    const animate = () => {
-      if (disposed) return;
-      rafRef.current = requestAnimationFrame(animate);
-      if (document.visibilityState === "hidden") return;
-
-      material.uniforms.uTime.value = clock.getElapsedTime() * (reduceMotion ? 0.15 : 1.0);
-      renderer.render(scene, camera);
-    };
-    animate();
+    /** 首页滚动优化：保持连续渲染，不降 DPR；滚动期间切换轻量 shader 分支 */
+    const { dispose: disposeRaf } = runTabVisibleRafLoop({
+      getDisposed: () => disposed,
+      onFrame: () => {
+        const now = performance.now();
+        const scrollActive = now < scrollUntil;
+        material.uniforms.uScrollOptimized.value = scrollActive ? 1 : 0;
+        material.uniforms.uIntensity.value = scrollActive ? baseIntensity * 0.84 : baseIntensity;
+        material.uniforms.uStaticMotion.value = scrollActive ? baseStaticMotion * 0.55 : baseStaticMotion;
+        material.uniforms.uTime.value = clock.getElapsedTime() * (reduceMotion ? 0.15 : 1.0);
+        renderer.render(scene, camera);
+      },
+    });
 
     return () => {
       disposed = true;
-      cancelAnimationFrame(rafRef.current);
-      ro.disconnect();
+      disposeRaf();
+      disposeResize();
+      window.removeEventListener("scroll", onScroll);
       mesh.geometry.dispose();
       material.dispose();
       renderer.dispose();

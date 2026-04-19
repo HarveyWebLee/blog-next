@@ -5,8 +5,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { BookOpen, Github, Globe, Heart, Mail, MapPin, MessageCircle, PenLine, Sparkles } from "lucide-react";
 
-import { AnimatedSection, ParticleBackground } from "@/components/about/about-animations";
+import { AnimatedSection } from "@/components/about/about-animations";
 import { AboutMusicPlayer, type AboutMusicCopy } from "@/components/about/about-music-player";
+import { BlogWaterRippleOverlay } from "@/components/blog/blog-water-ripple-overlay";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -161,7 +162,10 @@ export function AboutPageContent({ lang, about: a, ownerPublic }: Props) {
 
   return (
     <div className="relative min-h-screen overflow-hidden">
-      <ParticleBackground />
+      {/* 仅叠加“水波流动感”，不展示柱子本体，且不拦截交互 */}
+      <div className="pointer-events-none absolute inset-0 z-20" aria-hidden>
+        <BlogWaterRippleOverlay />
+      </div>
 
       {/* 首屏：无额外全幅色块，避免与主背景形成「硬边条」 */}
       <section className="relative overflow-hidden py-16 md:py-24">

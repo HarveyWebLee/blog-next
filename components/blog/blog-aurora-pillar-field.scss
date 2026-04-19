@@ -24,29 +24,10 @@
 }
 
 .blog-aurora-pillar-field {
-  background:
-    radial-gradient(
-      ellipse 95% 48% at 50% 10%,
-      color-mix(in oklch, var(--blog-aurora-curtain-mint) 12%, transparent) 0%,
-      transparent 48%
-    ),
-    linear-gradient(
-      188deg,
-      color-mix(in srgb, hsl(var(--blog-color-background)) 78%, black 22%) 0%,
-      hsl(var(--blog-color-background)) 44%,
-      color-mix(in srgb, var(--blog-color-bg-end) 88%, hsl(var(--blog-color-background)) 12%) 100%
-    );
-  height: 100vh;
-  left: 0;
-  max-width: 100vw;
-  min-height: 100vh;
-  min-height: 100dvh;
+  height: 100%;
   overflow: visible;
   pointer-events: none;
-  position: fixed;
-  top: 0;
   width: 100%;
-  z-index: 2;
 
   &::before {
     background: var(--blog-aurora-star-glow, rgb(244 242 250 / 0.9));

@@ -54,16 +54,3 @@ export function AnimatedSection({
     </div>
   );
 }
-
-/** 轻量装饰粒子，避免喧宾夺主 */
-export function ParticleBackground() {
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div className="absolute top-1/4 left-1/4 h-2 w-2 rounded-full bg-primary/15 animate-pulse" />
-      <div className="absolute top-1/3 right-1/3 h-1 w-1 rounded-full bg-primary/25 animate-ping" />
-      <div className="absolute bottom-1/4 left-1/3 h-1.5 w-1.5 rounded-full bg-primary/20 animate-bounce" />
-      <div className="absolute top-1/2 right-1/4 h-1 w-1 rounded-full bg-primary/15 animate-pulse" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/8 via-transparent to-transparent blur-3xl" />
-    </div>
-  );
-}
