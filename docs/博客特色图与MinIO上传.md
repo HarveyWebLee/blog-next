@@ -12,7 +12,7 @@
 | --------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | `MINIO_ENDPOINT`                        | 服务端访问 S3 API（本机 Docker 常见 `http://127.0.0.1:19000`，Compose 内 `http://minio:9000`） |
 | `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` | 可与 `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` 相同                                            |
-| `MINIO_BUCKET`                          | 桶名（如 `blog-resource`），须与 `minio-init` 已建桶一致                                       |
+| `MINIO_BUCKET`                          | 桶名（如 `blog-public`），须与 `minio-init` 已建桶一致                                         |
 | `MINIO_PUBLIC_BASE_URL`                 | 无尾斜杠；用于拼接浏览器可打开的 URL                                                           |
 | `MINIO_REGION`                          | 可选，默认 `us-east-1`                                                                         |
 | `NEXT_PUBLIC_MINIO_BUCKET`              | 与 `MINIO_BUCKET` 一致，供前端解析对象键（替换时删旧文件）                                     |
@@ -23,7 +23,7 @@
 ## 关键代码路径
 
 - **存储抽象**：`lib/services/object-storage.service.ts`、`lib/storage/resource-scopes.ts`
-- **上传/删除 API**：`app/api/uploads/image/route.ts`（`POST` multipart、`DELETE` JSON `{ key }`）
+- **上传/删除 API**：`app/api/uploads/image/route.ts`（`POST` multipart、`DELETE` 优先读 JSON `{ key }`，并兼容 query `?key=`）
 - **鉴权**：`lib/utils/request-auth.ts`（`Authorization: Bearer`）
 - **前端组件**：`components/blog/featured-image-upload.tsx`（`scope` 默认 `article`；与管理页一致的渐变/圆角面板，空态支持点击与拖拽上传，`labels.emptyDropHint` 等为三语文案）
 - **接入页面**：`app/[lang]/blog/manage/create/page.tsx`、`app/[lang]/blog/manage/edit/[id]/page.tsx`

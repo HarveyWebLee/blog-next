@@ -83,7 +83,7 @@ docker compose --env-file deploy/.env.docker up -d --build blog-web
 
 - **`pnpm run docker:up:deps`** — 启动 MySQL + Redis + MinIO
 - **`pnpm run docker:minio:init`** — 运行 `minio-init`（创建 `MINIO_BUCKET` 并设匿名下载策略，幂等）
-- **`pnpm run docker:migrate`** — 运行 `db-migrate`
+- **`pnpm run docker:migrate`** — 运行 `db-migrate`（脚本内含 `--build`，确保迁移镜像与最新 `drizzle/` 对齐）
 - **`pnpm run docker:up:app`** — 构建并启动 `blog-web`
 - **`pnpm run docker:down`** — `compose down`
 

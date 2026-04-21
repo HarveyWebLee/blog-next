@@ -49,7 +49,7 @@ pnpm run release:dry-run
 
 - **Husky / Prettier**：发布流程在 **`git commit`** 阶段若启用 husky，会对 **`CHANGELOG.md`** 做 **`format:check`**；changelog 插件默认生成样式与 Prettier 不一致。本仓库在 **`release.config.cjs`** 里用 **`@semantic-release/exec`** 在提交前 **`prettier --write CHANGELOG.md package.json`**，并在 CI 中对 **`semantic-release` 步骤设置 `HUSKY=0`**。
 - **`pnpm/action-setup`**：请勿在工作流里再写 **`version`**，与 `package.json` 的 **`packageManager`** 重复会报错（_Multiple versions of pnpm specified_）；留空 `with` 即可从 `packageManager` 安装对应 pnpm。
-- 默认使用 **`GITHUB_TOKEN`**，工作流已声明 `contents: write`（发版、打 tag、写 Release 需要）。
+- 默认使用 **`GITHUB_TOKEN`**，工作流已声明 `contents: write`（发版、打 tag、写 Release 需要）；当前 workflow 还声明了 `issues: write` 与 `pull-requests: write`，用于 GitHub 插件相关能力。
 - 若 **`main` 受分支保护** 且禁止 GitHub Actions 推送到主分支，需在仓库 **Settings → Actions → General → Workflow permissions** 中允许写入，或为组织策略单独放行；否则 `semantic-release` 在 **git push** 阶段会失败。
 - 首次发版前若仓库**没有任何 tag**，`semantic-release` 会基于**全部历史提交**计算首个版本；请保证历史中已有合规的 `feat`/`fix` 等，否则可能提示 **no new release**。
 
