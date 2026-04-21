@@ -63,9 +63,34 @@ jobs:
             # timeout … bash -c '…' 为子进程，未 export 的变量在子 shell 中为空，会导致 -f 异常（如报「xxx is a directory」）
             export COMPOSE_FILE="${APP_DIR}/docker-compose.yml"
             export COMPOSE_ENV="${APP_DIR}/deploy/.env.docker"
+            # Docker/Compose 在 build 过程中会在 /tmp 写临时 metadata 文件；
+            # 当 /tmp 所在分区空间不足时，会出现「no space left on device」并导致部署失败。
+            # 这里将临时目录切到项目目录下可控位置，降低 /tmp 分区容量抖动的影响。
+            export TMPDIR="${APP_DIR}/.tmp"
+            mkdir -p "${TMPDIR}"
             APP_HEALTH_URL="http://127.0.0.1:13001/"
             dc() { docker compose -f "${COMPOSE_FILE}" --env-file "${COMPOSE_ENV}" "$@"; }
             echo "[DEPLOY] init: cwd=${APP_DIR}"
+
+            # 0) 构建前磁盘守护：先检测可用空间，不足时执行一次温和清理（仅清理悬挂/未使用资源）
+            # 目标：避免 docker compose build 在导出层或写 metadata 时因磁盘耗尽失败。
+            echo "[DEPLOY] step0: disk precheck"
+            MIN_AVAIL_KB=4194304  # 4GB
+            get_avail_kb() { df -Pk "${APP_DIR}" | awk 'NR==2 {print $4}'; }
+            avail_kb="$(get_avail_kb)"
+            echo "[DEPLOY] available disk before cleanup: ${avail_kb} KB"
+            if [ "${avail_kb}" -lt "${MIN_AVAIL_KB}" ]; then
+              echo "[DEPLOY] low disk space, run docker system prune -f"
+              docker system prune -f || true
+              avail_kb="$(get_avail_kb)"
+              echo "[DEPLOY] available disk after cleanup: ${avail_kb} KB"
+              if [ "${avail_kb}" -lt "${MIN_AVAIL_KB}" ]; then
+                echo "部署失败：服务器剩余磁盘不足（<4GB），且自动清理后仍不足。请先扩容或手动清理磁盘。" >&2
+                df -h
+                exit 1
+              fi
+            fi
+            echo "[DEPLOY] step0 done"
 
             # 确保启用 BuildKit，使 Dockerfile.migrate 中 pnpm store 的 RUN --mount=type=cache 生效；
             # 否则每次构建常见 reused:0、全量下载，极易触发迁移步骤超时。

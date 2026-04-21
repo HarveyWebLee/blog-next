@@ -47,3 +47,6 @@ deploy/.env.docker
 
 # 若将 MinIO 数据绑定到仓库下目录（如 ./data/minio:/data），勿提交对象文件
 /data/minio/
+
+# CI/部署过程中临时目录（如 deploy workflow 设置 TMPDIR=.tmp）
+/.tmp/
