@@ -1,3 +1,9 @@
+## [1.4.2](https://github.com/HarveyWebLee/blog-next/compare/v1.4.1...v1.4.2) (2026-04-21)
+
+### Performance Improvements
+
+- **profile:** 新增用户显示名功能及相关验证 ([0ce0dac](https://github.com/HarveyWebLee/blog-next/commit/0ce0dac977a5517b388f0bd94ebed9efe25f76d2))
+
 ## [1.4.1](https://github.com/HarveyWebLee/blog-next/compare/v1.4.0...v1.4.1) (2026-04-21)
 
 ### Bug Fixes
