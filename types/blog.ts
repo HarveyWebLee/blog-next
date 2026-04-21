@@ -537,6 +537,7 @@ export interface CategoryQueryParams extends PaginationParams {
  */
 export interface UserProfile extends BaseEntity {
   userId: number;
+  displayName?: string;
   /** 登录邮箱：普通用户来自 users.email；超级管理员来自 user_profiles.email 或默认占位 */
   email?: string;
   /** 头像 URL：普通用户来自 users.avatar；超级管理员可为空 */
@@ -629,6 +630,8 @@ export interface ProfileStats {
  * 个人资料更新请求接口
  */
 export interface UpdateProfileRequest {
+  /** 用户显示名（users.display_name） */
+  displayName?: string;
   /** 修改登录邮箱；保存时校验不能与「其他」用户重复（users 表） */
   email?: string;
   /** 修改邮箱时必填：/api/auth/send-verification-code(type=change_email) 发送的验证码 */

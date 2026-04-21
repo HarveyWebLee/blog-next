@@ -102,6 +102,7 @@ export async function GET(request: NextRequest) {
       data: {
         id: profileData?.id || 0,
         userId: userData.id,
+        displayName: userData.displayName ?? undefined,
         email: userData.email,
         avatar: avatarFromUser,
         firstName: profileData?.firstName ?? undefined,
@@ -162,6 +163,7 @@ export async function POST(request: NextRequest) {
     }
     const emailNormalized = emailResolved.normalized;
     const avatarNormalized = body.avatar?.trim() || undefined;
+    const displayNameNormalized = body.displayName?.trim() || undefined;
 
     // 若本次要改邮箱，需先通过 change_email 验证码校验
     if (emailNormalized !== undefined) {
@@ -232,6 +234,12 @@ export async function POST(request: NextRequest) {
         .set({ avatar: avatarNormalized, updatedAt: new Date() })
         .where(eq(users.id, decoded.userId));
     }
+    if (displayNameNormalized !== undefined) {
+      await db
+        .update(users)
+        .set({ displayName: displayNameNormalized, updatedAt: new Date() })
+        .where(eq(users.id, decoded.userId));
+    }
 
     logUserActivity({
       userId: decoded.userId,
@@ -294,6 +302,7 @@ export async function PUT(request: NextRequest) {
     }
     const emailNormalized = emailResolved.normalized;
     const avatarNormalized = body.avatar?.trim() || undefined;
+    const displayNameNormalized = body.displayName?.trim() || undefined;
 
     // 检查个人资料是否存在
     const existingProfile = await db
@@ -370,6 +379,12 @@ export async function PUT(request: NextRequest) {
       await db
         .update(users)
         .set({ avatar: avatarNormalized, updatedAt: new Date() })
+        .where(eq(users.id, decoded.userId));
+    }
+    if (displayNameNormalized !== undefined) {
+      await db
+        .update(users)
+        .set({ displayName: displayNameNormalized, updatedAt: new Date() })
         .where(eq(users.id, decoded.userId));
     }
 

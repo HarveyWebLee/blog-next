@@ -12,7 +12,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint \"./**/*.+(ts|tsx)\"",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "rm -rf .next && tsc --noEmit",
     "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
     "db:migrate": "drizzle-kit migrate --config=drizzle.config.ts",
     "db:migrate:run": "tsx scripts/run-drizzle-migrate.ts",

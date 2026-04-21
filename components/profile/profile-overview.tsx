@@ -205,9 +205,7 @@ export default function ProfileOverview({ lang }: ProfileOverviewProps) {
               className="h-16 w-16"
             />
             <div>
-              <h2 className="text-xl font-semibold text-foreground">
-                {[profile.firstName, profile.lastName].filter(Boolean).join(" ") || user?.displayName || user?.username}
-              </h2>
+              <h2 className="text-xl font-semibold text-foreground">{user?.displayName || user?.username}</h2>
               <p className="text-default-500">{user?.username ?? t.username}</p>
               <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-default-500">
                 {profile.location && (

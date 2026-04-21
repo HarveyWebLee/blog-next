@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 
 import { PROFILE_GLASS_CARD } from "@/components/profile/profile-ui-presets";
+import { useAuth } from "@/lib/contexts/auth-context";
 import { message } from "@/lib/utils";
 import type { ApiResponse, PaginatedResponseData, UserActivity } from "@/types/blog";
 
@@ -81,6 +82,7 @@ export default function ProfileActivities({ lang }: ProfileActivitiesProps) {
           title: "Recent Activities",
           total: "Total",
           loading: "Loading...",
+          needLogin: "Please sign in to view your recent activities.",
           loadMore: "Load More",
           empty: "No activities yet",
           labels: {
@@ -115,6 +117,7 @@ export default function ProfileActivities({ lang }: ProfileActivitiesProps) {
             title: "最近のアクティビティ",
             total: "合計",
             loading: "読み込み中...",
+            needLogin: "最近のアクティビティを表示するにはログインしてください。",
             loadMore: "もっと見る",
             empty: "アクティビティはありません",
             labels: {
@@ -148,6 +151,7 @@ export default function ProfileActivities({ lang }: ProfileActivitiesProps) {
             title: "最近活动",
             total: "共",
             loading: "加载中...",
+            needLogin: "请先登录后查看最近活动。",
             loadMore: "加载更多",
             empty: "暂无活动记录",
             labels: {
@@ -182,8 +186,19 @@ export default function ProfileActivities({ lang }: ProfileActivitiesProps) {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [total, setTotal] = useState(0);
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!isAuthenticated) {
+      setActivities([]);
+      setTotal(0);
+      setHasMore(false);
+      setLoading(false);
+      setPage(1);
+      return;
+    }
+
     const fetchActivities = async () => {
       const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
       if (!token) {
@@ -228,7 +243,17 @@ export default function ProfileActivities({ lang }: ProfileActivitiesProps) {
     };
 
     void fetchActivities();
-  }, [page, t.empty]);
+  }, [authLoading, isAuthenticated, page, t.empty]);
+
+  if (!authLoading && !isAuthenticated) {
+    return (
+      <Card id="recent-activities" className={PROFILE_GLASS_CARD}>
+        <CardBody className="p-6 text-center">
+          <p className="text-default-500">{t.needLogin}</p>
+        </CardBody>
+      </Card>
+    );
+  }
 
   const formatTimeAgo = (date: Date) => {
     const now = new Date();

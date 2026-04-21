@@ -66,6 +66,8 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
           },
           profile: {
             title: "Basic Info",
+            displayName: "Display Name",
+            displayNamePlaceholder: "Enter display name",
             avatar: "Avatar",
             avatarDetail: "Upload your profile avatar; it will sync to the top-right header after saving",
             email: "Email",
@@ -143,6 +145,8 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
             },
             profile: {
               title: "基本情報",
+              displayName: "表示名",
+              displayNamePlaceholder: "表示名を入力",
               avatar: "アバター",
               avatarDetail: "プロフィール画像をアップロードすると、保存後に右上ヘッダーへ反映されます",
               email: "メール",
@@ -219,6 +223,8 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
             },
             profile: {
               title: "基本信息",
+              displayName: "显示名称",
+              displayNamePlaceholder: "请输入显示名称",
               avatar: "个人头像",
               avatarDetail: "上传头像后，保存成功会同步更新页面右上角头像",
               email: "邮箱",
@@ -288,6 +294,7 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
   const [formData, setFormData] = useState({
     // 基本信息
     avatar: "",
+    displayName: "",
     email: "",
     emailVerificationCode: "",
     firstName: "",
@@ -363,6 +370,7 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
     setFormData({
       email: data.email ?? "",
       avatar: data.avatar ?? "",
+      displayName: data.displayName ?? "",
       emailVerificationCode: "",
       firstName: data.firstName ?? "",
       lastName: data.lastName ?? "",
@@ -470,6 +478,7 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
 
     const body: UpdateProfileRequest = {
       avatar: formData.avatar.trim() || undefined,
+      displayName: formData.displayName.trim(),
       email: formData.email.trim(),
       emailVerificationCode: isEmailChanged ? formData.emailVerificationCode.trim() : undefined,
       firstName: formData.firstName.trim(),
@@ -527,6 +536,7 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
           avatarFromSocial ||
           undefined;
         patchUser({
+          displayName: refreshed.data.displayName ?? body.displayName ?? undefined,
           email: refreshed.data.email ?? body.email ?? undefined,
           avatar: nextAvatar,
         });
@@ -728,6 +738,14 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
                       }
                     />
                   </div>
+                  <Input
+                    label={t.profile.displayName}
+                    placeholder={t.profile.displayNamePlaceholder}
+                    value={formData.displayName}
+                    onChange={(e) => handleInputChange("displayName", e.target.value)}
+                    startContent={<User className="h-4 w-4 text-default-400" />}
+                    className="md:col-span-2"
+                  />
                   <Input
                     type="email"
                     label={t.profile.email}

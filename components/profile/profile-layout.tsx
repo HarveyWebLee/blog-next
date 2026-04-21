@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@heroui/react";
 import { Bell, BookOpen, FileCode2, FolderTree, Heart, Menu, Settings, Star, Tags, User, Users } from "lucide-react";
 
@@ -20,8 +21,16 @@ interface ProfileLayoutProps {
  * 本组件仅负责内容区背景、与博客列表一致的 container + 栅格、右侧导航卡片。
  */
 export default function ProfileLayout({ children, lang, dict: _dict }: ProfileLayoutProps) {
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { user } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
+
+  useEffect(() => {
+    if (isLoading) return;
+    if (!isAuthenticated) {
+      router.replace(`/${lang}/auth/login`);
+    }
+  }, [isAuthenticated, isLoading, lang, router]);
 
   const { labels, navigationItems } = useMemo(() => {
     const L =
@@ -104,6 +113,10 @@ export default function ProfileLayout({ children, lang, dict: _dict }: ProfileLa
     }
     return { labels: L, navigationItems: base };
   }, [lang, user?.role]);
+
+  if (isLoading || !isAuthenticated) {
+    return null;
+  }
 
   return (
     <div className={PROFILE_PAGE_BG}>

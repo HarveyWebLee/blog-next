@@ -5,6 +5,7 @@ import { Card, CardBody } from "@heroui/react";
 import { Bell, BookOpen, Eye, Heart, MessageSquare, Star, UserPlus, Users } from "lucide-react";
 
 import { PROFILE_GLASS_CARD } from "@/components/profile/profile-ui-presets";
+import { useAuth } from "@/lib/contexts/auth-context";
 import { message } from "@/lib/utils";
 import type { ApiResponse, ProfileStats as ProfileStatsData } from "@/types/blog";
 
@@ -38,6 +39,8 @@ export default function ProfileStats({ lang }: ProfileStatsProps) {
     lang === "en-US"
       ? {
           loadFailed: "Unable to load statistics",
+          needLogin: "Please sign in to view your statistics.",
+          login: "Sign in",
           title: "Statistics",
           lastActivity: "Last activity",
           labels: {
@@ -54,6 +57,8 @@ export default function ProfileStats({ lang }: ProfileStatsProps) {
       : lang === "ja-JP"
         ? {
             loadFailed: "統計情報を読み込めません",
+            needLogin: "統計情報を表示するにはログインしてください。",
+            login: "ログイン",
             title: "データ統計",
             lastActivity: "最終アクティビティ",
             labels: {
@@ -69,6 +74,8 @@ export default function ProfileStats({ lang }: ProfileStatsProps) {
           }
         : {
             loadFailed: "无法加载统计信息",
+            needLogin: "请先登录后查看统计信息。",
+            login: "去登录",
             title: "数据统计",
             lastActivity: "最后活动",
             labels: {
@@ -84,8 +91,16 @@ export default function ProfileStats({ lang }: ProfileStatsProps) {
           };
   const [stats, setStats] = useState<ProfileStatsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!isAuthenticated) {
+      setStats(null);
+      setLoading(false);
+      return;
+    }
+
     const fetchStats = async () => {
       const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
       if (!token) {
@@ -114,7 +129,17 @@ export default function ProfileStats({ lang }: ProfileStatsProps) {
     };
 
     void fetchStats();
-  }, [t.loadFailed]);
+  }, [authLoading, isAuthenticated, t.loadFailed]);
+
+  if (!authLoading && !isAuthenticated) {
+    return (
+      <Card className={PROFILE_GLASS_CARD}>
+        <CardBody className="p-6 text-center">
+          <p className="text-default-500">{t.needLogin}</p>
+        </CardBody>
+      </Card>
+    );
+  }
 
   if (loading) {
     return (
