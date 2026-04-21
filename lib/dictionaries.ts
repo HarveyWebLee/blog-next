@@ -1,6 +1,6 @@
 import { Locale } from "@/types";
 
-const dictionaries = {
+const dictionaries: Record<Locale, () => Promise<any>> = {
   "zh-CN": () => import("@/dictionaries/zh-CN.json"),
   "en-US": () => import("@/dictionaries/en-US.json"),
   "ja-JP": () => import("@/dictionaries/ja-JP.json"),
@@ -14,7 +14,9 @@ function toLocale(lang: string): Locale {
 }
 
 export const getDictionary = async (locale: Locale) => {
-  const dict = await dictionaries[locale]();
+  // 运行时兜底：即使调用方传入异常 locale，也回退到默认中文词典，避免函数索引报错。
+  const safeLocale = toLocale(String(locale));
+  const dict = await dictionaries[safeLocale]();
   return dict.default || dict;
 };
 
