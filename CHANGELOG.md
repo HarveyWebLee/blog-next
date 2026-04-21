@@ -1,3 +1,9 @@
+## [1.4.1](https://github.com/HarveyWebLee/blog-next/compare/v1.4.0...v1.4.1) (2026-04-21)
+
+### Bug Fixes
+
+- **db:** 修改分类与标签唯一约束为 owner 维度 ([dae29b8](https://github.com/HarveyWebLee/blog-next/commit/dae29b886a78c73ff712e5ecef4396cf6d5cbc4e))
+
 # [1.4.0](https://github.com/HarveyWebLee/blog-next/compare/v1.3.2...v1.4.0) (2026-04-19)
 
 ### Features
