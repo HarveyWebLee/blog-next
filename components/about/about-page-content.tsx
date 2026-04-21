@@ -1,13 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { BookOpen, Github, Globe, Heart, Mail, MapPin, MessageCircle, PenLine, Sparkles } from "lucide-react";
 
 import { AnimatedSection } from "@/components/about/about-animations";
 import { AboutMusicPlayer, type AboutMusicCopy } from "@/components/about/about-music-player";
-import { BlogWaterRippleOverlay } from "@/components/blog/blog-water-ripple-overlay";
+import { BlogWaterRippleOverlayCaustics } from "@/components/blog/blog-water-ripple-overlay-caustics";
+import { BlogWaterRippleOverlayClassic } from "@/components/blog/blog-water-ripple-overlay-classic";
+import { BlogWaterRippleOverlayMist } from "@/components/blog/blog-water-ripple-overlay-mist";
+import { BlogWaterRippleOverlayVortex } from "@/components/blog/blog-water-ripple-overlay-vortex";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -107,10 +110,17 @@ type Props = {
   ownerPublic?: AboutOwnerPublic | null;
 };
 
+type AboutWaterEffectMode = "mist" | "caustics" | "vortex" | "classic";
+
 export function AboutPageContent({ lang, about: a, ownerPublic }: Props) {
   const prefix = `/${lang}`;
   const [mounted, setMounted] = useState(false);
   const [copied, setCopied] = useState(false);
+  /** 临时水纹切换：默认隐藏（保留代码方便后续继续对比） */
+  const SHOW_WATER_EFFECT_SWITCHER = false;
+  /** 默认使用经典水波纹效果 */
+  const [waterEffectMode, setWaterEffectMode] = useState<AboutWaterEffectMode>("classic");
+  const isDevEnv = process.env.NODE_ENV === "development";
 
   useEffect(() => {
     setMounted(true);
@@ -160,17 +170,67 @@ export function AboutPageContent({ lang, about: a, ownerPublic }: Props) {
     );
   }
 
+  const overlayByMode: Record<AboutWaterEffectMode, ReactNode> = {
+    mist: <BlogWaterRippleOverlayMist />,
+    caustics: <BlogWaterRippleOverlayCaustics />,
+    vortex: <BlogWaterRippleOverlayVortex />,
+    classic: <BlogWaterRippleOverlayClassic />,
+  };
+
   return (
-    <div className="relative min-h-screen overflow-hidden">
-      {/* 仅叠加“水波流动感”，不展示柱子本体，且不拦截交互 */}
+    <div className="relative min-h-screen overflow-hidden about-water-ripple-cards-preview">
+      {/* 叠加水纹流动感；默认使用经典水波纹，临时切换面板默认隐藏 */}
       <div className="pointer-events-none absolute inset-0 z-20" aria-hidden>
-        <BlogWaterRippleOverlay />
+        {overlayByMode[isDevEnv && SHOW_WATER_EFFECT_SWITCHER ? waterEffectMode : "classic"]}
       </div>
+      {isDevEnv && SHOW_WATER_EFFECT_SWITCHER ? (
+        <div className="fixed right-3 top-3 z-50 rounded-xl border border-border/60 bg-background/85 p-2 shadow-lg backdrop-blur">
+          <div className="mb-1 px-1 text-[11px] font-medium text-muted-foreground">水纹效果(开发环境)</div>
+          <div className="flex flex-wrap gap-1">
+            <Button
+              type="button"
+              size="sm"
+              variant={waterEffectMode === "mist" ? "default" : "outline"}
+              className="h-7 rounded-md px-2 text-xs"
+              onClick={() => setWaterEffectMode("mist")}
+            >
+              水雾
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={waterEffectMode === "caustics" ? "default" : "outline"}
+              className="h-7 rounded-md px-2 text-xs"
+              onClick={() => setWaterEffectMode("caustics")}
+            >
+              焦散
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={waterEffectMode === "vortex" ? "default" : "outline"}
+              className="h-7 rounded-md px-2 text-xs"
+              onClick={() => setWaterEffectMode("vortex")}
+            >
+              漩涡
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={waterEffectMode === "classic" ? "default" : "outline"}
+              className="h-7 rounded-md px-2 text-xs"
+              onClick={() => setWaterEffectMode("classic")}
+            >
+              水波纹
+            </Button>
+          </div>
+        </div>
+      ) : null}
 
       {/* 首屏：无额外全幅色块，避免与主背景形成「硬边条」 */}
       <section className="relative overflow-hidden py-16 md:py-24">
         <div className="relative z-10 container mx-auto max-w-5xl px-4 text-center sm:px-6 lg:px-8 2xl:px-12">
-          <AnimatedSection animation="fadeInUp">
+          <AnimatedSection animation="fadeInUp" className="about-water-ripple-target-hero">
             <div className="relative mx-auto mb-8 w-28 h-28 md:w-32 md:h-32">
               <div className="relative z-10 overflow-hidden rounded-full shadow-xl ring-2 ring-primary/10">
                 <Image
@@ -213,7 +273,7 @@ export function AboutPageContent({ lang, about: a, ownerPublic }: Props) {
 
       <section className="relative pb-8 md:pb-12">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 2xl:px-12">
-          <AnimatedSection className="mb-8 text-center" animation="fadeInUp">
+          <AnimatedSection className="mb-8 text-center about-water-ripple-target-heading" animation="fadeInUp">
             <h2 className="mb-3 text-2xl font-bold md:text-3xl">{a.introTitle}</h2>
             <p className="mx-auto max-w-3xl text-muted-foreground">{a.introLead}</p>
           </AnimatedSection>
@@ -244,7 +304,7 @@ export function AboutPageContent({ lang, about: a, ownerPublic }: Props) {
       {/* 价值观：仅用极淡背景做过渡，不用上下边框线 */}
       <section className="relative bg-gradient-to-b from-muted/0 via-muted/20 to-muted/0 py-16 md:py-20">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 2xl:px-12">
-          <AnimatedSection className="mb-12 text-center" animation="fadeInUp">
+          <AnimatedSection className="mb-12 text-center about-water-ripple-target-heading" animation="fadeInUp">
             <h2 className="mb-3 text-2xl font-bold md:text-3xl">{a.practiceTitle}</h2>
             <p className="mx-auto max-w-3xl text-muted-foreground">{a.practiceLead}</p>
           </AnimatedSection>
@@ -270,7 +330,7 @@ export function AboutPageContent({ lang, about: a, ownerPublic }: Props) {
             ))}
           </div>
 
-          <AnimatedSection className="mb-12 text-center" animation="fadeInUp">
+          <AnimatedSection className="mb-12 text-center about-water-ripple-target-heading" animation="fadeInUp">
             <h2 className="mb-3 text-2xl font-bold md:text-3xl">{a.valuesTitle}</h2>
             <p className="mx-auto max-w-2xl text-muted-foreground">{a.valuesLead}</p>
           </AnimatedSection>
@@ -301,10 +361,10 @@ export function AboutPageContent({ lang, about: a, ownerPublic }: Props) {
       {/* 音乐：外链 QQ 音乐 + 可选站内试听 */}
       <section className="relative py-16 md:py-20">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 2xl:px-12">
-          <AnimatedSection className="mb-8 text-center" animation="fadeInUp">
+          <AnimatedSection className="mb-8 text-center about-water-ripple-target-heading" animation="fadeInUp">
             <h2 className="mb-2 text-2xl font-bold md:text-3xl">{a.musicTitle}</h2>
           </AnimatedSection>
-          <AnimatedSection delay={60} animation="scaleIn">
+          <AnimatedSection delay={60} animation="scaleIn" className="about-water-ripple-target-music">
             <AboutMusicPlayer copy={musicCopy} />
           </AnimatedSection>
         </div>
@@ -313,7 +373,7 @@ export function AboutPageContent({ lang, about: a, ownerPublic }: Props) {
       {/* 时间线：生活化叙事，而非开发排期 */}
       <section className="relative bg-gradient-to-b from-muted/0 via-muted/12 to-muted/0 py-16 md:py-20">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 2xl:px-12">
-          <AnimatedSection className="mb-10 text-center" animation="fadeInUp">
+          <AnimatedSection className="mb-10 text-center about-water-ripple-target-heading" animation="fadeInUp">
             <h2 className="mb-2 text-2xl font-bold md:text-3xl">{a.timelineTitle}</h2>
             <p className="text-muted-foreground">{a.timelineLead}</p>
           </AnimatedSection>
@@ -353,7 +413,7 @@ export function AboutPageContent({ lang, about: a, ownerPublic }: Props) {
       {/* 联系 */}
       <section id="contact" className="relative py-16 md:py-24">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 2xl:px-12">
-          <AnimatedSection className="mb-10 text-center" animation="fadeInUp">
+          <AnimatedSection className="mb-10 text-center about-water-ripple-target-heading" animation="fadeInUp">
             <h2 className="mb-2 flex items-center justify-center gap-2 text-2xl font-bold md:text-3xl">
               <MessageCircle className="h-7 w-7 text-primary" />
               {a.contactTitle}

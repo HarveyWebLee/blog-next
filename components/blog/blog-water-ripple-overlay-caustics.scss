@@ -1,0 +1,69 @@
+.blog-water-ripple-overlay-caustics {
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+
+  &__svg-defs {
+    height: 0;
+    overflow: hidden;
+    position: absolute;
+    visibility: hidden;
+    width: 0;
+  }
+
+  &__surface {
+    /*
+     * 焦散型底图（caustics）：
+     * - 顶部先给一层宽高光，确保效果从上方就开始可见；
+     * - 中下部多组高光斑块形成折射“碎光”；
+     * - 交给 displacement 滤镜做动态扭曲。
+     */
+    background:
+      radial-gradient(88% 54% at 50% 0%, rgb(220 248 255 / 0.5) 0%, rgb(220 248 255 / 0.16) 44%, transparent 78%),
+      radial-gradient(42% 28% at 20% 16%, rgb(208 244 255 / 0.52) 0%, rgb(208 244 255 / 0.17) 46%, transparent 78%),
+      radial-gradient(40% 26% at 80% 20%, rgb(192 236 255 / 0.48) 0%, rgb(192 236 255 / 0.15) 44%, transparent 76%),
+      radial-gradient(38% 26% at 48% 42%, rgb(225 250 255 / 0.5) 0%, rgb(225 250 255 / 0.15) 42%, transparent 74%),
+      radial-gradient(52% 32% at 20% 68%, rgb(176 228 255 / 0.42) 0%, rgb(176 228 255 / 0.13) 44%, transparent 78%),
+      radial-gradient(56% 34% at 80% 72%, rgb(164 214 255 / 0.4) 0%, rgb(164 214 255 / 0.12) 46%, transparent 80%),
+      linear-gradient(180deg, rgb(186 240 255 / 0.24) 0%, rgb(172 224 255 / 0.15) 44%, rgb(160 205 255 / 0.08) 100%);
+    background-position:
+      50% 0%,
+      18% 14%,
+      82% 18%,
+      50% 42%,
+      18% 68%,
+      82% 72%,
+      center;
+    background-size:
+      150% 130%,
+      135% 120%,
+      130% 116%,
+      128% 112%,
+      138% 122%,
+      138% 124%,
+      100% 100%;
+    filter: url(#blog-water-ripple-overlay-caustics-filter) saturate(1.45) contrast(1.32) brightness(1.28);
+    inset: 0;
+    mix-blend-mode: normal;
+    opacity: 0.9;
+    position: absolute;
+
+    @media (prefers-reduced-motion: no-preference) {
+      animation: blog-water-ripple-overlay-caustics-drift 12s ease-in-out infinite alternate;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      animation: none;
+    }
+  }
+}
+
+@keyframes blog-water-ripple-overlay-caustics-drift {
+  from {
+    transform: translate3d(0, 0, 0) scale(1.01);
+  }
+
+  to {
+    transform: translate3d(0, -10px, 0) scale(1.03);
+  }
+}

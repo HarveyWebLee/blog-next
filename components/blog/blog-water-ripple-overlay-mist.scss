@@ -1,0 +1,63 @@
+.blog-water-ripple-overlay-mist {
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+
+  &__svg-defs {
+    height: 0;
+    overflow: hidden;
+    position: absolute;
+    visibility: hidden;
+    width: 0;
+  }
+
+  &__surface {
+    /*
+     * 水雾型底图：
+     * - 多层大范围径向渐变（含顶部和两侧）营造“空气湿度感”；
+     * - 避免条纹和尖锐边界，保持朦胧氛围；
+     * - 由位移滤镜统一制造缓慢流体波动。
+     */
+    background:
+      radial-gradient(95% 62% at 50% -4%, rgb(220 245 255 / 0.4) 0%, rgb(220 245 255 / 0.14) 46%, transparent 82%),
+      radial-gradient(120% 76% at 12% 34%, rgb(184 228 255 / 0.34) 0%, rgb(184 228 255 / 0.11) 52%, transparent 84%),
+      radial-gradient(118% 74% at 88% 40%, rgb(170 220 255 / 0.32) 0%, rgb(170 220 255 / 0.1) 50%, transparent 84%),
+      radial-gradient(110% 78% at 52% 78%, rgb(152 206 255 / 0.3) 0%, rgb(152 206 255 / 0.1) 54%, transparent 86%),
+      linear-gradient(180deg, rgb(192 238 255 / 0.22) 0%, rgb(170 220 255 / 0.15) 44%, rgb(152 196 246 / 0.1) 100%);
+    background-position:
+      50% 0%,
+      8% 30%,
+      92% 36%,
+      52% 78%,
+      center;
+    background-size:
+      158% 138%,
+      165% 145%,
+      165% 145%,
+      152% 136%,
+      100% 100%;
+    filter: url(#blog-water-ripple-overlay-mist-filter) saturate(1.28) contrast(1.2) brightness(1.2);
+    inset: 0;
+    mix-blend-mode: normal;
+    opacity: 0.84;
+    position: absolute;
+
+    @media (prefers-reduced-motion: no-preference) {
+      animation: blog-water-ripple-overlay-mist-drift 16s ease-in-out infinite alternate;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      animation: none;
+    }
+  }
+}
+
+@keyframes blog-water-ripple-overlay-mist-drift {
+  from {
+    transform: translate3d(0, 0, 0) scale(1.01);
+  }
+
+  to {
+    transform: translate3d(0, -8px, 0) scale(1.025);
+  }
+}

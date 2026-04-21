@@ -82,6 +82,42 @@
   ) !important;
 }
 
+/*
+ * 预览：将经典水波纹作用到 about 卡片本体
+ * - 仅在暗色主题下启用，减少浅色主题下文字可读性风险；
+ * - 轻度漂移，主要让你观察“卡片内容被水纹带动”的实际观感。
+ */
+html.dark .about-water-ripple-cards-preview .about-card-modern {
+  filter: url(#blog-water-ripple-overlay-classic-filter) saturate(1.06) contrast(1.04);
+
+  @media (prefers-reduced-motion: no-preference) {
+    animation: about-card-water-ripple-preview 14s ease-in-out infinite alternate;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+/*
+ * 首屏文案区与音乐模块同样叠加轻量水纹：
+ * - 强度低于卡片，避免大块区域内容可读性下降；
+ * - 仅暗色主题启用，保持浅色主题稳定。
+ */
+html.dark .about-water-ripple-cards-preview .about-water-ripple-target-hero,
+html.dark .about-water-ripple-cards-preview .about-water-ripple-target-music,
+html.dark .about-water-ripple-cards-preview .about-water-ripple-target-heading {
+  filter: url(#blog-water-ripple-overlay-classic-filter) saturate(1.03) contrast(1.02);
+
+  @media (prefers-reduced-motion: no-preference) {
+    animation: about-section-water-ripple-preview 18s ease-in-out infinite alternate;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
 html.dark .about-card-modern {
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
@@ -99,6 +135,26 @@ html.dark .about-card-modern {
       0 10px 10px -5px rgba(0, 0, 0, 0.3),
       0 0 0 1px rgba(255, 255, 255, 0.1),
       0 0 14px rgba(59, 130, 246, 0.1);
+  }
+}
+
+@keyframes about-card-water-ripple-preview {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+
+  to {
+    transform: translate3d(0, -1.5px, 0);
+  }
+}
+
+@keyframes about-section-water-ripple-preview {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+
+  to {
+    transform: translate3d(0, -1px, 0);
   }
 }
 
