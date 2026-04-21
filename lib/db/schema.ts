@@ -7,6 +7,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  uniqueIndex,
   varchar,
 } from "drizzle-orm/mysql-core";
 
@@ -48,8 +49,10 @@ export const categories = mysqlTable(
   {
     id: int("id").primaryKey().autoincrement(),
     ownerId: int("owner_id").notNull(),
-    name: varchar("name", { length: 100 }).notNull().unique(),
-    slug: varchar("slug", { length: 100 }).notNull().unique(), // URL友好的标识符
+    // 分类名仅需在同一 owner 下唯一，避免不同用户之间互相冲突
+    name: varchar("name", { length: 100 }).notNull(),
+    // slug 仅需在同一 owner 下唯一，支持多用户使用相同 slug
+    slug: varchar("slug", { length: 100 }).notNull(), // URL友好的标识符
     description: text("description"), // 分类描述
     parentId: int("parent_id"), // 父分类ID，支持分类层级
     sortOrder: int("sort_order").default(0), // 排序顺序
@@ -62,6 +65,8 @@ export const categories = mysqlTable(
     index("slug_idx").on(table.slug),
     index("parent_idx").on(table.parentId),
     index("active_idx").on(table.isActive),
+    uniqueIndex("owner_name_unique_idx").on(table.ownerId, table.name),
+    uniqueIndex("owner_slug_unique_idx").on(table.ownerId, table.slug),
   ]
 );
 
@@ -74,8 +79,10 @@ export const tags = mysqlTable(
   {
     id: int("id").primaryKey().autoincrement(),
     ownerId: int("owner_id").notNull(),
-    name: varchar("name", { length: 100 }).notNull().unique(),
-    slug: varchar("slug", { length: 100 }).notNull().unique(), // URL友好的标识符
+    // 标签名仅需在同一 owner 下唯一，避免不同用户之间互相冲突
+    name: varchar("name", { length: 100 }).notNull(),
+    // slug 仅需在同一 owner 下唯一，支持多用户使用相同 slug
+    slug: varchar("slug", { length: 100 }).notNull(), // URL友好的标识符
     description: text("description"), // 标签描述
     color: varchar("color", { length: 7 }), // 标签颜色（十六进制）
     isActive: boolean("is_active").default(true), // 是否激活
@@ -86,6 +93,8 @@ export const tags = mysqlTable(
     index("owner_idx").on(table.ownerId),
     index("slug_idx").on(table.slug),
     index("active_idx").on(table.isActive),
+    uniqueIndex("owner_tag_name_unique_idx").on(table.ownerId, table.name),
+    uniqueIndex("owner_tag_slug_unique_idx").on(table.ownerId, table.slug),
   ]
 );
 
