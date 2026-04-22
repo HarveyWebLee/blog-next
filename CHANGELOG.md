@@ -1,3 +1,9 @@
+## [1.5.3](https://github.com/HarveyWebLee/blog-next/compare/v1.5.2...v1.5.3) (2026-04-22)
+
+### Bug Fixes
+
+- **ci:** 优化部署流水线以提升工作区同步与权限处理 ([7ad23c1](https://github.com/HarveyWebLee/blog-next/commit/7ad23c1cae3cde050429ef61f01de7edce2d7f6c))
+
 ## [1.5.2](https://github.com/HarveyWebLee/blog-next/compare/v1.5.1...v1.5.2) (2026-04-22)
 
 ### Bug Fixes
