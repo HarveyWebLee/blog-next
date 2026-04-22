@@ -1,3 +1,13 @@
+# [1.5.0](https://github.com/HarveyWebLee/blog-next/compare/v1.4.2...v1.5.0) (2026-04-22)
+
+### Features
+
+- **profile:** 新增个人中心粉丝与关注页面及相关API ([8c757fc](https://github.com/HarveyWebLee/blog-next/commit/8c757fcb0f4fce1a0d25cadd72f46a83e6ea32a3))
+
+### Performance Improvements
+
+- **api:** 新增通知相关API功能与权限控制 ([644b468](https://github.com/HarveyWebLee/blog-next/commit/644b4683828e2b20085d948288c85a3562a11fbd))
+
 ## [1.4.2](https://github.com/HarveyWebLee/blog-next/compare/v1.4.1...v1.4.2) (2026-04-21)
 
 ### Performance Improvements
