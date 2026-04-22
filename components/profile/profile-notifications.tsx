@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Badge, Button, Card, CardBody, Chip } from "@heroui/react";
 import {
   AtSign,
@@ -20,6 +20,7 @@ import {
   PROFILE_GLASS_CARD_INTERACTIVE,
   PROFILE_NATIVE_CONTROL,
 } from "@/components/profile/profile-ui-presets";
+import type { ApiResponse, PaginatedResponseData, UserNotification } from "@/types/blog";
 
 interface ProfileNotificationsProps {
   lang: string;
@@ -36,6 +37,8 @@ interface Notification {
   readAt?: Date;
   createdAt: Date;
 }
+
+type NotificationListResponse = PaginatedResponseData<UserNotification>;
 
 const notificationIcons = {
   comment: MessageSquare,
@@ -136,89 +139,55 @@ export default function ProfileNotifications({ lang }: ProfileNotificationsProps
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [readFilter, setReadFilter] = useState<string>("all");
-
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      try {
-        // 这里应该调用真实的API
-        // const response = await fetch('/api/profile/notifications');
-        // const data = await response.json();
-
-        // 模拟数据
-        setTimeout(() => {
-          setNotifications([
-            {
-              id: 1,
-              userId: 1,
-              type: "comment",
-              title: "新的评论",
-              content: "用户 @developer 在您的文章《如何学习React Hooks》下发表了评论",
-              data: { postId: 101, commentId: 201, authorId: 2 },
-              isRead: false,
-              createdAt: new Date(Date.now() - 30 * 60 * 1000),
-            },
-            {
-              id: 2,
-              userId: 1,
-              type: "like",
-              title: "文章被点赞",
-              content: "用户 @reactdev 点赞了您的文章《Vue.js 3.0 新特性详解》",
-              data: { postId: 102, likerId: 3 },
-              isRead: false,
-              createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-            },
-            {
-              id: 3,
-              userId: 1,
-              type: "follow",
-              title: "新的关注者",
-              content: "用户 @frontenddev 开始关注您",
-              data: { followerId: 4 },
-              isRead: false,
-              createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000),
-            },
-            {
-              id: 4,
-              userId: 1,
-              type: "mention",
-              title: "被提及",
-              content: "用户 @backenddev 在评论中提到了您",
-              data: { postId: 103, commentId: 202, authorId: 5 },
-              isRead: true,
-              readAt: new Date(Date.now() - 6 * 60 * 60 * 1000),
-              createdAt: new Date(Date.now() - 8 * 60 * 60 * 1000),
-            },
-            {
-              id: 5,
-              userId: 1,
-              type: "system",
-              title: "系统通知",
-              content: "您的账户安全设置已更新",
-              data: { action: "security_update" },
-              isRead: true,
-              readAt: new Date(Date.now() - 12 * 60 * 60 * 1000),
-              createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
-            },
-          ]);
-          setLoading(false);
-        }, 1000);
-      } catch (error) {
-        console.error("获取通知列表失败:", error);
-        setLoading(false);
-      }
-    };
-
-    fetchNotifications();
+  const buildAuthHeaders = useCallback((): Record<string, string> => {
+    if (typeof window === "undefined") return {};
+    const token = localStorage.getItem("accessToken");
+    if (!token) return {};
+    return { Authorization: `Bearer ${token}` };
   }, []);
 
-  const filteredNotifications = notifications.filter((notification) => {
-    const matchesType = typeFilter === "all" || notification.type === typeFilter;
-    const matchesRead =
-      readFilter === "all" ||
-      (readFilter === "read" && notification.isRead) ||
-      (readFilter === "unread" && !notification.isRead);
-    return matchesType && matchesRead;
-  });
+  const fetchNotifications = useCallback(async () => {
+    setLoading(true);
+    try {
+      const qs = new URLSearchParams({ page: "1", limit: "100" });
+      if (typeFilter !== "all") {
+        qs.set("type", typeFilter);
+      }
+      if (readFilter === "read") {
+        qs.set("isRead", "true");
+      } else if (readFilter === "unread") {
+        qs.set("isRead", "false");
+      }
+      const res = await fetch(`/api/notifications?${qs.toString()}`, { headers: buildAuthHeaders() });
+      const json = (await res.json()) as ApiResponse<NotificationListResponse>;
+      if (!json.success || !json.data) {
+        throw new Error(json.message || "获取通知失败");
+      }
+      const normalized: Notification[] = json.data.data.map((row) => ({
+        id: row.id,
+        userId: row.userId,
+        type: row.type,
+        title: row.title,
+        content: row.content,
+        data: row.data,
+        isRead: row.isRead,
+        readAt: row.readAt ? new Date(row.readAt) : undefined,
+        createdAt: new Date(row.createdAt),
+      }));
+      setNotifications(normalized);
+    } catch (error) {
+      console.error("获取通知列表失败:", error);
+      setNotifications([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [buildAuthHeaders, readFilter, typeFilter]);
+
+  useEffect(() => {
+    void fetchNotifications();
+  }, [fetchNotifications]);
+
+  const filteredNotifications = notifications;
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
@@ -240,11 +209,15 @@ export default function ProfileNotifications({ lang }: ProfileNotificationsProps
 
   const handleMarkAsRead = async (notificationId: number) => {
     try {
-      // 这里应该调用真实的API
-      // await fetch('/api/profile/notifications', {
-      //   method: 'PUT',
-      //   body: JSON.stringify({ notificationIds: [notificationId] })
-      // });
+      const res = await fetch(`/api/notifications/${notificationId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...buildAuthHeaders() },
+        body: JSON.stringify({ isRead: true }),
+      });
+      const json = (await res.json()) as ApiResponse<UserNotification>;
+      if (!json.success) {
+        throw new Error(json.message || "标记通知失败");
+      }
 
       setNotifications((prev) =>
         prev.map((n) => (n.id === notificationId ? { ...n, isRead: true, readAt: new Date() } : n))
@@ -256,13 +229,18 @@ export default function ProfileNotifications({ lang }: ProfileNotificationsProps
 
   const handleMarkAllAsRead = async () => {
     try {
-      // 这里应该调用真实的API
-      // await fetch('/api/profile/notifications', {
-      //   method: 'PUT',
-      //   body: JSON.stringify({ markAllAsRead: true })
-      // });
-
-      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true, readAt: new Date() })));
+      const unreadIds = notifications.filter((n) => !n.isRead).map((n) => n.id);
+      if (unreadIds.length === 0) return;
+      const res = await fetch("/api/notifications", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...buildAuthHeaders() },
+        body: JSON.stringify({ notificationIds: unreadIds }),
+      });
+      const json = (await res.json()) as ApiResponse<{ updatedCount: number }>;
+      if (!json.success) {
+        throw new Error(json.message || "批量标记失败");
+      }
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true, readAt: n.readAt || new Date() })));
     } catch (error) {
       console.error("标记所有通知失败:", error);
     }
@@ -270,8 +248,14 @@ export default function ProfileNotifications({ lang }: ProfileNotificationsProps
 
   const handleDeleteNotification = async (notificationId: number) => {
     try {
-      // 这里应该调用真实的API
-      // await fetch(`/api/profile/notifications?id=${notificationId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/notifications/${notificationId}`, {
+        method: "DELETE",
+        headers: buildAuthHeaders(),
+      });
+      const json = (await res.json()) as ApiResponse<null>;
+      if (!json.success) {
+        throw new Error(json.message || "删除通知失败");
+      }
 
       setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
     } catch (error) {
@@ -481,7 +465,7 @@ export default function ProfileNotifications({ lang }: ProfileNotificationsProps
               color="primary"
               variant="flat"
               className="border border-primary/20 bg-primary/10 text-primary backdrop-blur-xl"
-              onPress={() => window.location.reload()}
+              onPress={fetchNotifications}
             >
               {t.refresh}
             </Button>

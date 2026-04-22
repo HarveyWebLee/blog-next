@@ -15,6 +15,7 @@ import { and, asc, count, desc, eq, like } from "drizzle-orm";
 import { db } from "@/lib/db/config";
 import { categories } from "@/lib/db/schema";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
+import { isJwtInMemorySuperRoot } from "@/lib/utils/authz";
 import { requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, Category, CategoryQueryParams, CreateCategoryRequest, PaginatedResponseData } from "@/types/blog";
 
@@ -46,6 +47,11 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search") || undefined;
     const isActive = searchParams.get("isActive") ? searchParams.get("isActive") === "true" : undefined;
     const parentId = searchParams.get("parentId") ? parseInt(searchParams.get("parentId")!) : undefined;
+    const ownerIdQuery = searchParams.get("ownerId");
+    const ownerIdFromQuery = ownerIdQuery ? parseInt(ownerIdQuery, 10) : NaN;
+    const isRoot = isJwtInMemorySuperRoot(auth.user);
+    const ownerScopeId =
+      isRoot && Number.isFinite(ownerIdFromQuery) && ownerIdFromQuery > 0 ? ownerIdFromQuery : auth.user.userId;
 
     // 构建查询条件
     const conditions = [];
@@ -61,7 +67,7 @@ export async function GET(request: NextRequest) {
     if (parentId !== undefined) {
       conditions.push(eq(categories.parentId, parentId));
     }
-    conditions.push(eq(categories.ownerId, auth.user.userId));
+    conditions.push(eq(categories.ownerId, ownerScopeId));
 
     // 构建排序 - 使用安全的字段映射
     const sortFieldMap: Record<string, any> = {
@@ -154,7 +160,10 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
-    const body: CreateCategoryRequest = await request.json();
+    const body = (await request.json()) as CreateCategoryRequest & { ownerId?: number };
+    const isRoot = isJwtInMemorySuperRoot(auth.user);
+    const targetOwnerId =
+      isRoot && Number.isFinite(body.ownerId) && Number(body.ownerId) > 0 ? Number(body.ownerId) : auth.user.userId;
 
     // 验证必填字段
     if (!body.name || !body.slug) {
@@ -172,7 +181,7 @@ export async function POST(request: NextRequest) {
     const existingCategory = await db
       .select()
       .from(categories)
-      .where(and(eq(categories.name, body.name), eq(categories.ownerId, auth.user.userId)))
+      .where(and(eq(categories.name, body.name), eq(categories.ownerId, targetOwnerId)))
       .limit(1);
 
     if (existingCategory.length > 0) {
@@ -190,7 +199,7 @@ export async function POST(request: NextRequest) {
     const existingSlug = await db
       .select()
       .from(categories)
-      .where(and(eq(categories.slug, body.slug), eq(categories.ownerId, auth.user.userId)))
+      .where(and(eq(categories.slug, body.slug), eq(categories.ownerId, targetOwnerId)))
       .limit(1);
 
     if (existingSlug.length > 0) {
@@ -206,7 +215,7 @@ export async function POST(request: NextRequest) {
 
     // 创建新分类
     await db.insert(categories).values({
-      ownerId: auth.user.userId,
+      ownerId: targetOwnerId,
       name: body.name,
       slug: body.slug,
       description: body.description || null,
@@ -219,7 +228,7 @@ export async function POST(request: NextRequest) {
     const [newCategory] = await db
       .select()
       .from(categories)
-      .where(and(eq(categories.name, body.name), eq(categories.ownerId, auth.user.userId)))
+      .where(and(eq(categories.name, body.name), eq(categories.ownerId, targetOwnerId)))
       .limit(1);
 
     if (newCategory) {

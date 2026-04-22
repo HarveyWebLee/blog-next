@@ -1,6 +1,19 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(req: Request, { params }: { params: Promise<{ path: string[] }> }) {
+import { requireInMemorySuperRoot } from "@/lib/utils/authz";
+
+export async function GET(req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
+  const auth = requireInMemorySuperRoot(req);
+  if (!auth.ok) {
+    return NextResponse.json(
+      {
+        success: false,
+        message: auth.message,
+      },
+      { status: auth.status }
+    );
+  }
+
   // 拼接目标 URL
   const targetUrl = `https://haowallpaper.com/${(await params).path.join("/")}`;
 

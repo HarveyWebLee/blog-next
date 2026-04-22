@@ -13,8 +13,19 @@ import { and, count, desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db/config";
 import { categories, posts, userFavorites, users } from "@/lib/db/schema";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
+import { isJwtInMemorySuperRoot } from "@/lib/utils/authz";
+import type { AuthJwtPayload } from "@/lib/utils/request-auth";
 import { requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, FavoritePostRequest, PaginatedResponseData, PostData, UserFavorite } from "@/types/blog";
+
+function canInteractPost(
+  post: { status: string | null; visibility: string | null; authorId: number },
+  authUser: AuthJwtPayload
+): boolean {
+  if (post.status !== "published") return authUser.userId === post.authorId || isJwtInMemorySuperRoot(authUser);
+  if (post.visibility !== "private") return true;
+  return authUser.userId === post.authorId || isJwtInMemorySuperRoot(authUser);
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -51,6 +62,8 @@ export async function GET(request: NextRequest) {
         postViewCount: posts.viewCount,
         postLikeCount: posts.likeCount,
         postPublishedAt: posts.publishedAt,
+        postStatus: posts.status,
+        postVisibility: posts.visibility,
         authorId: users.id,
         authorUsername: users.username,
         authorDisplayName: users.displayName,
@@ -79,13 +92,18 @@ export async function GET(request: NextRequest) {
 
     const responseData: PaginatedResponseData<UserFavorite> = {
       data: favoriteRows.map((row) => ({
+        // 私密或非发布文章在权限不足时隐藏，避免收藏列表侧信道泄漏文章信息。
         id: row.favId,
         userId: row.favUserId,
         postId: row.refPostId,
         createdAt: row.favCreatedAt,
         updatedAt: row.favCreatedAt,
         post:
-          row.postId != null
+          row.postId != null &&
+          !(
+            (row.postStatus !== "published" || row.postVisibility === "private") &&
+            (row.authorId == null || row.authorId !== decoded.userId)
+          )
             ? ({
                 id: row.postId,
                 title: row.postTitle ?? "",
@@ -199,7 +217,11 @@ export async function POST(request: NextRequest) {
     }
 
     // 检查文章是否存在
-    const post = await db.select().from(posts).where(eq(posts.id, postId)).limit(1);
+    const post = await db
+      .select({ id: posts.id, authorId: posts.authorId, status: posts.status, visibility: posts.visibility })
+      .from(posts)
+      .where(eq(posts.id, postId))
+      .limit(1);
 
     if (post.length === 0) {
       return NextResponse.json<ApiResponse>(
@@ -209,6 +231,16 @@ export async function POST(request: NextRequest) {
           timestamp: new Date().toISOString(),
         },
         { status: 404 }
+      );
+    }
+    if (!canInteractPost(post[0], decoded)) {
+      return NextResponse.json<ApiResponse>(
+        {
+          success: false,
+          message: "该文章当前不可收藏",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 403 }
       );
     }
 

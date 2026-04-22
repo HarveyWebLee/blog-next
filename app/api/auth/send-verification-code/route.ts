@@ -92,14 +92,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 如果是注册类型，检查邮箱是否已存在
+    // 如果是注册类型，发送验证码前先检查邮箱是否已被用户表占用。
+    // 命中占用时直接阻断发码，避免对已注册邮箱重复发送验证码。
     if (type === "register") {
       const existingUser = await db.select().from(users).where(eq(users.email, email)).limit(1);
       if (existingUser.length > 0) {
         return NextResponse.json<ApiResponse>(
           {
             success: false,
-            message: "该邮箱已被注册",
+            message: "邮箱已存在，已被用户使用",
             timestamp: new Date().toISOString(),
           },
           { status: 409 }

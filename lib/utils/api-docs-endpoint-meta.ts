@@ -18,7 +18,6 @@ export const API_DOCS_GROUP_DESCRIPTIONS: Record<string, string> = {
   uploads: "上传接口",
   about: "关于页站长信息",
   music: "音乐相关第三方代理数据",
-  users: "用户列表/创建（示例或过渡接口，以代码为准）",
   "api-docs": "文档元数据（仅超级管理员）",
   seed: "种子/演示数据（生产慎用）",
   "test-db": "数据库连通性自检",
@@ -87,7 +86,7 @@ export const API_DOCS_ENDPOINT_DESCRIPTIONS: Record<string, Partial<Record<strin
     PATCH: "超级管理员：更新角色与账号状态等（不可修改当前登录根账户本人）",
   },
   "/api/posts": {
-    GET: "文章列表（公开/管理筛选由查询参数决定）",
+    GET: "文章列表（默认仅公开文章，列表不返回 content 字段）",
     POST: "创建文章（通常需作者或管理员）",
   },
   "/api/posts/{id}": {
@@ -97,21 +96,21 @@ export const API_DOCS_ENDPOINT_DESCRIPTIONS: Record<string, Partial<Record<strin
     PATCH: "部分更新文章",
   },
   "/api/posts/{id}/view": {
-    POST: "记录一次浏览",
+    POST: "记录一次浏览（仅已发布且非 private 文章，含频率限制）",
   },
   "/api/posts/{id}/favorite": {
-    GET: "是否已收藏该文（匿名返回未收藏）",
-    POST: "切换收藏（需 Bearer）",
+    GET: "是否已收藏该文（匿名返回未收藏；不可互动文章会拒绝）",
+    POST: "切换收藏（需 Bearer；仅已发布且可互动文章）",
   },
   "/api/posts/{id}/like": {
-    GET: "当前用户是否已赞与点赞总数（匿名仅返回总数）",
-    POST: "切换点赞（需 Bearer）",
+    GET: "当前用户是否已赞与点赞总数（匿名仅返回总数；不可互动文章会拒绝）",
+    POST: "切换点赞（需 Bearer；仅已发布且可互动文章）",
   },
   "/api/posts/{id}/share": {
-    POST: "记录分享打点（匿名或 Bearer）；用于用户活动日志",
+    POST: "记录分享打点（匿名或 Bearer；含频率限制，仅已发布且非 private 文章）",
   },
   "/api/comments": {
-    POST: "提交博客评论（文章存在且开启评论；匿名或登录）",
+    POST: "提交博客评论（匿名或登录；按文章/IP 限流防刷）",
   },
   "/api/posts/engagement": {
     GET: "批量查询多篇文章的点赞/收藏状态（Query: ids）；登录用户返回真实状态",
@@ -121,31 +120,32 @@ export const API_DOCS_ENDPOINT_DESCRIPTIONS: Record<string, Partial<Record<strin
     PATCH: "校验密码保护文章密码，成功后返回可阅读数据",
   },
   "/api/categories": {
-    GET: "分类列表（分页/搜索/状态/父分类过滤；仅当前登录用户）",
-    POST: "创建分类（服务端自动绑定 ownerId 到当前登录用户）",
+    GET: "分类列表（分页/搜索/状态/父分类过滤；超级管理员可按 ownerId 指定租户）",
+    POST: "创建分类（普通用户写入本人 ownerId；超级管理员可指定 ownerId）",
   },
   "/api/categories/{id}": {
-    GET: "分类详情（附带该分类文章数量；仅当前登录用户可见）",
-    PUT: "更新分类（名称/slug 去重校验；仅当前登录用户）",
-    DELETE: "删除分类（若仍被文章或子分类引用则拒绝；仅当前登录用户）",
+    GET: "分类详情（附带该分类文章数量；本人可见，超级管理员可跨 ownerId 查看）",
+    PUT: "更新分类（名称/slug 在所属 ownerId 内去重；超级管理员可跨 ownerId）",
+    DELETE: "删除分类（若仍被文章或子分类引用则拒绝；超级管理员可跨 ownerId）",
   },
   "/api/tags": {
-    GET: "标签列表（分页/搜索/状态过滤，含 postCount；仅当前登录用户）",
-    POST: "创建标签（服务端自动绑定 ownerId 到当前登录用户）",
+    GET: "标签列表（分页/搜索/状态过滤，含 postCount；超级管理员可按 ownerId 指定租户）",
+    POST: "创建标签（普通用户写入本人 ownerId；超级管理员可指定 ownerId）",
   },
   "/api/tags/{id}": {
-    GET: "标签详情（附带标签被文章使用次数；仅当前登录用户可见）",
-    PUT: "更新标签（名称/slug 去重校验；仅当前登录用户）",
-    DELETE: "删除标签（若仍有关联文章则拒绝；仅当前登录用户）",
+    GET: "标签详情（附带标签被文章使用次数；本人可见，超级管理员可跨 ownerId 查看）",
+    PUT: "更新标签（名称/slug 在所属 ownerId 内去重；超级管理员可跨 ownerId）",
+    DELETE: "删除标签（若仍有关联文章则拒绝；超级管理员可跨 ownerId）",
   },
   "/api/notifications": {
-    GET: "通知列表（以路由鉴权为准）",
-    POST: "创建通知",
+    GET: "通知列表（本人可读；超级管理员可按 userId 查询）",
+    PUT: "批量标记通知已读（本人；超级管理员可按 userId 跨用户）",
+    POST: "创建通知（本人可给自己创建；超级管理员可给任意用户创建）",
   },
   "/api/notifications/{id}": {
-    GET: "通知详情",
-    PUT: "更新通知",
-    DELETE: "删除通知",
+    GET: "通知详情（本人可读；超级管理员可跨用户读取）",
+    PUT: "更新通知（本人可改；超级管理员可跨用户修改）",
+    DELETE: "删除通知（本人可删；超级管理员可跨用户删除）",
   },
   "/api/about/owner": {
     GET: "关于页展示的站长公开信息（无写接口；更新走管理流程或服务层）",
@@ -156,15 +156,6 @@ export const API_DOCS_ENDPOINT_DESCRIPTIONS: Record<string, Partial<Record<strin
   },
   "/api/music/netease/free-tracks": {
     GET: "网易云免费曲目代理数据",
-  },
-  "/api/users": {
-    GET: "用户列表（占位/过渡实现）",
-    POST: "创建用户（占位/过渡实现）",
-  },
-  "/api/users/{id}": {
-    GET: "用户详情",
-    PUT: "更新用户",
-    DELETE: "删除用户",
   },
   "/api/proxy/{...path}": {
     GET: "服务端代理到目标路径",
@@ -242,7 +233,7 @@ export const API_DOCS_AUTH_HINTS: Record<string, Partial<Record<string, string>>
       "必须：Authorization: Bearer + 超级管理员 accessToken。路径 id 为当前登录根账户 userId 时 **403**（不可改本人角色/状态）。",
   },
   "/api/posts": {
-    GET: "公开列表通常无需 Bearer；管理筛选见代码。",
+    GET: "公开列表通常无需 Bearer。默认仅返回 public 可见性且不含 content 字段。",
     POST: "必须：Authorization: Bearer（作者/管理员）",
   },
   "/api/posts/{id}": {
@@ -252,15 +243,15 @@ export const API_DOCS_AUTH_HINTS: Record<string, Partial<Record<string, string>>
     PATCH: "必须：Authorization: Bearer",
   },
   "/api/posts/{id}/view": {
-    POST: "通常无需 Bearer（匿名计数）。",
+    POST: "无需 Bearer；按 IP + 文章限流，且仅已发布且非 private 文章可计数。",
   },
   "/api/posts/{id}/favorite": {
-    GET: "无需 Bearer 可查未收藏；已登录返回真实状态。",
-    POST: "必须：Authorization: Bearer。",
+    GET: "无需 Bearer 可查未收藏；仅可互动文章可查询。",
+    POST: "必须：Authorization: Bearer。仅可互动文章可收藏/取消收藏。",
   },
   "/api/posts/{id}/like": {
-    GET: "无需 Bearer 可返回总数；登录时返回是否已赞。",
-    POST: "必须：Authorization: Bearer。",
+    GET: "无需 Bearer 可返回总数；仅可互动文章可查询。",
+    POST: "必须：Authorization: Bearer。仅可互动文章可点赞/取消点赞。",
   },
   "/api/posts/engagement": {
     GET: "Query: ids。未登录：匿名占位；已登录：真实状态。",
@@ -270,37 +261,39 @@ export const API_DOCS_AUTH_HINTS: Record<string, Partial<Record<string, string>>
     PATCH: "无需 Bearer。Body：{ password }，用于密码保护文章解锁验证。",
   },
   "/api/comments": {
-    POST: "可选 Bearer（匿名亦可）。Body：postId、content；匿名可带 authorName/authorEmail；登录写入 authorId。",
+    POST: "可选 Bearer（匿名亦可）。Body：postId、content；匿名可带 authorName/authorEmail；登录写入 authorId。含限流防刷（429 + Retry-After）。",
   },
   "/api/posts/{id}/share": {
-    POST: "可选 Bearer。匿名亦可调用，用于分享行为打点与用户活动日志。",
+    POST: "可选 Bearer。匿名亦可调用；按 IP/用户+文章限流，且仅已发布非 private 文章允许打点。",
   },
   "/api/categories": {
-    GET: "必须：Authorization: Bearer。支持 page/limit/sortBy/sortOrder/search/isActive/parentId，结果仅当前登录用户 ownerId 下数据。",
-    POST: "必须：Authorization: Bearer。Body 至少包含 name、slug；新建记录 ownerId 自动取当前登录用户。",
+    GET: "必须：Authorization: Bearer。支持 page/limit/sortBy/sortOrder/search/isActive/parentId。超级管理员可用 ownerId 指定租户，否则仅本人 ownerId。",
+    POST: "必须：Authorization: Bearer。Body 至少包含 name、slug；普通用户固定本人 ownerId，超级管理员可传 ownerId。",
   },
   "/api/categories/{id}": {
-    GET: "必须：Authorization: Bearer。且 id 必须属于当前登录用户 ownerId。",
-    PUT: "必须：Authorization: Bearer。仅可修改当前登录用户 ownerId 下数据；name/slug 冲突返回 409。",
-    DELETE: "必须：Authorization: Bearer。仅可删除当前登录用户 ownerId 下数据；若存在子分类或关联文章返回 409。",
+    GET: "必须：Authorization: Bearer。普通用户仅可访问本人 ownerId；超级管理员可跨 ownerId。",
+    PUT: "必须：Authorization: Bearer。普通用户仅可改本人 ownerId；超级管理员可跨 ownerId，name/slug 在所属 ownerId 内校验 409。",
+    DELETE:
+      "必须：Authorization: Bearer。普通用户仅可删本人 ownerId；超级管理员可跨 ownerId；若存在子分类或关联文章返回 409。",
   },
   "/api/tags": {
-    GET: "必须：Authorization: Bearer。支持 page/limit/sortBy/sortOrder/search/isActive，结果仅当前登录用户 ownerId 下数据。",
-    POST: "必须：Authorization: Bearer。Body 至少包含 name、slug；新建记录 ownerId 自动取当前登录用户。",
+    GET: "必须：Authorization: Bearer。支持 page/limit/sortBy/sortOrder/search/isActive。超级管理员可用 ownerId 指定租户，否则仅本人 ownerId。",
+    POST: "必须：Authorization: Bearer。Body 至少包含 name、slug；普通用户固定本人 ownerId，超级管理员可传 ownerId。",
   },
   "/api/tags/{id}": {
-    GET: "必须：Authorization: Bearer。且 id 必须属于当前登录用户 ownerId。",
-    PUT: "必须：Authorization: Bearer。仅可修改当前登录用户 ownerId 下数据；name/slug 冲突返回 409。",
-    DELETE: "必须：Authorization: Bearer。仅可删除当前登录用户 ownerId 下数据；若存在关联文章返回 409。",
+    GET: "必须：Authorization: Bearer。普通用户仅可访问本人 ownerId；超级管理员可跨 ownerId。",
+    PUT: "必须：Authorization: Bearer。普通用户仅可改本人 ownerId；超级管理员可跨 ownerId，name/slug 在所属 ownerId 内校验 409。",
+    DELETE: "必须：Authorization: Bearer。普通用户仅可删本人 ownerId；超级管理员可跨 ownerId；若存在关联文章返回 409。",
   },
   "/api/notifications": {
-    GET: "以路由为准，常需 Bearer。",
-    POST: "以路由为准。",
+    GET: "必须：Authorization: Bearer。普通用户仅可读本人通知；超级管理员可用 query.userId 跨用户查询。",
+    PUT: "必须：Authorization: Bearer。Body：{ notificationIds[] } 或 { markAllAsRead: true }；普通用户仅可标记本人通知。",
+    POST: "必须：Authorization: Bearer。普通用户仅可创建自己的通知；超级管理员可为任意 userId 创建。",
   },
   "/api/notifications/{id}": {
-    GET: "以路由为准。",
-    PUT: "以路由为准。",
-    DELETE: "以路由为准。",
+    GET: "必须：Authorization: Bearer。普通用户仅可访问本人通知；超级管理员可跨用户。",
+    PUT: "必须：Authorization: Bearer。普通用户仅可修改本人通知；超级管理员可跨用户。",
+    DELETE: "必须：Authorization: Bearer。普通用户仅可删除本人通知；超级管理员可跨用户。",
   },
   "/api/about/owner": {
     GET: "公开，无需 Bearer。",
@@ -312,26 +305,17 @@ export const API_DOCS_AUTH_HINTS: Record<string, Partial<Record<string, string>>
   "/api/music/netease/free-tracks": {
     GET: "通常公开。",
   },
-  "/api/users": {
-    GET: "以路由实现为准。",
-    POST: "以路由实现为准。",
-  },
-  "/api/users/{id}": {
-    GET: "以路由实现为准。",
-    PUT: "以路由实现为准。",
-    DELETE: "以路由实现为准。",
-  },
   "/api/proxy/{...path}": {
-    GET: "可能需内网或密钥，以路由实现为准。",
+    GET: "必须：Authorization: Bearer + 超级管理员 accessToken（requireInMemorySuperRoot）。",
   },
   "/api/seed": {
-    GET: "当前实现未鉴权；会先删除再写入示例 users/categories/tags/posts，生产环境应禁用或加管理员保护。",
+    GET: "必须：Authorization: Bearer + 超级管理员 accessToken；会先删除再写入示例 users/categories/tags/posts。",
   },
   "/api/test-db": {
-    GET: "开发与运维自检，生产建议关闭或保护。",
+    GET: "必须：Authorization: Bearer + 超级管理员 accessToken（运维自检）。",
   },
   "/api/test-env": {
-    GET: "开发与运维自检，生产建议关闭或保护。",
+    GET: "必须：Authorization: Bearer + 超级管理员 accessToken（运维自检）。",
   },
 };
 

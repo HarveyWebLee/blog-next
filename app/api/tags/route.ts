@@ -15,6 +15,7 @@ import { and, asc, count, desc, eq, like, sql } from "drizzle-orm";
 import { db } from "@/lib/db/config";
 import { postTags, tags } from "@/lib/db/schema";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
+import { isJwtInMemorySuperRoot } from "@/lib/utils/authz";
 import { requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, CreateTagRequest, PaginatedResponseData, Tag, TagQueryParams } from "@/types/blog";
 
@@ -46,6 +47,11 @@ export async function GET(request: NextRequest) {
     const sortOrder = (searchParams.get("sortOrder") as "asc" | "desc") || "desc";
     const search = searchParams.get("search") || undefined;
     const isActive = searchParams.get("isActive") ? searchParams.get("isActive") === "true" : undefined;
+    const ownerIdQuery = searchParams.get("ownerId");
+    const ownerIdFromQuery = ownerIdQuery ? parseInt(ownerIdQuery, 10) : NaN;
+    const isRoot = isJwtInMemorySuperRoot(auth.user);
+    const ownerScopeId =
+      isRoot && Number.isFinite(ownerIdFromQuery) && ownerIdFromQuery > 0 ? ownerIdFromQuery : auth.user.userId;
 
     // 构建查询条件
     const conditions = [];
@@ -57,7 +63,7 @@ export async function GET(request: NextRequest) {
     if (isActive !== undefined) {
       conditions.push(eq(tags.isActive, isActive));
     }
-    conditions.push(eq(tags.ownerId, auth.user.userId));
+    conditions.push(eq(tags.ownerId, ownerScopeId));
 
     // 构建排序 - 使用安全的字段映射
     const postCountExpr = sql<number>`count(${postTags.postId})`;
@@ -165,7 +171,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body: CreateTagRequest = await request.json();
+    const body = (await request.json()) as CreateTagRequest & { ownerId?: number };
+    const isRoot = isJwtInMemorySuperRoot(auth.user);
+    const targetOwnerId =
+      isRoot && Number.isFinite(body.ownerId) && Number(body.ownerId) > 0 ? Number(body.ownerId) : auth.user.userId;
 
     // 验证必填字段
     if (!body.name || !body.slug) {
@@ -183,7 +192,7 @@ export async function POST(request: NextRequest) {
     const existingTag = await db
       .select()
       .from(tags)
-      .where(and(eq(tags.name, body.name), eq(tags.ownerId, auth.user.userId)))
+      .where(and(eq(tags.name, body.name), eq(tags.ownerId, targetOwnerId)))
       .limit(1);
 
     if (existingTag.length > 0) {
@@ -201,7 +210,7 @@ export async function POST(request: NextRequest) {
     const existingSlug = await db
       .select()
       .from(tags)
-      .where(and(eq(tags.slug, body.slug), eq(tags.ownerId, auth.user.userId)))
+      .where(and(eq(tags.slug, body.slug), eq(tags.ownerId, targetOwnerId)))
       .limit(1);
 
     if (existingSlug.length > 0) {
@@ -217,7 +226,7 @@ export async function POST(request: NextRequest) {
 
     // 创建新标签
     await db.insert(tags).values({
-      ownerId: auth.user.userId,
+      ownerId: targetOwnerId,
       name: body.name,
       slug: body.slug,
       description: body.description || null,
@@ -229,7 +238,7 @@ export async function POST(request: NextRequest) {
     const [newTag] = await db
       .select()
       .from(tags)
-      .where(and(eq(tags.name, body.name), eq(tags.ownerId, auth.user.userId)))
+      .where(and(eq(tags.name, body.name), eq(tags.ownerId, targetOwnerId)))
       .limit(1);
 
     if (newTag) {

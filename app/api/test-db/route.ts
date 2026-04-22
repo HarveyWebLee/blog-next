@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import mysql from "mysql2/promise";
 
+import { requireInMemorySuperRoot } from "@/lib/utils/authz";
+
 /**
  * 测试数据库连接
  */
@@ -129,6 +131,17 @@ function checkEnvironmentVariables() {
 
 export async function GET(request: NextRequest) {
   try {
+    const auth = requireInMemorySuperRoot(request);
+    if (!auth.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: auth.message,
+        },
+        { status: auth.status }
+      );
+    }
+
     console.log("🚀 数据库连接测试工具");
     console.log("=".repeat(50));
 

@@ -1,6 +1,8 @@
 import * as fs from "fs";
 import { NextRequest, NextResponse } from "next/server";
 
+import { requireInMemorySuperRoot } from "@/lib/utils/authz";
+
 /**
  * 检查环境文件是否存在
  */
@@ -108,6 +110,17 @@ function checkEnvironmentVariables() {
 
 export async function GET(request: NextRequest) {
   try {
+    const auth = requireInMemorySuperRoot(request);
+    if (!auth.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: auth.message,
+        },
+        { status: auth.status }
+      );
+    }
+
     console.log("🚀 环境配置助手");
     console.log("=".repeat(50));
 

@@ -11,6 +11,7 @@ import { posts } from "@/lib/db/schema";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
 import { createErrorResponse, createSuccessResponse } from "@/lib/utils";
 import { getAuthUserFromRequest } from "@/lib/utils/request-auth";
+import { checkRateLimit } from "@/lib/utils/request-rate-limit";
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -21,7 +22,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     const [row] = await db
-      .select({ id: posts.id, slug: posts.slug, title: posts.title })
+      .select({
+        id: posts.id,
+        slug: posts.slug,
+        title: posts.title,
+        status: posts.status,
+        visibility: posts.visibility,
+      })
       .from(posts)
       .where(eq(posts.id, postId))
       .limit(1);
@@ -29,8 +36,23 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (!row) {
       return NextResponse.json(createErrorResponse("文章不存在"), { status: 404 });
     }
+    if (row.status !== "published" || row.visibility === "private") {
+      return NextResponse.json(createErrorResponse("该文章当前不可分享"), { status: 403 });
+    }
 
     const user = getAuthUserFromRequest(request);
+    const forwarded = request.headers.get("x-forwarded-for");
+    const clientIp =
+      (forwarded ? forwarded.split(",")[0]?.trim() : null) || request.headers.get("x-real-ip") || "unknown";
+    const limiterKey = user ? `share:user:${user.userId}:post:${postId}` : `share:ip:${clientIp}:post:${postId}`;
+    const limiter = checkRateLimit(limiterKey, 30, 60 * 1000);
+    if (!limiter.allowed) {
+      return NextResponse.json(createErrorResponse(`分享操作过于频繁，请 ${limiter.retryAfterSeconds} 秒后重试`), {
+        status: 429,
+        headers: { "Retry-After": String(limiter.retryAfterSeconds) },
+      });
+    }
+
     logUserActivity({
       userId: user?.userId ?? null,
       action: UserActivityAction.POST_SHARED,

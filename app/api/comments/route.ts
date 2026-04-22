@@ -17,6 +17,7 @@ import {
 } from "@/lib/services/user-activity-log.service";
 import { createErrorResponse, createSuccessResponse } from "@/lib/utils";
 import { getAuthUserFromRequest } from "@/lib/utils/request-auth";
+import { checkRateLimit } from "@/lib/utils/request-rate-limit";
 
 export async function POST(request: NextRequest) {
   try {
@@ -54,6 +55,14 @@ export async function POST(request: NextRequest) {
 
     const user = getAuthUserFromRequest(request);
     const { ipAddress, userAgent } = getClientMetaFromRequest(request);
+    const limiterKey = user ? `comments:user:${user.userId}:post:${postId}` : `comments:ip:${ipAddress}:post:${postId}`;
+    const limiter = checkRateLimit(limiterKey, 8, 60 * 1000);
+    if (!limiter.allowed) {
+      return NextResponse.json(createErrorResponse(`提交过于频繁，请 ${limiter.retryAfterSeconds} 秒后重试`), {
+        status: 429,
+        headers: { "Retry-After": String(limiter.retryAfterSeconds) },
+      });
+    }
 
     await db.insert(comments).values({
       postId,

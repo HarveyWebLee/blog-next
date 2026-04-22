@@ -16,6 +16,7 @@ import { and, count, eq, ne } from "drizzle-orm";
 import { db } from "@/lib/db/config";
 import { postTags, tags } from "@/lib/db/schema";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
+import { isJwtInMemorySuperRoot } from "@/lib/utils/authz";
 import { requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, Tag, UpdateTagRequest } from "@/types/blog";
 
@@ -38,6 +39,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
     const { id } = await params;
     const tagId = parseInt(id);
+    const isRoot = isJwtInMemorySuperRoot(auth.user);
 
     if (isNaN(tagId)) {
       return NextResponse.json(
@@ -54,7 +56,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const [tag] = await db
       .select()
       .from(tags)
-      .where(and(eq(tags.id, tagId), eq(tags.ownerId, auth.user.userId)))
+      .where(isRoot ? eq(tags.id, tagId) : and(eq(tags.id, tagId), eq(tags.ownerId, auth.user.userId)))
       .limit(1);
 
     if (!tag) {
@@ -115,6 +117,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
     const { id } = await params;
     const tagId = parseInt(id);
+    const isRoot = isJwtInMemorySuperRoot(auth.user);
 
     if (isNaN(tagId)) {
       return NextResponse.json(
@@ -133,7 +136,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const [existingTag] = await db
       .select()
       .from(tags)
-      .where(and(eq(tags.id, tagId), eq(tags.ownerId, auth.user.userId)))
+      .where(isRoot ? eq(tags.id, tagId) : and(eq(tags.id, tagId), eq(tags.ownerId, auth.user.userId)))
       .limit(1);
 
     if (!existingTag) {
@@ -152,7 +155,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       const [duplicateName] = await db
         .select()
         .from(tags)
-        .where(and(eq(tags.name, body.name), ne(tags.id, tagId), eq(tags.ownerId, auth.user.userId)))
+        .where(and(eq(tags.name, body.name), ne(tags.id, tagId), eq(tags.ownerId, existingTag.ownerId)))
         .limit(1);
 
       if (duplicateName) {
@@ -172,7 +175,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       const [duplicateSlug] = await db
         .select()
         .from(tags)
-        .where(and(eq(tags.slug, body.slug), ne(tags.id, tagId), eq(tags.ownerId, auth.user.userId)))
+        .where(and(eq(tags.slug, body.slug), ne(tags.id, tagId), eq(tags.ownerId, existingTag.ownerId)))
         .limit(1);
 
       if (duplicateSlug) {
@@ -198,14 +201,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         ...(body.isActive !== undefined && { isActive: body.isActive }),
         updatedAt: new Date(),
       })
-      .where(and(eq(tags.id, tagId), eq(tags.ownerId, auth.user.userId)));
+      .where(eq(tags.id, tagId));
 
     // 重新查询更新后的标签
-    const [updatedTag] = await db
-      .select()
-      .from(tags)
-      .where(and(eq(tags.id, tagId), eq(tags.ownerId, auth.user.userId)))
-      .limit(1);
+    const [updatedTag] = await db.select().from(tags).where(eq(tags.id, tagId)).limit(1);
 
     logUserActivity({
       userId: auth.user.userId,
@@ -254,6 +253,7 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
     }
     const { id } = await context.params;
     const tagId = parseInt(id);
+    const isRoot = isJwtInMemorySuperRoot(auth.user);
 
     if (isNaN(tagId)) {
       return NextResponse.json(
@@ -270,7 +270,7 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
     const [existingTag] = await db
       .select()
       .from(tags)
-      .where(and(eq(tags.id, tagId), eq(tags.ownerId, auth.user.userId)))
+      .where(isRoot ? eq(tags.id, tagId) : and(eq(tags.id, tagId), eq(tags.ownerId, auth.user.userId)))
       .limit(1);
 
     if (!existingTag) {
@@ -307,7 +307,7 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
     });
 
     // 删除标签
-    await db.delete(tags).where(and(eq(tags.id, tagId), eq(tags.ownerId, auth.user.userId)));
+    await db.delete(tags).where(eq(tags.id, tagId));
 
     return NextResponse.json({
       success: true,

@@ -9,12 +9,24 @@ import { db } from "@/lib/db/config";
 import { posts, userPostLikes } from "@/lib/db/schema";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
 import { createErrorResponse, createSuccessResponse, toJsonSafeInt } from "@/lib/utils";
+import { isJwtInMemorySuperRoot } from "@/lib/utils/authz";
 import { findMysqlDriverError } from "@/lib/utils/mysql-error";
+import type { AuthJwtPayload } from "@/lib/utils/request-auth";
 import { requireAuthUser } from "@/lib/utils/request-auth";
 
 async function getLikeCount(postId: number): Promise<number> {
   const rows = await db.select({ likeCount: posts.likeCount }).from(posts).where(eq(posts.id, postId)).limit(1);
   return toJsonSafeInt(rows[0]?.likeCount, 0);
+}
+
+function canInteractPost(
+  post: { status: string | null; visibility: string | null; authorId: number },
+  authUser?: AuthJwtPayload
+): boolean {
+  if (post.status !== "published")
+    return Boolean(authUser && (authUser.userId === post.authorId || isJwtInMemorySuperRoot(authUser)));
+  if (post.visibility !== "private") return true;
+  return Boolean(authUser && (authUser.userId === post.authorId || isJwtInMemorySuperRoot(authUser)));
 }
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -25,15 +37,25 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json(createErrorResponse("无效的文章ID"), { status: 400 });
     }
 
-    const postRows = await db.select({ id: posts.id }).from(posts).where(eq(posts.id, postId)).limit(1);
+    const postRows = await db
+      .select({ id: posts.id, authorId: posts.authorId, status: posts.status, visibility: posts.visibility })
+      .from(posts)
+      .where(eq(posts.id, postId))
+      .limit(1);
     if (postRows.length === 0) {
       return NextResponse.json(createErrorResponse("文章不存在"), { status: 404 });
     }
 
     const auth = requireAuthUser(request);
     if (!auth.ok) {
+      if (!canInteractPost(postRows[0])) {
+        return NextResponse.json(createErrorResponse("该文章当前不可互动"), { status: 403 });
+      }
       const likeCount = await getLikeCount(postId);
       return NextResponse.json(createSuccessResponse({ liked: false, likeCount }, "获取点赞状态成功"), { status: 200 });
+    }
+    if (!canInteractPost(postRows[0], auth.user)) {
+      return NextResponse.json(createErrorResponse("该文章当前不可互动"), { status: 403 });
     }
 
     const likedRows = await db
@@ -72,9 +94,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json(createErrorResponse("无效的文章ID"), { status: 400 });
     }
 
-    const postRows = await db.select({ id: posts.id }).from(posts).where(eq(posts.id, postId)).limit(1);
+    const postRows = await db
+      .select({ id: posts.id, authorId: posts.authorId, status: posts.status, visibility: posts.visibility })
+      .from(posts)
+      .where(eq(posts.id, postId))
+      .limit(1);
     if (postRows.length === 0) {
       return NextResponse.json(createErrorResponse("文章不存在"), { status: 404 });
+    }
+    if (!canInteractPost(postRows[0], auth.user)) {
+      return NextResponse.json(createErrorResponse("该文章当前不可互动"), { status: 403 });
     }
 
     const likedRows = await db

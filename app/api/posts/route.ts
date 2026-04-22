@@ -36,7 +36,8 @@ export async function GET(request: NextRequest) {
       sortOrder,
       status: (searchParams.get("status") as any) || undefined,
       visibility: (searchParams.get("visibility") as any) || undefined,
-      includePasswordProtected: searchParams.get("includePasswordProtected") === "true",
+      // 安全收敛：列表默认不放开密码保护文章，避免存在性侧信道暴露。
+      includePasswordProtected: false,
       authorId: searchParams.get("authorId") ? parseInt(searchParams.get("authorId")!) : undefined,
       tagId: searchParams.get("tagId") ? parseInt(searchParams.get("tagId")!) : undefined,
       search: searchParams.get("search") || undefined,

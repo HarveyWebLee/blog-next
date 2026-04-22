@@ -256,9 +256,9 @@ export class PostService {
       // 可见性过滤
       if (params.visibility) {
         conditions.push(eq(posts.visibility, params.visibility));
-      } else if (params.includePasswordProtected) {
-        // 列表场景允许展示公开 + 密码保护文章，显式排除 private
-        conditions.push(inArray(posts.visibility, ["public", "password"]));
+      } else {
+        // 默认仅返回公开文章，避免列表泄露 private/password 文章存在性
+        conditions.push(eq(posts.visibility, "public"));
       }
 
       // 作者过滤
@@ -308,7 +308,6 @@ export class PostService {
           title: posts.title,
           slug: posts.slug,
           excerpt: posts.excerpt,
-          content: posts.content,
           featuredImage: posts.featuredImage,
           authorId: posts.authorId,
           categoryId: posts.categoryId,
@@ -348,7 +347,6 @@ export class PostService {
         title: row.title,
         slug: row.slug,
         excerpt: row.excerpt,
-        content: row.content,
         featuredImage: row.featuredImage,
         authorId: row.authorId,
         categoryId: row.categoryId,

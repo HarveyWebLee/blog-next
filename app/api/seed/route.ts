@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { categories, posts, tags, users } from "@/lib/db/schema";
+import { requireInMemorySuperRoot } from "@/lib/utils/authz";
 
 const DEFAULT_OWNER_ID = 1;
 
@@ -311,6 +312,17 @@ async function verifyData() {
 
 export async function GET(request: NextRequest) {
   try {
+    const auth = requireInMemorySuperRoot(request);
+    if (!auth.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: auth.message,
+        },
+        { status: auth.status }
+      );
+    }
+
     console.log("🌱 开始数据库种子数据初始化...");
     console.log("=".repeat(50));
 

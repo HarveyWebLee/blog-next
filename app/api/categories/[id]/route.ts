@@ -16,6 +16,7 @@ import { and, count, eq, ne } from "drizzle-orm";
 import { db } from "@/lib/db/config";
 import { categories, posts } from "@/lib/db/schema";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
+import { isJwtInMemorySuperRoot } from "@/lib/utils/authz";
 import { requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, Category, UpdateCategoryRequest } from "@/types/blog";
 
@@ -38,6 +39,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
     const { id } = await params;
     const categoryId = parseInt(id);
+    const isRoot = isJwtInMemorySuperRoot(auth.user);
 
     if (isNaN(categoryId)) {
       return NextResponse.json(
@@ -54,7 +56,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const [category] = await db
       .select()
       .from(categories)
-      .where(and(eq(categories.id, categoryId), eq(categories.ownerId, auth.user.userId)))
+      .where(
+        isRoot
+          ? eq(categories.id, categoryId)
+          : and(eq(categories.id, categoryId), eq(categories.ownerId, auth.user.userId))
+      )
       .limit(1);
 
     if (!category) {
@@ -116,6 +122,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const { id } = await params;
     const categoryId = parseInt(id);
     const body: UpdateCategoryRequest = await request.json();
+    const isRoot = isJwtInMemorySuperRoot(auth.user);
 
     if (isNaN(categoryId)) {
       return NextResponse.json(
@@ -132,7 +139,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const [existingCategory] = await db
       .select()
       .from(categories)
-      .where(and(eq(categories.id, categoryId), eq(categories.ownerId, auth.user.userId)))
+      .where(
+        isRoot
+          ? eq(categories.id, categoryId)
+          : and(eq(categories.id, categoryId), eq(categories.ownerId, auth.user.userId))
+      )
       .limit(1);
 
     if (!existingCategory) {
@@ -152,7 +163,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         .select()
         .from(categories)
         .where(
-          and(eq(categories.name, body.name), ne(categories.id, categoryId), eq(categories.ownerId, auth.user.userId))
+          and(
+            eq(categories.name, body.name),
+            ne(categories.id, categoryId),
+            eq(categories.ownerId, existingCategory.ownerId)
+          )
         )
         .limit(1);
 
@@ -174,7 +189,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         .select()
         .from(categories)
         .where(
-          and(eq(categories.slug, body.slug), ne(categories.id, categoryId), eq(categories.ownerId, auth.user.userId))
+          and(
+            eq(categories.slug, body.slug),
+            ne(categories.id, categoryId),
+            eq(categories.ownerId, existingCategory.ownerId)
+          )
         )
         .limit(1);
 
@@ -202,14 +221,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         ...(body.isActive !== undefined && { isActive: body.isActive }),
         updatedAt: new Date(),
       })
-      .where(and(eq(categories.id, categoryId), eq(categories.ownerId, auth.user.userId)));
+      .where(eq(categories.id, categoryId));
 
     // 重新查询更新后的分类
-    const [updatedCategory] = await db
-      .select()
-      .from(categories)
-      .where(and(eq(categories.id, categoryId), eq(categories.ownerId, auth.user.userId)))
-      .limit(1);
+    const [updatedCategory] = await db.select().from(categories).where(eq(categories.id, categoryId)).limit(1);
 
     logUserActivity({
       userId: auth.user.userId,
@@ -263,6 +278,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     }
     const { id } = await params;
     const categoryId = parseInt(id);
+    const isRoot = isJwtInMemorySuperRoot(auth.user);
 
     if (isNaN(categoryId)) {
       return NextResponse.json(
@@ -279,7 +295,11 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     const [existingCategory] = await db
       .select()
       .from(categories)
-      .where(and(eq(categories.id, categoryId), eq(categories.ownerId, auth.user.userId)))
+      .where(
+        isRoot
+          ? eq(categories.id, categoryId)
+          : and(eq(categories.id, categoryId), eq(categories.ownerId, auth.user.userId))
+      )
       .limit(1);
 
     if (!existingCategory) {
@@ -333,7 +353,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     });
 
     // 删除分类
-    await db.delete(categories).where(and(eq(categories.id, categoryId), eq(categories.ownerId, auth.user.userId)));
+    await db.delete(categories).where(eq(categories.id, categoryId));
 
     return NextResponse.json({
       success: true,
