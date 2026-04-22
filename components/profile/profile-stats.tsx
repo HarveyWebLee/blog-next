@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Card, CardBody } from "@heroui/react";
 import { Bell, BookOpen, Eye, Heart, MessageSquare, Star, UserPlus, Users } from "lucide-react";
 
@@ -20,9 +21,9 @@ const statsItems = [
   { key: "totalViews", icon: Eye, tone: "success" as const },
   { key: "totalLikes", icon: Heart, tone: "danger" as const },
   { key: "totalFavorites", icon: Star, tone: "warning" as const },
-  { key: "totalFollowers", icon: Users, tone: "primary" as const },
-  { key: "totalFollowing", icon: UserPlus, tone: "secondary" as const },
-  { key: "unreadNotifications", icon: Bell, tone: "default" as const },
+  { key: "totalFollowers", icon: Users, tone: "primary" as const, href: "/profile/followers" },
+  { key: "totalFollowing", icon: UserPlus, tone: "secondary" as const, href: "/profile/following" },
+  { key: "unreadNotifications", icon: Bell, tone: "default" as const, href: "/profile/notifications?status=unread" },
 ];
 
 const toneIconWrap: Record<(typeof statsItems)[number]["tone"], string> = {
@@ -189,23 +190,38 @@ export default function ProfileStats({ lang }: ProfileStatsProps) {
             const value = stats[item.key as keyof ProfileStatsData] as number;
             const wrap = toneIconWrap[item.tone];
 
-            return (
-              <div
-                key={item.key}
-                className="rounded-xl border border-white/10 bg-white/5 p-4 dark:border-white/10 dark:bg-black/20"
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${wrap}`}>
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium text-default-500">
-                      {t.labels[item.key as keyof typeof t.labels]}
-                    </p>
-                    <p className="text-xl font-bold tracking-tight text-foreground">{value.toLocaleString()}</p>
-                  </div>
+            const content = (
+              <div className="flex items-center gap-3">
+                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${wrap}`}>
+                  <Icon className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium text-default-500">{t.labels[item.key as keyof typeof t.labels]}</p>
+                  <p className="text-xl font-bold tracking-tight text-foreground">{value.toLocaleString()}</p>
                 </div>
               </div>
+            );
+
+            if (!item.href) {
+              return (
+                <div
+                  key={item.key}
+                  className="rounded-xl border border-white/10 bg-white/5 p-4 dark:border-white/10 dark:bg-black/20"
+                >
+                  {content}
+                </div>
+              );
+            }
+
+            return (
+              <Link
+                key={item.key}
+                href={`/${lang}${item.href}`}
+                className="rounded-xl border border-white/10 bg-white/5 p-4 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 dark:border-white/10 dark:bg-black/20 dark:hover:bg-black/30"
+                aria-label={t.labels[item.key as keyof typeof t.labels]}
+              >
+                {content}
+              </Link>
             );
           })}
         </div>

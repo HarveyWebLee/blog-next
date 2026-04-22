@@ -68,6 +68,18 @@ export const API_DOCS_ENDPOINT_DESCRIPTIONS: Record<string, Partial<Record<strin
     GET: "个人活动日志分页列表（Bearer）",
     POST: "记录一条用户活动（Bearer）",
   },
+  "/api/profile/followers": {
+    GET: "粉丝列表（分页，可按用户名/显示名搜索；支持 mutualOnly=true 仅互关）",
+  },
+  "/api/profile/following": {
+    GET: "关注列表（分页，可按用户名/显示名搜索；支持 mutualOnly=true 仅互关）",
+  },
+  "/api/profile/follow": {
+    POST: "关注指定用户（创建关注关系，并尝试给目标用户写入 follow 通知）",
+  },
+  "/api/profile/follow/{targetUserId}": {
+    DELETE: "取消关注指定用户",
+  },
   "/api/profile/favorites": {
     GET: "收藏列表（Bearer）",
     POST: "添加收藏（Bearer）",
@@ -213,6 +225,18 @@ export const API_DOCS_AUTH_HINTS: Record<string, Partial<Record<string, string>>
   "/api/profile/activities": {
     GET: "必须：Authorization: Bearer",
     POST: "必须：Authorization: Bearer",
+  },
+  "/api/profile/followers": {
+    GET: "必须：Authorization: Bearer。支持 page/limit/search/mutualOnly；结果含 isMutual、followedAt、lastActiveAt。",
+  },
+  "/api/profile/following": {
+    GET: "必须：Authorization: Bearer。支持 page/limit/search/mutualOnly；结果含 isMutual、followedAt、lastActiveAt。",
+  },
+  "/api/profile/follow": {
+    POST: "必须：Authorization: Bearer。Body：{ followingId }；不允许关注自己，重复关注返回 409。",
+  },
+  "/api/profile/follow/{targetUserId}": {
+    DELETE: "必须：Authorization: Bearer。Path：targetUserId；未关注返回 404。",
   },
   "/api/profile/favorites": {
     GET: "必须：Authorization: Bearer",

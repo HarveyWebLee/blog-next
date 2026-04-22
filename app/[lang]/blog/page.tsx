@@ -23,6 +23,15 @@ export default async function BlogPage({ params, searchParams }: BlogPageProps) 
   const { lang } = await params;
   const sp = await searchParams;
   const initialTagId = parsePositiveIntParam(sp.tagId);
+  const initialAuthorId = parsePositiveIntParam(sp.authorId);
+  const initialPostId = parsePositiveIntParam(sp.postId);
 
-  return <BlogPageContent lang={lang} initialTagId={initialTagId} />;
+  return (
+    <BlogPageContent
+      lang={lang}
+      initialTagId={initialTagId}
+      initialAuthorId={initialAuthorId}
+      initialPostId={initialPostId}
+    />
+  );
 }

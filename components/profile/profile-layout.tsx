@@ -3,7 +3,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@heroui/react";
-import { Bell, BookOpen, FileCode2, FolderTree, Heart, Menu, Settings, Star, Tags, User, Users } from "lucide-react";
+import {
+  Bell,
+  BookOpen,
+  FileCode2,
+  FolderTree,
+  Heart,
+  Menu,
+  Settings,
+  Star,
+  Tags,
+  User,
+  UserPlus,
+  Users,
+} from "lucide-react";
 
 import { PROFILE_PAGE_BG } from "@/components/profile/profile-ui-presets";
 import { useAuth } from "@/lib/contexts/auth-context";
@@ -40,6 +53,8 @@ export default function ProfileLayout({ children, lang, dict: _dict }: ProfileLa
             posts: "My Posts",
             likes: "My Likes",
             favorites: "My Favorites",
+            followers: "Followers",
+            following: "Following",
             notifications: "Notifications",
             settings: "Settings",
             categories: "Category Manage",
@@ -56,6 +71,8 @@ export default function ProfileLayout({ children, lang, dict: _dict }: ProfileLa
               posts: "自分の記事",
               likes: "自分のいいね",
               favorites: "お気に入り",
+              followers: "フォロワー",
+              following: "フォロー中",
               notifications: "通知",
               settings: "アカウント設定",
               categories: "カテゴリ管理",
@@ -71,6 +88,8 @@ export default function ProfileLayout({ children, lang, dict: _dict }: ProfileLa
               posts: "我的文章",
               likes: "我的点赞",
               favorites: "我的收藏",
+              followers: "我的粉丝",
+              following: "我的关注",
               notifications: "通知中心",
               settings: "账户设置",
               categories: "分类管理",
@@ -92,6 +111,8 @@ export default function ProfileLayout({ children, lang, dict: _dict }: ProfileLa
       { key: "posts", label: L.posts, icon: BookOpen, href: "/profile/posts" },
       { key: "likes", label: L.likes, icon: Heart, href: "/profile/likes" },
       { key: "favorites", label: L.favorites, icon: Star, href: "/profile/favorites" },
+      { key: "followers", label: L.followers, icon: Users, href: "/profile/followers" },
+      { key: "following", label: L.following, icon: UserPlus, href: "/profile/following" },
       { key: "notifications", label: L.notifications, icon: Bell, href: "/profile/notifications" },
       { key: "categories-manage", label: L.categories, icon: FolderTree, href: "/profile/categories" },
       { key: "tags-manage", label: L.tags, icon: Tags, href: "/profile/tags" },

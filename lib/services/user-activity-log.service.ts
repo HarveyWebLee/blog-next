@@ -28,6 +28,8 @@ export const UserActivityAction = {
   TAG_UPDATED: "tag_updated",
   TAG_DELETED: "tag_deleted",
   PROFILE_UPDATED: "profile_updated",
+  USER_FOLLOWED: "user_followed",
+  USER_UNFOLLOWED: "user_unfollowed",
   NEWSLETTER_SUBSCRIBED: "newsletter_subscribed",
   NEWSLETTER_UNSUBSCRIBED: "newsletter_unsubscribed",
   ADMIN_USER_UPDATED: "admin_user_updated",

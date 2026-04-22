@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { Badge, Button, Card, CardBody, Chip } from "@heroui/react";
 import {
   AtSign,
@@ -20,10 +21,13 @@ import {
   PROFILE_GLASS_CARD_INTERACTIVE,
   PROFILE_NATIVE_CONTROL,
 } from "@/components/profile/profile-ui-presets";
+import ProfileRelationsAPI from "@/lib/api/profile-relations";
+import { message } from "@/lib/utils";
 import type { ApiResponse, PaginatedResponseData, UserNotification } from "@/types/blog";
 
 interface ProfileNotificationsProps {
   lang: string;
+  initialReadFilter?: "all" | "unread" | "read";
 }
 
 interface Notification {
@@ -56,7 +60,7 @@ const notificationColors = {
   system: "bg-default-200/80 text-default-600",
 };
 
-export default function ProfileNotifications({ lang }: ProfileNotificationsProps) {
+export default function ProfileNotifications({ lang, initialReadFilter = "all" }: ProfileNotificationsProps) {
   const t =
     lang === "en-US"
       ? {
@@ -72,11 +76,21 @@ export default function ProfileNotifications({ lang }: ProfileNotificationsProps
           markRead: "Mark as read",
           del: "Delete",
           more: "More",
+          primaryActions: {
+            comment: "View comment",
+            like: "View liked post",
+            follow: "Follow back",
+            mention: "View mention",
+            system: "View details",
+          },
           emptyMatch: "No matching notifications",
           empty: "No notifications",
           emptyMatchDesc: "Try adjusting filters",
           emptyDesc: "You will receive notifications here",
           refresh: "Refresh",
+          followerMissing: "Follower info missing",
+          followBackOk: "Followed back",
+          followBackFail: "Follow back failed",
           labels: { comment: "Comment", like: "Like", follow: "Follow", mention: "Mention", system: "System" },
           agoMin: "m ago",
           agoHour: "h ago",
@@ -96,11 +110,21 @@ export default function ProfileNotifications({ lang }: ProfileNotificationsProps
             markRead: "既読にする",
             del: "削除",
             more: "その他",
+            primaryActions: {
+              comment: "コメントを見る",
+              like: "記事を見る",
+              follow: "フォローバック",
+              mention: "メンションを見る",
+              system: "詳細を見る",
+            },
             emptyMatch: "一致する通知がありません",
             empty: "通知はありません",
             emptyMatchDesc: "条件を調整してください",
             emptyDesc: "新しい通知がここに表示されます",
             refresh: "更新",
+            followerMissing: "フォロワー情報が不足しています",
+            followBackOk: "フォローバックしました",
+            followBackFail: "フォローバックに失敗しました",
             labels: {
               comment: "コメント",
               like: "いいね",
@@ -125,11 +149,21 @@ export default function ProfileNotifications({ lang }: ProfileNotificationsProps
             markRead: "标记为已读",
             del: "删除",
             more: "更多",
+            primaryActions: {
+              comment: "查看评论",
+              like: "查看被赞文章",
+              follow: "回关",
+              mention: "查看提及",
+              system: "查看详情",
+            },
             emptyMatch: "没有找到匹配的通知",
             empty: "暂无通知",
             emptyMatchDesc: "尝试调整筛选条件",
             emptyDesc: "当有新的活动时，您会在这里收到通知",
             refresh: "刷新通知",
+            followerMissing: "缺少关注者信息",
+            followBackOk: "已回关",
+            followBackFail: "回关失败",
             labels: { comment: "评论", like: "点赞", follow: "关注", mention: "提及", system: "系统" },
             agoMin: "分钟前",
             agoHour: "小时前",
@@ -138,13 +172,18 @@ export default function ProfileNotifications({ lang }: ProfileNotificationsProps
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState<string>("all");
-  const [readFilter, setReadFilter] = useState<string>("all");
+  const [readFilter, setReadFilter] = useState<string>(initialReadFilter);
+  const [followActionId, setFollowActionId] = useState<number | null>(null);
   const buildAuthHeaders = useCallback((): Record<string, string> => {
     if (typeof window === "undefined") return {};
     const token = localStorage.getItem("accessToken");
     if (!token) return {};
     return { Authorization: `Bearer ${token}` };
   }, []);
+
+  useEffect(() => {
+    setReadFilter(initialReadFilter);
+  }, [initialReadFilter]);
 
   const fetchNotifications = useCallback(async () => {
     setLoading(true);
@@ -261,6 +300,44 @@ export default function ProfileNotifications({ lang }: ProfileNotificationsProps
     } catch (error) {
       console.error("删除通知失败:", error);
     }
+  };
+
+  const handleFollowBackFromNotification = async (notification: Notification) => {
+    const followerId = Number(notification.data?.followerId);
+    if (!Number.isInteger(followerId) || followerId <= 0) {
+      message.warning(t.followerMissing);
+      return;
+    }
+    setFollowActionId(notification.id);
+    try {
+      await ProfileRelationsAPI.followUser(followerId);
+      await handleMarkAsRead(notification.id);
+      message.success(t.followBackOk);
+    } catch (error) {
+      console.error("通知回关失败:", error);
+      message.error(error instanceof Error ? error.message : t.followBackFail);
+    } finally {
+      setFollowActionId(null);
+    }
+  };
+
+  const buildPrimaryActionHref = (notification: Notification): string => {
+    const postSlug = typeof notification.data?.postSlug === "string" ? notification.data.postSlug : "";
+    const postId = Number(notification.data?.postId);
+    const commentId = Number(notification.data?.commentId);
+    if (postSlug) {
+      const anchor = Number.isInteger(commentId) && commentId > 0 ? `#comment-${commentId}` : "";
+      return `/${lang}/blog/${postSlug}${anchor}`;
+    }
+    if (Number.isInteger(postId) && postId > 0) {
+      return `/${lang}/blog?postId=${postId}`;
+    }
+    if (notification.type === "mention" || notification.type === "comment" || notification.type === "like") {
+      return `/${lang}/blog`;
+    }
+    if (notification.type === "follow") return `/${lang}/profile/followers`;
+    if (notification.type === "system") return `/${lang}/profile/notifications`;
+    return `/${lang}/profile/notifications`;
   };
 
   if (loading) {
@@ -415,6 +492,29 @@ export default function ProfileNotifications({ lang }: ProfileNotificationsProps
 
                       {/* 操作按钮 */}
                       <div className="ml-0 flex shrink-0 items-center gap-1 sm:ml-4">
+                        {notification.type === "follow" ? (
+                          <Button
+                            variant="flat"
+                            size="sm"
+                            color="success"
+                            className="mr-1"
+                            isLoading={followActionId === notification.id}
+                            onPress={() => void handleFollowBackFromNotification(notification)}
+                          >
+                            {t.primaryActions[notification.type]}
+                          </Button>
+                        ) : (
+                          <Button
+                            as={Link}
+                            href={buildPrimaryActionHref(notification)}
+                            variant="flat"
+                            size="sm"
+                            color="primary"
+                            className="mr-1"
+                          >
+                            {t.primaryActions[notification.type]}
+                          </Button>
+                        )}
                         {!notification.isRead && (
                           <Button
                             isIconOnly

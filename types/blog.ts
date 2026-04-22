@@ -627,6 +627,26 @@ export interface ProfileStats {
 }
 
 /**
+ * 关注关系列表项（粉丝/关注通用）
+ * 用于前端关系页展示，后端可按需补充字段；已覆盖当前 MVP 需要的最小集合。
+ */
+export interface ProfileRelationItem {
+  userId: number;
+  username: string;
+  displayName?: string;
+  avatar?: string;
+  bio?: string;
+  followedAt?: Date;
+  lastActiveAt?: Date;
+  isMutual?: boolean;
+}
+
+/**
+ * 关注关系分页响应
+ */
+export type ProfileRelationListResponse = PaginatedResponseData<ProfileRelationItem>;
+
+/**
  * 个人资料更新请求接口
  */
 export interface UpdateProfileRequest {

@@ -35,9 +35,13 @@ export type BlogPageContentProps = {
   lang: string;
   /** 由服务端 page 从 searchParams.tagId 解析；与侧栏热门标签一致 */
   initialTagId?: number;
+  /** 由服务端 page 从 searchParams.authorId 解析；用于“查看某位作者的文章” */
+  initialAuthorId?: number;
+  /** 由服务端 page 从 searchParams.postId 解析；用于通知兜底跳转到文章详情 */
+  initialPostId?: number;
 };
 
-export function BlogPageContent({ lang, initialTagId }: BlogPageContentProps) {
+export function BlogPageContent({ lang, initialTagId, initialAuthorId, initialPostId }: BlogPageContentProps) {
   const router = useRouter();
   const blogBasePath = `/${lang}/blog`;
 
@@ -126,6 +130,7 @@ export function BlogPageContent({ lang, initialTagId }: BlogPageContentProps) {
   const [pendingPost, setPendingPost] = useState<PostData | null>(null);
   const [passwordVerifying, setPasswordVerifying] = useState(false);
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const [resolvingPostId, setResolvingPostId] = useState(false);
 
   const {
     posts,
@@ -148,6 +153,9 @@ export function BlogPageContent({ lang, initialTagId }: BlogPageContentProps) {
       limit: 6,
       ...(initialTagId != null && Number.isFinite(initialTagId) && initialTagId > 0
         ? { tagId: Math.floor(initialTagId) }
+        : {}),
+      ...(initialAuthorId != null && Number.isFinite(initialAuthorId) && initialAuthorId > 0
+        ? { authorId: Math.floor(initialAuthorId) }
         : {}),
     },
   });
@@ -172,6 +180,7 @@ export function BlogPageContent({ lang, initialTagId }: BlogPageContentProps) {
   }, [initialTagId, params.tagId, filterByTag]);
 
   const activeTagId = params.tagId ?? undefined;
+  const activeAuthorId = params.authorId ?? undefined;
 
   const tagHeading = useMemo(() => {
     if (activeTagId == null) return "";
@@ -182,6 +191,13 @@ export function BlogPageContent({ lang, initialTagId }: BlogPageContentProps) {
     return `含「${name}」标签的文章`;
   }, [activeTagId, lang]);
 
+  const authorHeading = useMemo(() => {
+    if (activeAuthorId == null) return "";
+    if (lang === "en-US") return `Posts by author #${activeAuthorId}`;
+    if (lang === "ja-JP") return `投稿者 #${activeAuthorId} の記事一覧`;
+    return `作者 #${activeAuthorId} 的文章`;
+  }, [activeAuthorId, lang]);
+
   const handleSearch = (value: string) => {
     setSearchValue(value);
     searchPosts(value);
@@ -189,6 +205,11 @@ export function BlogPageContent({ lang, initialTagId }: BlogPageContentProps) {
 
   const handleClearTagFilter = () => {
     filterByTag(null);
+    // 清除标签筛选时保留作者筛选；若无作者筛选则回到纯博客首页。
+    if (activeAuthorId != null) {
+      router.replace(`${blogBasePath}?authorId=${activeAuthorId}`, { scroll: false });
+      return;
+    }
     router.replace(blogBasePath, { scroll: false });
   };
 
@@ -325,6 +346,35 @@ export function BlogPageContent({ lang, initialTagId }: BlogPageContentProps) {
     };
   }, [posts, isAuthenticated]);
 
+  /**
+   * 通知兜底跳转：当 URL 仅带 postId 时，先解析对应 slug，再跳转详情页。
+   * 这样通知在缺少 postSlug 的情况下仍可落到具体文章，而不是停在列表页。
+   */
+  useEffect(() => {
+    if (initialPostId == null || !Number.isFinite(initialPostId) || initialPostId <= 0) return;
+    let cancelled = false;
+    const run = async () => {
+      try {
+        setResolvingPostId(true);
+        const res = await fetch(`/api/posts/${initialPostId}`);
+        const json = await res.json();
+        if (cancelled) return;
+        const slug = json?.data?.posts?.slug || json?.data?.slug;
+        if (typeof slug === "string" && slug.trim() !== "") {
+          router.replace(`/${lang}/blog/${slug}`);
+        }
+      } catch (e) {
+        console.error("postId 跳转解析失败:", e);
+      } finally {
+        if (!cancelled) setResolvingPostId(false);
+      }
+    };
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialPostId, lang, router]);
+
   if (error) {
     return (
       <div className="min-h-screen">
@@ -354,7 +404,8 @@ export function BlogPageContent({ lang, initialTagId }: BlogPageContentProps) {
     <div className="min-h-screen">
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-4">
         <div className="lg:col-span-3">
-          {activeTagId != null && Number.isFinite(activeTagId) && activeTagId > 0 && (
+          {(activeTagId != null && Number.isFinite(activeTagId) && activeTagId > 0) ||
+          (activeAuthorId != null && Number.isFinite(activeAuthorId) && activeAuthorId > 0) ? (
             <Card className="mb-6 border-0 bg-white/[0.025] backdrop-blur-md animate-fade-in-up dark:bg-black/[0.025]">
               <CardBody className="flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-start gap-3">
@@ -362,7 +413,11 @@ export function BlogPageContent({ lang, initialTagId }: BlogPageContentProps) {
                     <Hash className="h-5 w-5" aria-hidden />
                   </span>
                   <div className="min-w-0">
-                    <p className="text-lg font-semibold tracking-tight text-foreground">{tagHeading}</p>
+                    <p className="text-lg font-semibold tracking-tight text-foreground">
+                      {activeTagId != null && Number.isFinite(activeTagId) && activeTagId > 0
+                        ? tagHeading
+                        : authorHeading}
+                    </p>
                   </div>
                 </div>
                 <Button
@@ -375,7 +430,7 @@ export function BlogPageContent({ lang, initialTagId }: BlogPageContentProps) {
                 </Button>
               </CardBody>
             </Card>
-          )}
+          ) : null}
 
           <Card className="mb-8 border-0 bg-white/[0.025] backdrop-blur-md animate-fade-in-up dark:bg-black/[0.025]">
             <CardHeader className="flex gap-3">
@@ -450,7 +505,7 @@ export function BlogPageContent({ lang, initialTagId }: BlogPageContentProps) {
             </CardBody>
           </Card>
 
-          {loading ? (
+          {loading || resolvingPostId ? (
             <Card className="border-0 bg-white/[0.025] backdrop-blur-md animate-fade-in-up dark:bg-black/[0.025]">
               <CardBody className="py-12 text-center">
                 <Spinner size="lg" color="primary" />
