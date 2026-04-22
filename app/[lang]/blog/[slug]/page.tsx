@@ -48,6 +48,8 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
   const [isFavorited, setIsFavorited] = useState(false);
   const [likeLoading, setLikeLoading] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
+  const [isFollowingAuthor, setIsFollowingAuthor] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [favoriteCount, setFavoriteCount] = useState(0);
   const lang = resolvedParams?.lang || "zh-CN";
@@ -75,6 +77,11 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
           submitComment: "Post Comment",
           anonymous: "Anonymous",
           editArticle: "Edit post",
+          follow: "Follow",
+          following: "Following",
+          followFailed: "Failed to follow, try again",
+          followSuccess: "Followed",
+          loginToFollow: "Please login first",
         }
       : lang === "ja-JP"
         ? {
@@ -101,6 +108,11 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
             submitComment: "コメント投稿",
             anonymous: "匿名ユーザー",
             editArticle: "記事を編集",
+            follow: "フォロー",
+            following: "フォロー中",
+            followFailed: "フォローに失敗しました",
+            followSuccess: "フォローしました",
+            loginToFollow: "先にログインしてください",
           }
         : {
             fetchFailed: "获取博客失败",
@@ -126,6 +138,11 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
             submitComment: "发表评论",
             anonymous: "匿名用户",
             editArticle: "编辑文章",
+            follow: "关注",
+            following: "已关注",
+            followFailed: "关注失败，请重试",
+            followSuccess: "关注成功",
+            loginToFollow: "请先登录",
           };
 
   const { user, isAuthenticated } = useAuth();
@@ -333,6 +350,46 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
       message.error("收藏失败");
     } finally {
       setFavoriteLoading(false);
+    }
+  };
+
+  const handleFollowAuthor = async () => {
+    const authorId = Number(post?.authorId || post?.author?.id);
+    if (!Number.isInteger(authorId) || authorId <= 0) return;
+    if (user != null && authorId === user.id) return;
+    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+    if (!token) {
+      message.warning(t.loginToFollow);
+      router.push(`/${lang}/auth/login`);
+      return;
+    }
+    try {
+      setFollowLoading(true);
+      const response = await fetch("/api/profile/follow", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ followingId: authorId }),
+      });
+      const result = await response.json();
+      if (result?.success) {
+        setIsFollowingAuthor(true);
+        message.success(t.followSuccess);
+        return;
+      }
+      // 已关注视为幂等成功，避免用户重复点击时产生负反馈。
+      if (response.status === 409) {
+        setIsFollowingAuthor(true);
+        return;
+      }
+      message.error(result?.message || t.followFailed);
+    } catch (error) {
+      console.error("关注作者失败:", error);
+      message.error(t.followFailed);
+    } finally {
+      setFollowLoading(false);
     }
   };
 
@@ -552,13 +609,27 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
               {/* 博客元信息 - 使用渐变色悬停效果 */}
               <div className="flex flex-wrap items-center gap-6 text-sm text-default-500 py-4 border-y border-divider animate-blog-slide-in-right delay-300">
                 <div className="meta-item flex items-center gap-2">
-                  <Avatar
-                    size="sm"
-                    src={post.author?.avatar || undefined}
-                    name={post.author?.displayName || t.unknownAuthor}
-                    className="w-8 h-8 hover-lift"
-                  />
-                  <span className="font-medium">{post.author?.displayName || t.unknownAuthor}</span>
+                  {Number(post.authorId) > 0 ? (
+                    <Link href={`/${lang}/users/${post.authorId}`} className="flex items-center gap-2">
+                      <Avatar
+                        size="sm"
+                        src={post.author?.avatar || undefined}
+                        name={post.author?.displayName || t.unknownAuthor}
+                        className="w-8 h-8 hover-lift"
+                      />
+                      <span className="font-medium">{post.author?.displayName || t.unknownAuthor}</span>
+                    </Link>
+                  ) : (
+                    <>
+                      <Avatar
+                        size="sm"
+                        src={post.author?.avatar || undefined}
+                        name={post.author?.displayName || t.unknownAuthor}
+                        className="w-8 h-8 hover-lift"
+                      />
+                      <span className="font-medium">{post.author?.displayName || t.unknownAuthor}</span>
+                    </>
+                  )}
                 </div>
                 <div className="meta-item flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
@@ -582,6 +653,20 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
                   <Heart className="w-4 h-4" />
                   <span>{post.likeCount} 个赞</span>
                 </div>
+                {Number(post.authorId) > 0 && (!user || Number(post.authorId) !== user.id) && (
+                  <div className="meta-item">
+                    <Button
+                      size="sm"
+                      variant={isFollowingAuthor ? "flat" : "solid"}
+                      color={isFollowingAuthor ? "success" : "primary"}
+                      onPress={() => void handleFollowAuthor()}
+                      isLoading={followLoading}
+                      isDisabled={isFollowingAuthor}
+                    >
+                      {isFollowingAuthor ? t.following : t.follow}
+                    </Button>
+                  </div>
+                )}
                 {/* 文章状态移动到元信息区右侧，避免在标题区独占一列 */}
                 <div className="w-full sm:w-auto sm:ml-auto flex justify-end">
                   <Chip

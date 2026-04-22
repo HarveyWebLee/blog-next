@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Avatar, Button, Card, CardBody, Chip, Input, Pagination } from "@heroui/react";
-import { Search, UserMinus, Users } from "lucide-react";
+import { CheckCheck, Search, UserMinus, Users } from "lucide-react";
 
 import { PROFILE_GLASS_CARD } from "@/components/profile/profile-ui-presets";
 import ProfileRelationsAPI from "@/lib/api/profile-relations";
@@ -28,6 +28,7 @@ export default function ProfileFollowing({ lang }: ProfileFollowingProps) {
           subtitle: "People you follow",
           searchPh: "Search following...",
           mutual: "Mutual follow",
+          mutualDone: "Mutual following",
           unfollow: "Unfollow",
           viewProfile: "View profile",
           mutualOnly: "Mutual only",
@@ -46,6 +47,7 @@ export default function ProfileFollowing({ lang }: ProfileFollowingProps) {
             subtitle: "あなたがフォローしているユーザー",
             searchPh: "フォロー中を検索...",
             mutual: "相互フォロー",
+            mutualDone: "相互フォロー中",
             unfollow: "フォロー解除",
             viewProfile: "プロフィールを見る",
             mutualOnly: "相互のみ",
@@ -63,6 +65,7 @@ export default function ProfileFollowing({ lang }: ProfileFollowingProps) {
             subtitle: "你正在关注的用户",
             searchPh: "搜索关注对象昵称/用户名...",
             mutual: "互相关注",
+            mutualDone: "已互关",
             unfollow: "取消关注",
             viewProfile: "查看主页",
             mutualOnly: "仅互关",
@@ -271,8 +274,14 @@ export default function ProfileFollowing({ lang }: ProfileFollowingProps) {
 
                   <div className="flex flex-wrap items-center gap-2">
                     {item.isMutual ? (
-                      <Chip size="sm" color="success" variant="flat">
-                        {t.mutual}
+                      <Chip
+                        size="sm"
+                        color="success"
+                        variant="flat"
+                        startContent={<CheckCheck className="h-3.5 w-3.5" />}
+                        className="border border-success/65 bg-success/25 font-semibold text-success-700 dark:text-success-300"
+                      >
+                        {t.mutualDone}
                       </Chip>
                     ) : null}
                     <Button
@@ -285,7 +294,7 @@ export default function ProfileFollowing({ lang }: ProfileFollowingProps) {
                     >
                       {t.unfollow}
                     </Button>
-                    <Button as={Link} href={`/${lang}/blog?authorId=${item.userId}`} size="sm" variant="light">
+                    <Button as={Link} href={`/${lang}/users/${item.userId}`} size="sm" variant="light">
                       {t.viewProfile}
                     </Button>
                   </div>

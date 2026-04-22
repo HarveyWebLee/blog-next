@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { Avatar } from "@heroui/avatar";
 import { Button } from "@heroui/button";
 import { Card, CardBody, CardFooter, CardHeader } from "@heroui/card";
@@ -226,12 +227,27 @@ export function PostCard({
               {/* 作者和发布时间 */}
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <Avatar
-                    size="sm"
-                    src={post.author?.avatar || undefined}
-                    name={authorLabel}
-                    className="w-6 h-6 backdrop-blur-md bg-white/[0.03] dark:bg-black/[0.03]"
-                  />
+                  {post.authorId > 0 ? (
+                    <Link
+                      href={`/${lang}/users/${post.authorId}`}
+                      onClick={(e) => e.stopPropagation()}
+                      aria-label={authorLabel}
+                    >
+                      <Avatar
+                        size="sm"
+                        src={post.author?.avatar || undefined}
+                        name={authorLabel}
+                        className="w-6 h-6 backdrop-blur-md bg-white/[0.03] dark:bg-black/[0.03]"
+                      />
+                    </Link>
+                  ) : (
+                    <Avatar
+                      size="sm"
+                      src={post.author?.avatar || undefined}
+                      name={authorLabel}
+                      className="w-6 h-6 backdrop-blur-md bg-white/[0.03] dark:bg-black/[0.03]"
+                    />
+                  )}
                   <span className="truncate text-xs">{authorLabel}</span>
                 </div>
                 <div className="flex items-center gap-1">

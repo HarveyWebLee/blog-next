@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Avatar, Button, Card, CardBody, Chip, Input, Pagination } from "@heroui/react";
-import { Search, UserPlus, Users } from "lucide-react";
+import { CheckCheck, Search, UserPlus, Users } from "lucide-react";
 
 import { PROFILE_GLASS_CARD } from "@/components/profile/profile-ui-presets";
 import ProfileRelationsAPI from "@/lib/api/profile-relations";
@@ -28,6 +28,7 @@ export default function ProfileFollowers({ lang }: ProfileFollowersProps) {
           subtitle: "People who follow you",
           searchPh: "Search followers...",
           mutual: "Mutual follow",
+          mutualDone: "Mutual following",
           newFollower: "New",
           followBack: "Follow back",
           viewProfile: "View profile",
@@ -46,6 +47,7 @@ export default function ProfileFollowers({ lang }: ProfileFollowersProps) {
             subtitle: "あなたをフォローしているユーザー",
             searchPh: "フォロワーを検索...",
             mutual: "相互フォロー",
+            mutualDone: "相互フォロー中",
             newFollower: "新着",
             followBack: "フォローバック",
             viewProfile: "プロフィールを見る",
@@ -63,6 +65,7 @@ export default function ProfileFollowers({ lang }: ProfileFollowersProps) {
             subtitle: "关注你的用户",
             searchPh: "搜索粉丝昵称/用户名...",
             mutual: "互相关注",
+            mutualDone: "已互关",
             newFollower: "新粉丝",
             followBack: "回关",
             viewProfile: "查看主页",
@@ -271,7 +274,13 @@ export default function ProfileFollowers({ lang }: ProfileFollowersProps) {
 
                   <div className="flex flex-wrap items-center gap-2">
                     {item.isMutual ? (
-                      <Chip size="sm" color="success" variant="flat">
+                      <Chip
+                        size="sm"
+                        color="success"
+                        variant="flat"
+                        startContent={<CheckCheck className="h-3.5 w-3.5" />}
+                        className="border border-success/65 bg-success/25 font-semibold text-success-700 dark:text-success-300"
+                      >
                         {t.mutual}
                       </Chip>
                     ) : null}
@@ -289,9 +298,9 @@ export default function ProfileFollowers({ lang }: ProfileFollowersProps) {
                       isLoading={actionUserId === item.userId}
                       onPress={() => void handleFollowBack(item.userId)}
                     >
-                      {t.followBack}
+                      {item.isMutual ? t.mutualDone : t.followBack}
                     </Button>
-                    <Button as={Link} href={`/${lang}/blog?authorId=${item.userId}`} size="sm" variant="light">
+                    <Button as={Link} href={`/${lang}/users/${item.userId}`} size="sm" variant="light">
                       {t.viewProfile}
                     </Button>
                   </div>

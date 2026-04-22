@@ -90,6 +90,9 @@ export const API_DOCS_ENDPOINT_DESCRIPTIONS: Record<string, Partial<Record<strin
     PUT: "更新通知状态等（Bearer，以路由实现为准）",
     DELETE: "删除通知（Bearer）",
   },
+  "/api/profile/public/{userId}": {
+    GET: "公开用户资料页数据（按用户隐私配置裁剪字段，含公开文章分页/筛选；筛选项来自目标用户 owner 分类/标签）",
+  },
   "/api/admin/users": {
     GET: "超级管理员：分页用户列表",
   },
@@ -247,6 +250,9 @@ export const API_DOCS_AUTH_HINTS: Record<string, Partial<Record<string, string>>
     GET: "必须：Authorization: Bearer",
     PUT: "必须：Authorization: Bearer",
     DELETE: "必须：Authorization: Bearer",
+  },
+  "/api/profile/public/{userId}": {
+    GET: "可匿名访问；携带 Bearer 时可用于判定“仅关注者可见”范围。支持 page/limit/search/categoryId/tagId，文章按时间倒序；filters.categories / filters.tags 返回目标用户 owner 下启用项。",
   },
   "/api/admin/users": {
     GET: "必须：Authorization: Bearer + 超级管理员 accessToken（requireInMemorySuperRoot）。",

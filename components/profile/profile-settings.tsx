@@ -111,6 +111,10 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
             profileVisibility: "Profile Visibility",
             emailVisibility: "Email Visibility",
             activityVisibility: "Activity Visibility",
+            githubVisibility: "GitHub Visibility",
+            wechatQrVisibility: "WeChat QR Visibility",
+            statsVisibility: "Statistics Visibility",
+            recentActivityVisibility: "Recent Activity Visibility",
             visibilityPlaceholder: "Select visibility",
             public: "Public",
             private: "Private",
@@ -190,6 +194,10 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
               profileVisibility: "プロフィール公開範囲",
               emailVisibility: "メール公開範囲",
               activityVisibility: "アクティビティ公開範囲",
+              githubVisibility: "GitHub 公開範囲",
+              wechatQrVisibility: "WeChat QR 公開範囲",
+              statsVisibility: "統計情報公開範囲",
+              recentActivityVisibility: "最近の活動公開範囲",
               visibilityPlaceholder: "公開範囲を選択",
               public: "公開",
               private: "非公開",
@@ -268,6 +276,10 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
               profileVisibility: "个人资料可见性",
               emailVisibility: "邮箱可见性",
               activityVisibility: "活动可见性",
+              githubVisibility: "GitHub 可见性",
+              wechatQrVisibility: "微信二维码可见性",
+              statsVisibility: "数据统计可见性",
+              recentActivityVisibility: "最近活动可见性",
               visibilityPlaceholder: "选择可见性",
               public: "公开",
               private: "仅自己",
@@ -315,6 +327,10 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
     profileVisibility: "public",
     emailVisibility: "private",
     activityVisibility: "public",
+    githubVisibility: "public",
+    wechatQrVisibility: "private",
+    statsVisibility: "public",
+    recentActivityVisibility: "public",
 
     // 社交媒体（social_links JSON：github / wechatQr / douyin / bilibili）
     github: "",
@@ -386,6 +402,10 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
       profileVisibility: String(p.profileVisibility ?? "public"),
       emailVisibility: String(p.emailVisibility ?? "private"),
       activityVisibility: String(p.activityVisibility ?? "public"),
+      githubVisibility: String(p.githubVisibility ?? "public"),
+      wechatQrVisibility: String(p.wechatQrVisibility ?? "private"),
+      statsVisibility: String(p.statsVisibility ?? "public"),
+      recentActivityVisibility: String(p.recentActivityVisibility ?? "public"),
       github: readSocialString(sl, ["github"]),
       wechatQr: readSocialString(sl, ["wechatQr", "wechat_qr", "wechatQR", "wechat"]),
       douyin: readSocialString(sl, ["douyin"]),
@@ -498,6 +518,10 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
         profileVisibility: formData.profileVisibility,
         emailVisibility: formData.emailVisibility,
         activityVisibility: formData.activityVisibility,
+        githubVisibility: formData.githubVisibility,
+        wechatQrVisibility: formData.wechatQrVisibility,
+        statsVisibility: formData.statsVisibility,
+        recentActivityVisibility: formData.recentActivityVisibility,
       },
       socialLinks: buildSocialLinksPayload(formData),
     };
@@ -938,6 +962,62 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
                       placeholder={t.privacy.visibilityPlaceholder}
                       selectedKeys={[formData.activityVisibility]}
                       onChange={(e) => handleInputChange("activityVisibility", e.target.value)}
+                    >
+                      <SelectItem key="public">{t.privacy.public}</SelectItem>
+                      <SelectItem key="private">{t.privacy.private}</SelectItem>
+                      <SelectItem key="friends">{t.privacy.friends}</SelectItem>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      {t.privacy.githubVisibility}
+                    </label>
+                    <Select
+                      placeholder={t.privacy.visibilityPlaceholder}
+                      selectedKeys={[formData.githubVisibility]}
+                      onChange={(e) => handleInputChange("githubVisibility", e.target.value)}
+                    >
+                      <SelectItem key="public">{t.privacy.public}</SelectItem>
+                      <SelectItem key="private">{t.privacy.private}</SelectItem>
+                      <SelectItem key="friends">{t.privacy.friends}</SelectItem>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      {t.privacy.wechatQrVisibility}
+                    </label>
+                    <Select
+                      placeholder={t.privacy.visibilityPlaceholder}
+                      selectedKeys={[formData.wechatQrVisibility]}
+                      onChange={(e) => handleInputChange("wechatQrVisibility", e.target.value)}
+                    >
+                      <SelectItem key="public">{t.privacy.public}</SelectItem>
+                      <SelectItem key="private">{t.privacy.private}</SelectItem>
+                      <SelectItem key="friends">{t.privacy.friends}</SelectItem>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      {t.privacy.statsVisibility}
+                    </label>
+                    <Select
+                      placeholder={t.privacy.visibilityPlaceholder}
+                      selectedKeys={[formData.statsVisibility]}
+                      onChange={(e) => handleInputChange("statsVisibility", e.target.value)}
+                    >
+                      <SelectItem key="public">{t.privacy.public}</SelectItem>
+                      <SelectItem key="private">{t.privacy.private}</SelectItem>
+                      <SelectItem key="friends">{t.privacy.friends}</SelectItem>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      {t.privacy.recentActivityVisibility}
+                    </label>
+                    <Select
+                      placeholder={t.privacy.visibilityPlaceholder}
+                      selectedKeys={[formData.recentActivityVisibility]}
+                      onChange={(e) => handleInputChange("recentActivityVisibility", e.target.value)}
                     >
                       <SelectItem key="public">{t.privacy.public}</SelectItem>
                       <SelectItem key="private">{t.privacy.private}</SelectItem>

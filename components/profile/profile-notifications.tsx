@@ -83,6 +83,7 @@ export default function ProfileNotifications({ lang, initialReadFilter = "all" }
             mention: "View mention",
             system: "View details",
           },
+          followBackDone: "Mutual following",
           emptyMatch: "No matching notifications",
           empty: "No notifications",
           emptyMatchDesc: "Try adjusting filters",
@@ -117,6 +118,7 @@ export default function ProfileNotifications({ lang, initialReadFilter = "all" }
               mention: "メンションを見る",
               system: "詳細を見る",
             },
+            followBackDone: "相互フォロー",
             emptyMatch: "一致する通知がありません",
             empty: "通知はありません",
             emptyMatchDesc: "条件を調整してください",
@@ -156,6 +158,7 @@ export default function ProfileNotifications({ lang, initialReadFilter = "all" }
               mention: "查看提及",
               system: "查看详情",
             },
+            followBackDone: "已互关",
             emptyMatch: "没有找到匹配的通知",
             empty: "暂无通知",
             emptyMatchDesc: "尝试调整筛选条件",
@@ -174,6 +177,7 @@ export default function ProfileNotifications({ lang, initialReadFilter = "all" }
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [readFilter, setReadFilter] = useState<string>(initialReadFilter);
   const [followActionId, setFollowActionId] = useState<number | null>(null);
+  const [followBackDoneIds, setFollowBackDoneIds] = useState<Set<number>>(new Set());
   const buildAuthHeaders = useCallback((): Record<string, string> => {
     if (typeof window === "undefined") return {};
     const token = localStorage.getItem("accessToken");
@@ -312,6 +316,7 @@ export default function ProfileNotifications({ lang, initialReadFilter = "all" }
     try {
       await ProfileRelationsAPI.followUser(followerId);
       await handleMarkAsRead(notification.id);
+      setFollowBackDoneIds((prev) => new Set(prev).add(notification.id));
       message.success(t.followBackOk);
     } catch (error) {
       console.error("通知回关失败:", error);
@@ -496,12 +501,15 @@ export default function ProfileNotifications({ lang, initialReadFilter = "all" }
                           <Button
                             variant="flat"
                             size="sm"
-                            color="success"
+                            color={followBackDoneIds.has(notification.id) ? "default" : "success"}
                             className="mr-1"
                             isLoading={followActionId === notification.id}
+                            isDisabled={followBackDoneIds.has(notification.id)}
                             onPress={() => void handleFollowBackFromNotification(notification)}
                           >
-                            {t.primaryActions[notification.type]}
+                            {followBackDoneIds.has(notification.id)
+                              ? t.followBackDone
+                              : t.primaryActions[notification.type]}
                           </Button>
                         ) : (
                           <Button
