@@ -1,3 +1,9 @@
+## [1.5.4](https://github.com/HarveyWebLee/blog-next/compare/v1.5.3...v1.5.4) (2026-04-22)
+
+### Performance Improvements
+
+- **profile:** 新增公开用户资料接口及关注功能 ([4f43bb0](https://github.com/HarveyWebLee/blog-next/commit/4f43bb06431d19545de9d80f433aeb9d194a7502))
+
 ## [1.5.3](https://github.com/HarveyWebLee/blog-next/compare/v1.5.2...v1.5.3) (2026-04-22)
 
 ### Bug Fixes
