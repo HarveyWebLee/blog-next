@@ -1,3 +1,9 @@
+# [1.6.0](https://github.com/HarveyWebLee/blog-next/compare/v1.5.4...v1.6.0) (2026-04-22)
+
+### Features
+
+- **blog:** 新增评论审核功能及相关API ([bd6a1e5](https://github.com/HarveyWebLee/blog-next/commit/bd6a1e5533b9181acc2123423eb9d7cda2933c73))
+
 ## [1.5.4](https://github.com/HarveyWebLee/blog-next/compare/v1.5.3...v1.5.4) (2026-04-22)
 
 ### Performance Improvements
