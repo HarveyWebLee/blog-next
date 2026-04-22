@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { and, eq } from "drizzle-orm";
 
+import { db } from "@/lib/db/config";
+import { emailVerifications, users } from "@/lib/db/schema";
+import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
 import { hashPassword, validatePasswordStrength } from "@/lib/utils";
 import { ApiResponse } from "@/types/blog";
-
-// 模拟令牌验证（实际项目中应该从数据库验证）
-const validTokens = new Map<string, { userId: number; expiry: Date }>();
 
 export async function POST(request: NextRequest) {
   try {
@@ -37,9 +38,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 验证重置令牌（这里使用内存存储，实际项目中应该从数据库验证）
-    const tokenData = validTokens.get(token);
-    if (!tokenData) {
+    // 基于数据库校验 token：必须存在、未使用、未过期。
+    const [verification] = await db
+      .select()
+      .from(emailVerifications)
+      .where(
+        and(
+          eq(emailVerifications.code, token),
+          eq(emailVerifications.type, "reset_password"),
+          eq(emailVerifications.isUsed, false)
+        )
+      )
+      .limit(1);
+
+    if (!verification) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
@@ -51,8 +63,8 @@ export async function POST(request: NextRequest) {
     }
 
     // 检查令牌是否过期
-    if (new Date() > tokenData.expiry) {
-      validTokens.delete(token);
+    if (new Date() > verification.expiresAt) {
+      await db.update(emailVerifications).set({ isUsed: true }).where(eq(emailVerifications.id, verification.id));
       return NextResponse.json<ApiResponse>(
         {
           success: false,
@@ -63,12 +75,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 这里应该更新数据库中的用户密码
-    // 由于当前没有重置令牌字段，我们模拟更新
-    console.log(`用户 ${tokenData.userId} 的密码已重置`);
+    const hashedPassword = await hashPassword(newPassword);
+    await db
+      .update(users)
+      .set({
+        password: hashedPassword,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.email, verification.email));
+    await db.update(emailVerifications).set({ isUsed: true }).where(eq(emailVerifications.id, verification.id));
 
-    // 删除已使用的令牌
-    validTokens.delete(token);
+    const [updatedUser] = await db
+      .select({ id: users.id, email: users.email })
+      .from(users)
+      .where(eq(users.email, verification.email))
+      .limit(1);
+    if (updatedUser) {
+      logUserActivity({
+        userId: updatedUser.id,
+        action: UserActivityAction.PASSWORD_RESET_COMPLETED,
+        description: "完成密码重置",
+        metadata: { email: updatedUser.email },
+        request,
+      });
+    }
 
     return NextResponse.json<ApiResponse>({
       success: true,
@@ -88,11 +118,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
-// 用于测试的辅助函数（实际项目中不需要）
-// export function addTestToken(token: string, userId: number, expiryMinutes: number = 30) {
-//   validTokens.set(token, {
-//     userId,
-//     expiry: new Date(Date.now() + expiryMinutes * 60 * 1000),
-//   });
-// }

@@ -76,6 +76,7 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
           submitting: "Submitting...",
           submitComment: "Post Comment",
           anonymous: "Anonymous",
+          authorBadge: "Author",
           editArticle: "Edit post",
           follow: "Follow",
           following: "Following",
@@ -107,6 +108,7 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
             submitting: "投稿中...",
             submitComment: "コメント投稿",
             anonymous: "匿名ユーザー",
+            authorBadge: "作者",
             editArticle: "記事を編集",
             follow: "フォロー",
             following: "フォロー中",
@@ -137,6 +139,7 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
             submitting: "发布中...",
             submitComment: "发表评论",
             anonymous: "匿名用户",
+            authorBadge: "作者",
             editArticle: "编辑文章",
             follow: "关注",
             following: "已关注",
@@ -221,6 +224,51 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
     };
   }, [post?.id, isAuthenticated]);
 
+  const currentUserId = user?.id ?? null;
+
+  useEffect(() => {
+    const authorId = Number(post?.authorId || post?.author?.id);
+    // 作者不存在、当前用户是作者本人或未登录时，直接重置关注状态，避免展示脏数据。
+    if (
+      !Number.isInteger(authorId) ||
+      authorId <= 0 ||
+      !isAuthenticated ||
+      (currentUserId != null && authorId === currentUserId)
+    ) {
+      setIsFollowingAuthor(false);
+      return;
+    }
+
+    let cancelled = false;
+    const loadFollowState = async () => {
+      try {
+        const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+        if (!token) {
+          if (!cancelled) setIsFollowingAuthor(false);
+          return;
+        }
+        const response = await fetch(`/api/profile/public/${authorId}?page=1&limit=1&_ts=${Date.now()}`, {
+          cache: "no-store",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const result = await response.json();
+        if (!cancelled) {
+          setIsFollowingAuthor(Boolean(result?.data?.visibility?.isFollower));
+        }
+      } catch (error) {
+        console.error("加载作者关注状态失败:", error);
+        if (!cancelled) setIsFollowingAuthor(false);
+      }
+    };
+
+    void loadFollowState();
+    return () => {
+      cancelled = true;
+    };
+  }, [post?.authorId, post?.author?.id, isAuthenticated, currentUserId]);
+
   // 验证密码
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -260,16 +308,23 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
 
     try {
       setSubmittingComment(true);
+      const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+      const isLoggedIn = Boolean(isAuthenticated && token);
+      // 登录用户优先显示个人昵称，其次用户名；仅未登录时回退为“访客”。
+      const commentAuthorName = isLoggedIn
+        ? user?.displayName?.trim() || user?.username?.trim() || t.anonymous
+        : t.guest;
 
       const response = await fetch("/api/comments", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
           postId: post?.id,
           content: comment,
-          authorName: t.guest,
+          authorName: commentAuthorName,
         }),
       });
 
@@ -789,7 +844,6 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
               <Card className="card-hover-effect glass-enhanced">
                 <CardHeader className="pb-6">
                   <div className="flex items-center gap-3">
-                    <MessageCircle className="w-6 h-6 text-primary" />
                     <p className="text-2xl font-bold blog-title-gradient">💬 评论区</p>
                     <Chip variant="flat" color="primary" size="sm">
                       {post.comments?.length || 0} 条评论
@@ -844,12 +898,23 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
                                 <div className="flex items-center gap-3 mb-4">
                                   <Avatar
                                     size="md"
+                                    src={comment.author?.avatar || undefined}
                                     name={comment.author?.displayName || comment.authorName || t.anonymous}
                                     className="hover-lift"
                                   />
                                   <div className="flex-1">
                                     <p className="font-semibold text-lg">
                                       {comment.author?.displayName || comment.authorName || t.anonymous}
+                                      {comment.authorId != null && comment.authorId === post.authorId && (
+                                        <Chip
+                                          size="sm"
+                                          color="warning"
+                                          variant="flat"
+                                          className="ml-2 align-middle font-medium"
+                                        >
+                                          {t.authorBadge}
+                                        </Chip>
+                                      )}
                                     </p>
                                     <p className="text-sm text-default-400">
                                       {new Date(comment.createdAt).toLocaleDateString("zh-CN", {

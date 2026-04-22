@@ -61,6 +61,7 @@ export default function ProfileLayout({ children, lang, dict: _dict }: ProfileLa
             tags: "Tag Manage",
             accountsAdmin: "Accounts",
             apiDocs: "API Docs",
+            commentReview: "Comment Review",
             pageTitle: "Profile",
             pageSubtitle: "Account and content hub",
             openMenu: "Menu",
@@ -79,6 +80,7 @@ export default function ProfileLayout({ children, lang, dict: _dict }: ProfileLa
               tags: "タグ管理",
               accountsAdmin: "アカウント管理",
               apiDocs: "APIドキュメント",
+              commentReview: "コメント審査",
               pageTitle: "プロフィール",
               pageSubtitle: "アカウントとコンテンツ",
               openMenu: "メニュー",
@@ -96,6 +98,7 @@ export default function ProfileLayout({ children, lang, dict: _dict }: ProfileLa
               tags: "标签管理",
               accountsAdmin: "账户管理",
               apiDocs: "API 文档",
+              commentReview: "评论审核",
               pageTitle: "个人中心",
               pageSubtitle: "账户与内容入口",
               openMenu: "目录",
@@ -130,6 +133,12 @@ export default function ProfileLayout({ children, lang, dict: _dict }: ProfileLa
         label: L.apiDocs,
         icon: FileCode2,
         href: "/api-docs",
+      });
+      base.splice(7, 0, {
+        key: "comment-review",
+        label: L.commentReview,
+        icon: Bell,
+        href: "/blog/manage/comments",
       });
     }
     return { labels: L, navigationItems: base };

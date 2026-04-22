@@ -170,6 +170,91 @@ export async function verifyEmailConfig(): Promise<boolean> {
 }
 
 /**
+ * 发送密码重置链接邮件
+ * @param email 收件人邮箱
+ * @param resetUrl 重置链接（应包含一次性 token）
+ */
+export async function sendPasswordResetLinkEmail(
+  email: string,
+  resetUrl: string,
+  locale: "zh-CN" | "en-US" | "ja-JP" = "zh-CN"
+): Promise<boolean> {
+  try {
+    const transporter = createTransporter();
+    const copy =
+      locale === "en-US"
+        ? {
+            subject: "[Wilderness Blog] Password reset link",
+            title: "Password reset request",
+            desc: "We received a request to reset your account password. Please click the button below within 30 minutes.",
+            button: "Reset password",
+            fallback: "If the button does not work, copy the following link into your browser:",
+            tip: "If this was not you, you can safely ignore this email.",
+          }
+        : locale === "ja-JP"
+          ? {
+              subject: "【荒野ブログ】パスワード再設定リンク",
+              title: "パスワード再設定リクエスト",
+              desc: "パスワード再設定のリクエストを受け付けました。30分以内に下のボタンから再設定してください。",
+              button: "パスワードを再設定",
+              fallback: "ボタンが使えない場合は、下記リンクをブラウザに貼り付けてください：",
+              tip: "心当たりがない場合は、このメールを無視してください。",
+            }
+          : {
+              subject: "【荒野博客】重置密码链接",
+              title: "密码重置请求",
+              desc: "我们收到了重置您账户密码的请求。请在 30 分钟内点击下方按钮完成重置。",
+              button: "立即重置密码",
+              fallback: "如果按钮无法点击，请复制下方链接到浏览器打开：",
+              tip: "若非本人操作，请忽略此邮件，账号密码不会被修改。",
+            };
+
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #111827; margin-bottom: 12px;">${copy.title}</h2>
+        <p style="color: #4b5563; line-height: 1.8;">
+          ${copy.desc}
+        </p>
+        <a
+          href="${resetUrl}"
+          style="
+            display: inline-block;
+            margin-top: 12px;
+            background: #2563eb;
+            color: #fff;
+            text-decoration: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+          "
+        >
+          ${copy.button}
+        </a>
+        <p style="margin-top: 20px; color: #6b7280; line-height: 1.7;">
+          ${copy.fallback}<br />
+          <span style="word-break: break-all;">${resetUrl}</span>
+        </p>
+        <p style="margin-top: 20px; color: #9ca3af; font-size: 12px;">
+          ${copy.tip}
+        </p>
+      </div>
+    `;
+
+    const result = await transporter.sendMail({
+      from: `"荒野博客" <${process.env.SMTP_USER}>`,
+      to: email,
+      subject: copy.subject,
+      html: htmlContent,
+    });
+
+    console.log("密码重置链接发送成功:", { to: email, messageId: result.messageId });
+    return true;
+  } catch (error) {
+    console.error("发送密码重置链接失败:", { to: email, error });
+    return false;
+  }
+}
+
+/**
  * 发送文章发布订阅邮件
  */
 export async function sendPostPublishedEmail({

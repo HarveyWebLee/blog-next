@@ -316,6 +316,9 @@ export class PostService {
           allowComments: posts.allowComments,
           viewCount: posts.viewCount,
           likeCount: posts.likeCount,
+          commentCount: sql<number>`(
+            select count(*) from comments c where c.post_id = ${posts.id} and c.status = 'approved'
+          )`,
           favoriteCount: sql<number>`(
             select count(*) from user_favorites uf where uf.post_id = ${posts.id}
           )`,
@@ -355,6 +358,7 @@ export class PostService {
         allowComments: row.allowComments,
         viewCount: row.viewCount,
         likeCount: row.likeCount,
+        commentCount: row.commentCount ?? 0,
         favoriteCount: row.favoriteCount ?? 0,
         publishedAt: row.publishedAt,
         createdAt: row.createdAt,
@@ -601,17 +605,43 @@ export class PostService {
       const results = await db
         .select({
           id: comments.id,
+          postId: comments.postId,
+          authorId: comments.authorId,
           content: comments.content,
           status: comments.status,
           createdAt: comments.createdAt,
+          updatedAt: comments.updatedAt,
           authorName: comments.authorName,
           authorEmail: comments.authorEmail,
+          authorDisplayName: users.displayName,
+          authorUsername: users.username,
+          authorAvatar: users.avatar,
         })
         .from(comments)
+        .leftJoin(users, eq(comments.authorId, users.id))
         .where(and(eq(comments.postId, postId), eq(comments.status, "approved")))
         .orderBy(desc(comments.createdAt));
 
-      return results;
+      return results.map((row) => ({
+        id: row.id,
+        postId: row.postId,
+        authorId: row.authorId ?? undefined,
+        content: row.content,
+        status: row.status,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+        authorName: row.authorName,
+        authorEmail: row.authorEmail,
+        // 优先展示用户当前资料（支持改昵称/头像后历史评论同步更新），不存在再回退快照字段。
+        author: row.authorId
+          ? {
+              id: row.authorId,
+              username: row.authorUsername || "",
+              displayName: row.authorDisplayName || row.authorUsername || row.authorName || "",
+              avatar: row.authorAvatar || undefined,
+            }
+          : undefined,
+      }));
     } catch (error) {
       console.error("获取文章评论失败:", error);
       return [];

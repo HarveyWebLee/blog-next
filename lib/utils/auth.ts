@@ -1,3 +1,4 @@
+import { randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
 import * as jwt from "jsonwebtoken";
 
@@ -114,7 +115,15 @@ export function verifyRefreshToken(token: string): any {
  * @returns 随机令牌
  */
 export function generatePasswordResetToken(): string {
-  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  // email_verifications.code 当前长度为 10，因此重置 token 需控制在 10 位内。
+  // 使用 crypto 随机字节，避免 Math.random 的可预测性。
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const bytes = randomBytes(10);
+  let token = "";
+  for (let i = 0; i < 10; i += 1) {
+    token += alphabet[bytes[i] % alphabet.length];
+  }
+  return token;
 }
 
 /**

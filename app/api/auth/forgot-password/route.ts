@@ -1,21 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { and, count, eq, gt } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
-import { users } from "@/lib/db/schema";
+import { emailVerifications, userProfiles, users } from "@/lib/db/schema";
+import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
 import { generatePasswordResetToken, isValidEmail } from "@/lib/utils";
+import { checkDistributedRateLimit } from "@/lib/utils/distributed-rate-limit";
+import { sendPasswordResetLinkEmail } from "@/lib/utils/email";
 import { ApiResponse } from "@/types/blog";
-
-// 模拟发送邮件功能（实际项目中应该集成真实的邮件服务）
-async function sendPasswordResetEmail(email: string, resetToken: string) {
-  // 这里应该集成真实的邮件服务，如 SendGrid、Nodemailer 等
-  console.log(`密码重置邮件发送到: ${email}`);
-  console.log(`重置令牌: ${resetToken}`);
-  console.log(`重置链接: ${process.env.NEXT_PUBLIC_APP_URL}/auth/reset-password?token=${resetToken}`);
-
-  // 模拟邮件发送成功
-  return true;
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -70,6 +62,43 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 分布式限流（Redis 优先）-> 数据库回退：10 分钟最多 3 次。
+    const distributedLimiter = await checkDistributedRateLimit(`forgot-password:${email}`, 3, 10 * 60 * 1000);
+    if (distributedLimiter.supported && !distributedLimiter.allowed) {
+      return NextResponse.json<ApiResponse>(
+        {
+          success: false,
+          message: "请求过于频繁，请稍后重试",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 429, headers: { "Retry-After": String(distributedLimiter.retryAfterSeconds || 600) } }
+      );
+    }
+    if (!distributedLimiter.supported) {
+      const windowStart = new Date(Date.now() - 10 * 60 * 1000);
+      const recentResetCount = await db
+        .select({ c: count() })
+        .from(emailVerifications)
+        .where(
+          and(
+            eq(emailVerifications.email, email),
+            eq(emailVerifications.type, "reset_password"),
+            gt(emailVerifications.createdAt, windowStart)
+          )
+        );
+      const hitCount = Number(recentResetCount[0]?.c ?? 0);
+      if (hitCount >= 3) {
+        return NextResponse.json<ApiResponse>(
+          {
+            success: false,
+            message: "请求过于频繁，请稍后重试",
+            timestamp: new Date().toISOString(),
+          },
+          { status: 429, headers: { "Retry-After": "600" } }
+        );
+      }
+    }
+
     // 查找用户
     const user = await db.select().from(users).where(eq(users.email, email)).limit(1);
 
@@ -84,14 +113,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 生成重置令牌
+    // 生成一次性重置 token（长度受 email_verifications.code 字段约束）。
     const resetToken = generatePasswordResetToken();
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
 
-    // 这里应该将重置令牌存储到数据库，并设置过期时间
-    // 为了简化，我们暂时跳过这一步
+    // 失效同邮箱旧 token，只保留最新一条，避免多 token 并存导致风险。
+    await db
+      .update(emailVerifications)
+      .set({ isUsed: true, updatedAt: new Date() })
+      .where(
+        and(
+          eq(emailVerifications.email, email),
+          eq(emailVerifications.type, "reset_password"),
+          eq(emailVerifications.isUsed, false)
+        )
+      );
 
-    // 发送重置邮件
-    const emailSent = await sendPasswordResetEmail(email, resetToken);
+    await db.insert(emailVerifications).values({
+      email,
+      code: resetToken,
+      type: "reset_password",
+      isUsed: false,
+      expiresAt,
+    });
+
+    const [profile] = await db.select().from(userProfiles).where(eq(userProfiles.userId, user[0].id)).limit(1);
+    const locale =
+      profile?.language === "en-US" || profile?.language === "ja-JP" || profile?.language === "zh-CN"
+        ? profile.language
+        : "zh-CN";
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
+    const resetUrl = `${appUrl}/auth/reset-password?token=${encodeURIComponent(resetToken)}`;
+    const emailSent = await sendPasswordResetLinkEmail(email, resetUrl, locale);
 
     if (!emailSent) {
       return NextResponse.json<ApiResponse>(
@@ -103,6 +157,14 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    logUserActivity({
+      userId: user[0].id,
+      action: UserActivityAction.PASSWORD_RESET_REQUESTED,
+      description: "发起密码重置请求",
+      metadata: { email, locale },
+      request,
+    });
 
     return NextResponse.json<ApiResponse>(
       {

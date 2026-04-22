@@ -30,6 +30,20 @@
 
 **网络**：各服务位于 Compose 网络 **`blog-net`**。应用容器内 **`DB_HOST=mysql`**、**`REDIS_URL=redis://:密码@redis:6379`** 由 compose 覆盖，勿在模板里把应用指向 `localhost` 访问库或缓存。
 
+### Redis 地址如何区分（重点）
+
+- 根因：`REDIS_URL` 的主机名/端口取决于 **Next.js 进程运行位置**（宿主机还是容器内）。
+- 本地开发（Next 在宿主机 `pnpm dev`，Redis 在 Docker）：使用 **`127.0.0.1:16380`**（宿主机映射端口）。
+- 生产/容器化运行（Next 与 Redis 都在 Compose 网络）：使用 **`redis:6379`**（容器服务名 + 容器端口）。
+- 避免混写：`redis:16380` 通常是错误组合（服务名来自容器网络，16380 来自宿主机映射）。
+
+推荐配置：
+
+- `.env.local`（本地开发）：
+  - `REDIS_URL=redis://:密码@127.0.0.1:16380`
+- `deploy/.env.docker`（容器内运行）：
+  - `REDIS_URL=redis://:密码@redis:6379`
+
 **Redis**：业务可渐进接入；本地根目录 **`env.example`** 仅列当前 Next 代码实际读取的键，**`REDIS_URL`** 等在 **`deploy/env.docker.example`** 与容器 **`blog-web`** 环境注入。
 
 ## 2. 准备配置

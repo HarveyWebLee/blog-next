@@ -384,7 +384,7 @@ export default function ProfileLikes({ lang }: ProfileLikesProps) {
                       </div>
                       <div className="flex items-center justify-center gap-1">
                         <MessageSquare className="h-3.5 w-3.5" />
-                        <span>0</span>
+                        <span>{post.commentCount ?? post.comments?.length ?? 0}</span>
                       </div>
                     </div>
                   </div>

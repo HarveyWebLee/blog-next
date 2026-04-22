@@ -28,7 +28,7 @@ export const API_DOCS_GROUP_DESCRIPTIONS: Record<string, string> = {
 /** 端点简述：method -> 中文一句 */
 export const API_DOCS_ENDPOINT_DESCRIPTIONS: Record<string, Partial<Record<string, string>>> = {
   "/api/api-docs": {
-    GET: "获取扫描后的全站 API 分组与端点元数据（需超级管理员 JWT）",
+    GET: "获取扫描后的全站 API 分组与端点元数据；支持 format=openapi 导出",
   },
   "/api/auth/login": {
     POST: "用户登录（含超级管理员应急通道），返回 access / refresh token",
@@ -46,10 +46,10 @@ export const API_DOCS_ENDPOINT_DESCRIPTIONS: Record<string, Partial<Record<strin
     POST: "校验邮箱验证码是否有效（消费一次）",
   },
   "/api/auth/forgot-password": {
-    POST: "忘记密码：发起重置流程",
+    POST: "忘记密码：发起重置流程并发送一次性链接（按用户语言发送邮件）",
   },
   "/api/auth/reset-password": {
-    POST: "使用验证码重置密码",
+    POST: "使用一次性 token 重置密码并失效 token",
   },
   "/api/subscriptions": {
     GET: "按邮箱查询是否处于订阅中",
@@ -99,6 +99,15 @@ export const API_DOCS_ENDPOINT_DESCRIPTIONS: Record<string, Partial<Record<strin
   "/api/admin/users/{id}": {
     GET: "超级管理员：用户详情（含 user_profiles 摘要）",
     PATCH: "超级管理员：更新角色与账号状态等（不可修改当前登录根账户本人）",
+  },
+  "/api/admin/comments": {
+    GET: "超级管理员：评论审核列表（支持状态、关键词、authorId、postId、时间区间筛选）",
+    PATCH: "超级管理员：批量更新评论审核状态（pending/approved/spam，支持审核理由）",
+    DELETE: "超级管理员：批量删除评论",
+  },
+  "/api/admin/comments/{id}": {
+    PATCH: "超级管理员：更新评论审核状态（pending/approved/spam，支持审核理由）",
+    DELETE: "超级管理员：删除单条评论",
   },
   "/api/posts": {
     GET: "文章列表（默认仅公开文章，列表不返回 content 字段）",
@@ -155,6 +164,7 @@ export const API_DOCS_ENDPOINT_DESCRIPTIONS: Record<string, Partial<Record<strin
   "/api/notifications": {
     GET: "通知列表（本人可读；超级管理员可按 userId 查询）",
     PUT: "批量标记通知已读（本人；超级管理员可按 userId 跨用户）",
+    DELETE: "批量删除通知（支持 clearRead=true 清理全部已读）",
     POST: "创建通知（本人可给自己创建；超级管理员可给任意用户创建）",
   },
   "/api/notifications/{id}": {
@@ -189,7 +199,7 @@ export const API_DOCS_ENDPOINT_DESCRIPTIONS: Record<string, Partial<Record<strin
 /** 鉴权与调用注意（展示在文档卡片上） */
 export const API_DOCS_AUTH_HINTS: Record<string, Partial<Record<string, string>>> = {
   "/api/api-docs": {
-    GET: "必须：Authorization: Bearer + 超级管理员 accessToken（JWT：role=super_admin、isRoot=true）。",
+    GET: "必须：Authorization: Bearer + 超级管理员 accessToken（JWT：role=super_admin、isRoot=true）。支持 query: refresh=true 强制重扫、version=<x>|none 版本过滤、format=openapi 返回 OpenAPI 3.0 JSON、download=true 触发下载头。",
   },
   "/api/auth/login": {
     POST: "无需 Bearer。Body：{ username, password }。",
@@ -207,10 +217,10 @@ export const API_DOCS_AUTH_HINTS: Record<string, Partial<Record<string, string>>
     POST: "无需 Bearer。Body：{ email, code, type }。",
   },
   "/api/auth/forgot-password": {
-    POST: "无需 Bearer。",
+    POST: "无需 Bearer。Body：{ email }，会失效旧 reset_password token 并发送 30 分钟有效链接；限流策略为 Redis 优先、数据库回退。",
   },
   "/api/auth/reset-password": {
-    POST: "无需 Bearer。",
+    POST: "无需 Bearer。Body：{ token, newPassword }，token 必须未使用且未过期。",
   },
   "/api/subscriptions": {
     GET: "无需 Bearer（公开查询某邮箱是否订阅）。",
@@ -261,6 +271,16 @@ export const API_DOCS_AUTH_HINTS: Record<string, Partial<Record<string, string>>
     GET: "必须：Authorization: Bearer + 超级管理员 accessToken。",
     PATCH:
       "必须：Authorization: Bearer + 超级管理员 accessToken。路径 id 为当前登录根账户 userId 时 **403**（不可改本人角色/状态）。",
+  },
+  "/api/admin/comments": {
+    GET: "必须：Authorization: Bearer + 超级管理员 accessToken。支持 page/limit/status/q/authorId/postId/dateFrom/dateTo。",
+    PATCH:
+      "必须：Authorization: Bearer + 超级管理员 accessToken。Body：{ ids: number[], status: pending|approved|spam, reason? }。",
+    DELETE: "必须：Authorization: Bearer + 超级管理员 accessToken。Body：{ ids: number[] }。",
+  },
+  "/api/admin/comments/{id}": {
+    PATCH: "必须：Authorization: Bearer + 超级管理员 accessToken。Body：{ status, reason? }。",
+    DELETE: "必须：Authorization: Bearer + 超级管理员 accessToken。",
   },
   "/api/posts": {
     GET: "公开列表通常无需 Bearer。默认仅返回 public 可见性且不含 content 字段。",
@@ -318,6 +338,8 @@ export const API_DOCS_AUTH_HINTS: Record<string, Partial<Record<string, string>>
   "/api/notifications": {
     GET: "必须：Authorization: Bearer。普通用户仅可读本人通知；超级管理员可用 query.userId 跨用户查询。",
     PUT: "必须：Authorization: Bearer。Body：{ notificationIds[] } 或 { markAllAsRead: true }；普通用户仅可标记本人通知。",
+    DELETE:
+      "必须：Authorization: Bearer。Body：{ notificationIds[] } 或 { clearRead: true }；普通用户仅可删除本人通知。",
     POST: "必须：Authorization: Bearer。普通用户仅可创建自己的通知；超级管理员可为任意 userId 创建。",
   },
   "/api/notifications/{id}": {

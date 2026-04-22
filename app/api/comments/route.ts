@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
-import { comments, posts } from "@/lib/db/schema";
+import { comments, posts, users } from "@/lib/db/schema";
 import {
   getClientMetaFromRequest,
   logUserActivity,
@@ -18,6 +18,24 @@ import {
 import { createErrorResponse, createSuccessResponse } from "@/lib/utils";
 import { getAuthUserFromRequest } from "@/lib/utils/request-auth";
 import { checkRateLimit } from "@/lib/utils/request-rate-limit";
+
+function detectSpamContent(content: string): { isSpam: boolean; reasons: string[] } {
+  const reasons: string[] = [];
+  const normalized = content.toLowerCase();
+  const suspiciousKeywords = ["viagra", "casino", "loan", "bitcoin", "http://", "https://", "telegram", "whatsapp"];
+  const hitKeywords = suspiciousKeywords.filter((kw) => normalized.includes(kw));
+  if (hitKeywords.length >= 2) {
+    reasons.push("命中多个高风险关键词");
+  }
+  const urlCount = (content.match(/https?:\/\//gi) || []).length;
+  if (urlCount >= 2) {
+    reasons.push("包含过多链接");
+  }
+  if (content.length > 2000) {
+    reasons.push("内容长度异常");
+  }
+  return { isSpam: reasons.length > 0, reasons };
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -64,13 +82,36 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    const spamCheck = detectSpamContent(content);
+    let resolvedAuthorName: string | null = null;
+    let resolvedAuthorEmail: string | null = null;
+
+    if (user?.userId) {
+      // 登录用户评论时，作者身份仅以服务端鉴权结果为准，避免前端伪造昵称/邮箱。
+      const [authorRow] = await db
+        .select({
+          username: users.username,
+          displayName: users.displayName,
+          email: users.email,
+        })
+        .from(users)
+        .where(eq(users.id, user.userId))
+        .limit(1);
+      resolvedAuthorName = authorRow?.displayName?.trim() || authorRow?.username?.trim() || null;
+      resolvedAuthorEmail = authorRow?.email?.trim() || null;
+    } else {
+      resolvedAuthorName = typeof body.authorName === "string" ? body.authorName.trim().slice(0, 100) || null : null;
+      resolvedAuthorEmail = typeof body.authorEmail === "string" ? body.authorEmail.trim().slice(0, 100) || null : null;
+    }
+
     await db.insert(comments).values({
       postId,
       authorId: user?.userId ?? null,
-      authorName: typeof body.authorName === "string" ? body.authorName.trim().slice(0, 100) || null : null,
-      authorEmail: typeof body.authorEmail === "string" ? body.authorEmail.trim().slice(0, 100) || null : null,
+      authorName: resolvedAuthorName,
+      authorEmail: resolvedAuthorEmail,
       content,
-      status: "approved",
+      // 评论默认待审核；命中反垃圾规则时直接标记 spam，减轻人工审核压力。
+      status: spamCheck.isSpam ? "spam" : "pending",
       ipAddress,
       userAgent,
     });
@@ -78,11 +119,17 @@ export async function POST(request: NextRequest) {
     logUserActivity({
       userId: user?.userId ?? null,
       action: UserActivityAction.COMMENT_CREATED,
-      metadata: { postId },
+      metadata: { postId, status: spamCheck.isSpam ? "spam" : "pending", spamReasons: spamCheck.reasons },
       request,
     });
 
-    return NextResponse.json(createSuccessResponse(null, "评论提交成功"), { status: 201 });
+    return NextResponse.json(
+      createSuccessResponse(
+        null,
+        spamCheck.isSpam ? "评论已提交，系统已进入风控审核队列" : "评论提交成功，审核通过后将展示"
+      ),
+      { status: 201 }
+    );
   } catch (error) {
     console.error("[POST /api/comments]", error);
     return NextResponse.json(createErrorResponse("评论提交失败", error instanceof Error ? error.message : "未知错误"), {

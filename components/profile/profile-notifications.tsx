@@ -28,6 +28,37 @@ import type { ApiResponse, PaginatedResponseData, UserNotification } from "@/typ
 interface ProfileNotificationsProps {
   lang: string;
   initialReadFilter?: "all" | "unread" | "read";
+  text: {
+    title: string;
+    subtitle: string;
+    markAllRead: string;
+    clearRead: string;
+    allTypes: string;
+    allStatus: string;
+    unread: string;
+    read: string;
+    isNew: string;
+    readAt: string;
+    markAsRead: string;
+    delete: string;
+    more: string;
+    primaryActions: Record<Notification["type"], string>;
+    followBackDone: string;
+    emptyMatch: string;
+    empty: string;
+    emptyMatchDesc: string;
+    emptyDesc: string;
+    refresh: string;
+    followerMissing: string;
+    followBackOk: string;
+    followBackFail: string;
+    labels: Record<Notification["type"], string>;
+    agoMin: string;
+    agoHour: string;
+    agoDay: string;
+    loadMore: string;
+    loadingMore: string;
+  };
 }
 
 interface Notification {
@@ -60,124 +91,16 @@ const notificationColors = {
   system: "bg-default-200/80 text-default-600",
 };
 
-export default function ProfileNotifications({ lang, initialReadFilter = "all" }: ProfileNotificationsProps) {
-  const t =
-    lang === "en-US"
-      ? {
-          title: "Notifications",
-          subtitle: "Manage your notifications",
-          markAll: "Mark all as read",
-          allTypes: "All Types",
-          allStatus: "All Status",
-          unread: "Unread",
-          read: "Read",
-          isNew: "New",
-          readAt: "Read",
-          markRead: "Mark as read",
-          del: "Delete",
-          more: "More",
-          primaryActions: {
-            comment: "View comment",
-            like: "View liked post",
-            follow: "Follow back",
-            mention: "View mention",
-            system: "View details",
-          },
-          followBackDone: "Mutual following",
-          emptyMatch: "No matching notifications",
-          empty: "No notifications",
-          emptyMatchDesc: "Try adjusting filters",
-          emptyDesc: "You will receive notifications here",
-          refresh: "Refresh",
-          followerMissing: "Follower info missing",
-          followBackOk: "Followed back",
-          followBackFail: "Follow back failed",
-          labels: { comment: "Comment", like: "Like", follow: "Follow", mention: "Mention", system: "System" },
-          agoMin: "m ago",
-          agoHour: "h ago",
-          agoDay: "d ago",
-        }
-      : lang === "ja-JP"
-        ? {
-            title: "通知",
-            subtitle: "通知を管理",
-            markAll: "すべて既読",
-            allTypes: "すべての種類",
-            allStatus: "すべての状態",
-            unread: "未読",
-            read: "既読",
-            isNew: "新着",
-            readAt: "既読",
-            markRead: "既読にする",
-            del: "削除",
-            more: "その他",
-            primaryActions: {
-              comment: "コメントを見る",
-              like: "記事を見る",
-              follow: "フォローバック",
-              mention: "メンションを見る",
-              system: "詳細を見る",
-            },
-            followBackDone: "相互フォロー",
-            emptyMatch: "一致する通知がありません",
-            empty: "通知はありません",
-            emptyMatchDesc: "条件を調整してください",
-            emptyDesc: "新しい通知がここに表示されます",
-            refresh: "更新",
-            followerMissing: "フォロワー情報が不足しています",
-            followBackOk: "フォローバックしました",
-            followBackFail: "フォローバックに失敗しました",
-            labels: {
-              comment: "コメント",
-              like: "いいね",
-              follow: "フォロー",
-              mention: "メンション",
-              system: "システム",
-            },
-            agoMin: "分前",
-            agoHour: "時間前",
-            agoDay: "日前",
-          }
-        : {
-            title: "通知中心",
-            subtitle: "管理您的通知消息",
-            markAll: "全部标记为已读",
-            allTypes: "全部类型",
-            allStatus: "全部状态",
-            unread: "未读",
-            read: "已读",
-            isNew: "新",
-            readAt: "已读于",
-            markRead: "标记为已读",
-            del: "删除",
-            more: "更多",
-            primaryActions: {
-              comment: "查看评论",
-              like: "查看被赞文章",
-              follow: "回关",
-              mention: "查看提及",
-              system: "查看详情",
-            },
-            followBackDone: "已互关",
-            emptyMatch: "没有找到匹配的通知",
-            empty: "暂无通知",
-            emptyMatchDesc: "尝试调整筛选条件",
-            emptyDesc: "当有新的活动时，您会在这里收到通知",
-            refresh: "刷新通知",
-            followerMissing: "缺少关注者信息",
-            followBackOk: "已回关",
-            followBackFail: "回关失败",
-            labels: { comment: "评论", like: "点赞", follow: "关注", mention: "提及", system: "系统" },
-            agoMin: "分钟前",
-            agoHour: "小时前",
-            agoDay: "天前",
-          };
+export default function ProfileNotifications({ lang, initialReadFilter = "all", text: t }: ProfileNotificationsProps) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [readFilter, setReadFilter] = useState<string>(initialReadFilter);
   const [followActionId, setFollowActionId] = useState<number | null>(null);
   const [followBackDoneIds, setFollowBackDoneIds] = useState<Set<number>>(new Set());
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const buildAuthHeaders = useCallback((): Record<string, string> => {
     if (typeof window === "undefined") return {};
     const token = localStorage.getItem("accessToken");
@@ -189,45 +112,60 @@ export default function ProfileNotifications({ lang, initialReadFilter = "all" }
     setReadFilter(initialReadFilter);
   }, [initialReadFilter]);
 
-  const fetchNotifications = useCallback(async () => {
-    setLoading(true);
-    try {
-      const qs = new URLSearchParams({ page: "1", limit: "100" });
-      if (typeFilter !== "all") {
-        qs.set("type", typeFilter);
+  const fetchNotifications = useCallback(
+    async (targetPage = 1, append = false) => {
+      if (append) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
       }
-      if (readFilter === "read") {
-        qs.set("isRead", "true");
-      } else if (readFilter === "unread") {
-        qs.set("isRead", "false");
+      try {
+        const qs = new URLSearchParams({ page: String(targetPage), limit: "20" });
+        if (typeFilter !== "all") {
+          qs.set("type", typeFilter);
+        }
+        if (readFilter === "read") {
+          qs.set("isRead", "true");
+        } else if (readFilter === "unread") {
+          qs.set("isRead", "false");
+        }
+        const res = await fetch(`/api/notifications?${qs.toString()}`, { headers: buildAuthHeaders() });
+        const json = (await res.json()) as ApiResponse<NotificationListResponse>;
+        if (!json.success || !json.data) {
+          throw new Error(json.message || "获取通知失败");
+        }
+        const normalized: Notification[] = json.data.data.map((row) => ({
+          id: row.id,
+          userId: row.userId,
+          type: row.type,
+          title: row.title,
+          content: row.content,
+          data: row.data,
+          isRead: row.isRead,
+          readAt: row.readAt ? new Date(row.readAt) : undefined,
+          createdAt: new Date(row.createdAt),
+        }));
+        setNotifications((prev) => (append ? [...prev, ...normalized] : normalized));
+        setCurrentPage(targetPage);
+        setHasNextPage(json.data.pagination.hasNext);
+      } catch (error) {
+        console.error("获取通知列表失败:", error);
+        if (!append) {
+          setNotifications([]);
+        }
+      } finally {
+        if (append) {
+          setLoadingMore(false);
+        } else {
+          setLoading(false);
+        }
       }
-      const res = await fetch(`/api/notifications?${qs.toString()}`, { headers: buildAuthHeaders() });
-      const json = (await res.json()) as ApiResponse<NotificationListResponse>;
-      if (!json.success || !json.data) {
-        throw new Error(json.message || "获取通知失败");
-      }
-      const normalized: Notification[] = json.data.data.map((row) => ({
-        id: row.id,
-        userId: row.userId,
-        type: row.type,
-        title: row.title,
-        content: row.content,
-        data: row.data,
-        isRead: row.isRead,
-        readAt: row.readAt ? new Date(row.readAt) : undefined,
-        createdAt: new Date(row.createdAt),
-      }));
-      setNotifications(normalized);
-    } catch (error) {
-      console.error("获取通知列表失败:", error);
-      setNotifications([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [buildAuthHeaders, readFilter, typeFilter]);
+    },
+    [buildAuthHeaders, readFilter, typeFilter]
+  );
 
   useEffect(() => {
-    void fetchNotifications();
+    void fetchNotifications(1, false);
   }, [fetchNotifications]);
 
   const filteredNotifications = notifications;
@@ -286,6 +224,25 @@ export default function ProfileNotifications({ lang, initialReadFilter = "all" }
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true, readAt: n.readAt || new Date() })));
     } catch (error) {
       console.error("标记所有通知失败:", error);
+    }
+  };
+
+  const handleClearRead = async () => {
+    try {
+      const readIds = notifications.filter((n) => n.isRead).map((n) => n.id);
+      if (readIds.length === 0) return;
+      const res = await fetch("/api/notifications", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json", ...buildAuthHeaders() },
+        body: JSON.stringify({ clearRead: true }),
+      });
+      const json = (await res.json()) as ApiResponse<null>;
+      if (!json.success) {
+        throw new Error(json.message || "清理已读通知失败");
+      }
+      await fetchNotifications(1, false);
+    } catch (error) {
+      console.error("清理已读通知失败:", error);
     }
   };
 
@@ -392,7 +349,17 @@ export default function ProfileNotifications({ lang, initialReadFilter = "all" }
             onPress={handleMarkAllAsRead}
             isDisabled={unreadCount === 0}
           >
-            {t.markAll}
+            {t.markAllRead}
+          </Button>
+          <Button
+            color="default"
+            variant="flat"
+            size="sm"
+            className="border border-default-200/60 bg-default-100/70"
+            onPress={handleClearRead}
+            isDisabled={!notifications.some((n) => n.isRead)}
+          >
+            {t.clearRead}
           </Button>
         </div>
       </div>
@@ -529,7 +496,7 @@ export default function ProfileNotifications({ lang, initialReadFilter = "all" }
                             variant="light"
                             size="sm"
                             color="success"
-                            aria-label={t.markRead}
+                            aria-label={t.markAsRead}
                             onPress={() => handleMarkAsRead(notification.id)}
                           >
                             <Check className="h-4 w-4" />
@@ -540,7 +507,7 @@ export default function ProfileNotifications({ lang, initialReadFilter = "all" }
                           variant="light"
                           size="sm"
                           color="danger"
-                          aria-label={t.del}
+                          aria-label={t.delete}
                           onPress={() => handleDeleteNotification(notification.id)}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -558,6 +525,20 @@ export default function ProfileNotifications({ lang, initialReadFilter = "all" }
         })}
       </div>
 
+      {hasNextPage && (
+        <div className="flex justify-center">
+          <Button
+            color="primary"
+            variant="flat"
+            className="border border-primary/20 bg-primary/10 text-primary backdrop-blur-xl"
+            isLoading={loadingMore}
+            onPress={() => void fetchNotifications(currentPage + 1, true)}
+          >
+            {loadingMore ? t.loadingMore : t.loadMore}
+          </Button>
+        </div>
+      )}
+
       {/* 空状态 */}
       {filteredNotifications.length === 0 && !loading && (
         <Card className={PROFILE_GLASS_CARD}>
@@ -573,7 +554,7 @@ export default function ProfileNotifications({ lang, initialReadFilter = "all" }
               color="primary"
               variant="flat"
               className="border border-primary/20 bg-primary/10 text-primary backdrop-blur-xl"
-              onPress={fetchNotifications}
+              onPress={() => void fetchNotifications(1, false)}
             >
               {t.refresh}
             </Button>

@@ -226,6 +226,85 @@ export async function PUT(request: NextRequest) {
 }
 
 /**
+ * DELETE /api/notifications
+ * 删除通知（支持清理已读）
+ * @tag 通知
+ * @version 1.3.0
+ */
+export async function DELETE(request: NextRequest) {
+  try {
+    const auth = requireAuthUser(request);
+    if (!auth.ok) {
+      return NextResponse.json<ApiResponse>(
+        {
+          success: false,
+          message: auth.reason === "missing" ? "未提供认证令牌" : "无效的认证令牌",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 401 }
+      );
+    }
+
+    const body = (await request.json().catch(() => ({}))) as {
+      notificationIds?: number[];
+      clearRead?: boolean;
+      userId?: number;
+    };
+    const isRoot = isJwtInMemorySuperRoot(auth.user);
+    const targetUserId =
+      isRoot && Number.isFinite(body.userId) && Number(body.userId) > 0 ? Number(body.userId) : auth.user.userId;
+
+    if (body.clearRead === true) {
+      await db
+        .delete(userNotifications)
+        .where(and(eq(userNotifications.userId, targetUserId), eq(userNotifications.isRead, true)));
+      return NextResponse.json<ApiResponse>({
+        success: true,
+        data: null,
+        message: "已清理全部已读通知",
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    const ids = Array.isArray(body.notificationIds)
+      ? body.notificationIds.filter((id) => Number.isInteger(id) && id > 0)
+      : [];
+    if (ids.length === 0) {
+      return NextResponse.json<ApiResponse>(
+        {
+          success: false,
+          message: "请提供 notificationIds 或 clearRead=true",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 400 }
+      );
+    }
+
+    await db
+      .delete(userNotifications)
+      .where(and(eq(userNotifications.userId, targetUserId), inArray(userNotifications.id, ids)));
+
+    return NextResponse.json<ApiResponse>({
+      success: true,
+      data: null,
+      message: "通知删除成功",
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("批量删除通知失败:", error);
+    return NextResponse.json(
+      {
+        success: false,
+        message: "批量删除通知失败",
+        error: error instanceof Error ? error.message : "未知错误",
+        timestamp: new Date().toISOString(),
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
  * POST /api/notifications
  * 创建通知
  * @tag 通知

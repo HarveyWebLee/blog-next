@@ -292,6 +292,8 @@ export interface PostData extends BaseEntity {
   allowComments: boolean;
   viewCount: number;
   likeCount: number;
+  /** 已通过评论数量（列表场景优先使用，避免未携带 comments 明细时显示为 0） */
+  commentCount?: number;
   /** 文章被收藏次数（按 user_favorites 聚合） */
   favoriteCount?: number;
   /** 当前登录用户是否已点赞（由列表/详情接口按请求身份回填） */

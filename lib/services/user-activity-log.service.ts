@@ -33,6 +33,10 @@ export const UserActivityAction = {
   NEWSLETTER_SUBSCRIBED: "newsletter_subscribed",
   NEWSLETTER_UNSUBSCRIBED: "newsletter_unsubscribed",
   ADMIN_USER_UPDATED: "admin_user_updated",
+  PASSWORD_RESET_REQUESTED: "password_reset_requested",
+  PASSWORD_RESET_COMPLETED: "password_reset_completed",
+  COMMENT_MODERATED: "comment_moderated",
+  COMMENT_BATCH_MODERATED: "comment_batch_moderated",
 } as const;
 
 export type UserActivityActionType = (typeof UserActivityAction)[keyof typeof UserActivityAction];

@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { and, count, eq, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
-import { comments, posts, userActivities, userFavorites, userFollows, userNotifications, users } from "@/lib/db/schema";
+import { comments, posts, userActivities, userFavorites, userFollows, userNotifications } from "@/lib/db/schema";
 import { requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, ProfileStats } from "@/types/blog";
 
@@ -43,8 +43,12 @@ export async function GET(request: NextRequest) {
       // 用户文章数量
       db.select({ count: count() }).from(posts).where(eq(posts.authorId, userId)),
 
-      // 用户评论数量
-      db.select({ count: count() }).from(comments).where(eq(comments.authorId, userId)),
+      // 我的评论：统计“我发布的文章下收到的评论数”
+      db
+        .select({ count: count() })
+        .from(comments)
+        .innerJoin(posts, eq(comments.postId, posts.id))
+        .where(eq(posts.authorId, userId)),
 
       // 用户文章总浏览量
       db

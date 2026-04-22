@@ -42,6 +42,8 @@ export interface ApiExample {
 export interface ApiEndpoint {
   method: string;
   path: string;
+  /** 端点来源文件（相对仓库根目录），便于快速定位实现 */
+  sourceFile?: string;
   description?: string;
   /** 鉴权与调用注意（文档页展示） */
   authHint?: string;
@@ -251,6 +253,7 @@ export class ApiScanner {
     return {
       method,
       path: apiPath,
+      sourceFile: path.relative(process.cwd(), filePath),
       description,
       authHint,
       parameters,

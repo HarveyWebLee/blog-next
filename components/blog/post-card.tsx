@@ -267,7 +267,7 @@ export function PostCard({
                   </div>
                   <div className="flex items-center gap-1">
                     <MessageCircle className="w-3 h-3" />
-                    <span className="text-xs">{post.comments?.length || 0}</span>
+                    <span className="text-xs">{post.commentCount ?? post.comments?.length ?? 0}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-1">

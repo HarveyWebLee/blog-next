@@ -77,6 +77,7 @@ export default function BlogManagePage() {
           title: "Blog Management",
           subtitle: "Only posts you authored are listed; edit and delete are limited to the author.",
           create: "Create Post",
+          commentReview: "Comment Review",
           searchFilter: "Search & Filter",
           searchFilterDesc: "Quickly find the posts you need",
           search: "Search post title...",
@@ -129,6 +130,7 @@ export default function BlogManagePage() {
             title: "ブログ管理",
             subtitle: "自分が作成した記事のみ表示・編集・削除できます。",
             create: "記事作成",
+            commentReview: "コメント審査",
             searchFilter: "検索と絞り込み",
             searchFilterDesc: "必要な記事をすばやく見つける",
             search: "記事タイトルを検索...",
@@ -180,6 +182,7 @@ export default function BlogManagePage() {
             title: "博客管理",
             subtitle: "仅展示您本人创建的文章；编辑与删除仅限作者本人。",
             create: "创建博客",
+            commentReview: "评论审核",
             searchFilter: "搜索和过滤",
             searchFilterDesc: "快速找到您需要的文章",
             search: "搜索博客标题...",
@@ -466,6 +469,11 @@ export default function BlogManagePage() {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3">
+          {isSuperAdmin ? (
+            <Button as="a" href={`/${lang}/blog/manage/comments`} variant="flat" size="lg" className="font-semibold">
+              {t.commentReview}
+            </Button>
+          ) : null}
           <Button
             as="a"
             href={`/${lang}/blog/manage/create`}
