@@ -1,7 +1,14 @@
 import fs from "fs";
 import path from "path";
 
-import { pickAuthHint, pickEndpointDescription, pickGroupDescription } from "@/lib/utils/api-docs-endpoint-meta";
+import {
+  API_DOCS_AUTH_HINTS,
+  API_DOCS_ENDPOINT_DESCRIPTIONS,
+  pickAuthHint,
+  pickEndpointDescription,
+  pickGroupDescription,
+} from "@/lib/utils/api-docs-endpoint-meta";
+import { readApiDocsManifestSync, writeApiDocsManifestSync } from "@/lib/utils/api-docs-manifest";
 
 export interface ApiParameter {
   name: string;
@@ -75,9 +82,16 @@ export class ApiScanner {
   /**
    * 扫描所有API接口（带缓存）
    */
-  async scanAllApis(forceRefresh: boolean = false): Promise<ApiGroup[]> {
+  async scanAllApis(
+    forceRefresh: boolean = false,
+    options?: {
+      // 默认为 true：扫描成功后写回 manifest。校验脚本可显式关闭避免副作用。
+      persistManifest?: boolean;
+    }
+  ): Promise<ApiGroup[]> {
     const cacheKey = "all-apis";
     const now = Date.now();
+    const shouldPersistManifest = options?.persistManifest !== false;
 
     // 检查缓存
     if (!forceRefresh && this.cache.has(cacheKey)) {
@@ -85,6 +99,18 @@ export class ApiScanner {
       if (now - cached.timestamp < this.cacheTimeout) {
         console.log("使用缓存的API数据");
         return cached.data;
+      }
+    }
+
+    const isProduction = process.env.NODE_ENV === "production";
+
+    // 生产环境优先读取构建产物，避免 standalone/serverless 运行时缺失源码目录导致接口列表为空。
+    if (isProduction && !forceRefresh) {
+      const manifest = readApiDocsManifestSync();
+      if (manifest?.groups?.length) {
+        console.log(`已从 manifest 加载 API 数据：${manifest.groups.length} 个分组`);
+        this.cache.set(cacheKey, { timestamp: now, data: manifest.groups });
+        return manifest.groups;
       }
     }
 
@@ -104,16 +130,87 @@ export class ApiScanner {
         }
       }
 
-      // 更新缓存
-      this.cache.set(cacheKey, { timestamp: now, data: groups });
-      console.log(
-        `扫描完成，发现 ${groups.length} 个API组，共 ${groups.reduce((sum, g) => sum + g.endpoints.length, 0)} 个接口`
-      );
+      // 扫描成功后写回 manifest，使构建产物与开发环境数据模型保持一致。
+      if (shouldPersistManifest && groups.length > 0) {
+        writeApiDocsManifestSync(groups);
+      }
     } catch (error) {
       console.error("扫描API目录失败:", error);
+      // 扫描失败时优先回退到 manifest（构建期产物），保证生产环境行为稳定。
+      const manifest = readApiDocsManifestSync();
+      if (manifest?.groups?.length) {
+        console.warn(`已回退到 manifest：${manifest.groups.length} 个分组`);
+        groups.push(...manifest.groups);
+      }
+
+      // 生产环境（尤其 standalone）中，源码目录 app/api 可能不在运行时文件系统内。
+      // 最后一层回退到 API 文档元数据，避免极端情况下完全空白。
+      if (groups.length === 0) {
+        const fallbackGroups = this.buildGroupsFromMetadata();
+        if (fallbackGroups.length > 0) {
+          console.warn(`已回退到元数据扫描结果：${fallbackGroups.length} 个分组`);
+          groups.push(...fallbackGroups);
+        }
+      }
     }
 
+    // 更新缓存
+    this.cache.set(cacheKey, { timestamp: now, data: groups });
+    console.log(
+      `扫描完成，发现 ${groups.length} 个API组，共 ${groups.reduce((sum, g) => sum + g.endpoints.length, 0)} 个接口`
+    );
+
     return groups;
+  }
+
+  /**
+   * 基于 api-docs 元数据构建兜底分组：
+   * - 适用于生产环境无法读取源码目录时；
+   * - 输出结构与文件扫描保持一致，便于前端无感消费。
+   */
+  private buildGroupsFromMetadata(): ApiGroup[] {
+    const groupMap = new Map<string, ApiEndpoint[]>();
+
+    for (const [apiPath, methodMap] of Object.entries(API_DOCS_ENDPOINT_DESCRIPTIONS)) {
+      const groupName = this.getGroupNameFromApiPath(apiPath);
+      const endpoints = groupMap.get(groupName) ?? [];
+
+      for (const [method, description] of Object.entries(methodMap)) {
+        const authHint = API_DOCS_AUTH_HINTS[apiPath]?.[method];
+        endpoints.push({
+          method,
+          path: apiPath,
+          description,
+          authHint,
+          parameters: this.extractParameters("", apiPath),
+          responses: [{ status: 200, description: "成功响应", example: { success: true, message: "操作成功" } }],
+          examples: this.extractExamples("", method, apiPath),
+          tags: [],
+          deprecated: false,
+        });
+      }
+
+      groupMap.set(groupName, endpoints);
+    }
+
+    return Array.from(groupMap.entries())
+      .map(([name, endpoints]) => ({
+        name,
+        description: this.getGroupDescription(name),
+        endpoints,
+        lastUpdated: new Date().toISOString(),
+      }))
+      .filter((group) => group.endpoints.length > 0)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  /**
+   * 从 /api/** 路径提取一级分组名（与 app/api 下目录名对齐）
+   */
+  private getGroupNameFromApiPath(apiPath: string): string {
+    const segments = apiPath.split("/").filter(Boolean);
+    // 形如 /api/posts/{id} -> ["api", "posts", "{id}"]
+    return segments[1] || "misc";
   }
 
   /**

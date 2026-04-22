@@ -1,7 +1,11 @@
 name: Deploy
 
 on:
-  push:
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
     branches:
       - main
 
@@ -20,6 +24,7 @@ concurrency:
 
 jobs:
   deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     # 部署步骤含远端两次 Docker 构建（db-migrate、blog-web）与迁移，弱网/无 BuildKit 缓存时可能较长。
     # 与下方 db-migrate 分步超时对齐，避免 Actions 整 job 先被杀死。
@@ -28,7 +33,18 @@ jobs:
       # 目标服务器中的项目目录。
       # 如需修改部署目录，只需改这里即可。
       APP_DIR: /opt/blog-next
+      SOURCE_CI_RUN_ID: ${{ github.event.workflow_run.id }}
+      SOURCE_CI_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+      SOURCE_CI_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+      SOURCE_CI_HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
     steps:
+      - name: Print deployment source context
+        run: |
+          echo "[DEPLOY] source CI run id: ${SOURCE_CI_RUN_ID}"
+          echo "[DEPLOY] source CI conclusion: ${SOURCE_CI_CONCLUSION}"
+          echo "[DEPLOY] source commit sha: ${SOURCE_CI_HEAD_SHA}"
+          echo "[DEPLOY] source branch: ${SOURCE_CI_HEAD_BRANCH}"
+
       - name: Setup SSH
         run: |
           set -euo pipefail

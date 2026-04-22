@@ -50,3 +50,6 @@ deploy/.env.docker
 
 # CI/部署过程中临时目录（如 deploy workflow 设置 TMPDIR=.tmp）
 /.tmp/
+
+# API 文档构建产物（由 pnpm api-docs:generate / prebuild 自动生成）
+/generated/api-docs-manifest.json

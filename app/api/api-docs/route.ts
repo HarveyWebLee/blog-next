@@ -255,7 +255,8 @@ export async function GET(request: NextRequest) {
     }
 
     const scanner = new ApiScanner();
-    const apiGroups = await scanner.scanAllApis();
+    // refresh=true 时允许跳过缓存并触发重新扫描（开发环境可用于同步最新接口）
+    const apiGroups = await scanner.scanAllApis(refresh);
 
     const totalGroups = apiGroups.length;
     const totalEndpoints = apiGroups.reduce((sum, group) => sum + group.endpoints.length, 0);
