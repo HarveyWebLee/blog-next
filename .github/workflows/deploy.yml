@@ -60,76 +60,6 @@ jobs:
             git config --global --add safe.directory "${APP_DIR}"
 
             cd "${APP_DIR}"
-            # 目录与文件权限自愈：
-            # 目标：避免历史 sudo/root 写入后，当前部署用户在 git pull 时出现
-            # “unable to unlink old ... Permission denied”。
-            # 处理策略：
-            # 1) 优先尝试当前用户直接修复读写权限；
-            # 2) 若存在 sudo 且免密可用，尝试修复 owner 与权限；
-            # 3) 若仍不可写，则自动执行“工作区重建”（保留 deploy/.env.docker）。
-            echo "[DEPLOY] preflight: workspace permission self-heal"
-            # 仅修复代码与 Git 元数据目录，避免递归触碰 data 等运行时卷目录导致大量噪音日志。
-            for p in \
-              "${APP_DIR}/.git" \
-              "${APP_DIR}/app" \
-              "${APP_DIR}/components" \
-              "${APP_DIR}/lib" \
-              "${APP_DIR}/docs" \
-              "${APP_DIR}/types" \
-              "${APP_DIR}/drizzle"; do
-              if [ -e "${p}" ]; then
-                chmod -R u+rwX "${p}" || true
-              fi
-            done
-            if command -v sudo >/dev/null 2>&1; then
-              if sudo -n true 2>/dev/null; then
-                for p in \
-                  "${APP_DIR}/.git" \
-                  "${APP_DIR}/app" \
-                  "${APP_DIR}/components" \
-                  "${APP_DIR}/lib" \
-                  "${APP_DIR}/docs" \
-                  "${APP_DIR}/types" \
-                  "${APP_DIR}/drizzle"; do
-                  if [ -e "${p}" ]; then
-                    sudo chown -R "${USER}:${USER}" "${p}" || true
-                    sudo chmod -R u+rwX "${p}" || true
-                  fi
-                done
-              fi
-            fi
-
-            # 若关键目录仍不可写，执行重建工作区（通用兜底，不依赖人工登录处理）
-            if ! test -w "${APP_DIR}/.git" || ! test -w "${APP_DIR}/app"; then
-              echo "[DEPLOY] workspace still not writable, rebuilding worktree"
-              backup_env=""
-              if [ -f "${APP_DIR}/deploy/.env.docker" ]; then
-                backup_env="$(mktemp)"
-                cp "${APP_DIR}/deploy/.env.docker" "${backup_env}"
-              fi
-
-              repo_url="$(git -C "${APP_DIR}" remote get-url origin 2>/dev/null || echo '')"
-              if [ -z "${repo_url}" ]; then
-                echo "部署失败：无法读取 origin 仓库地址，且当前工作区不可写" >&2
-                exit 1
-              fi
-
-              new_dir="${APP_DIR}.rebuild.$(date +%s)"
-              rm -rf "${new_dir}"
-              git clone --depth=1 --branch main "${repo_url}" "${new_dir}"
-
-              mkdir -p "${new_dir}/deploy"
-              if [ -n "${backup_env}" ] && [ -f "${backup_env}" ]; then
-                cp "${backup_env}" "${new_dir}/deploy/.env.docker"
-                rm -f "${backup_env}"
-              fi
-
-              old_dir="${APP_DIR}.old.$(date +%s)"
-              mv "${APP_DIR}" "${old_dir}"
-              mv "${new_dir}" "${APP_DIR}"
-              rm -rf "${old_dir}" || true
-            fi
-
             # timeout … bash -c '…' 为子进程，未 export 的变量在子 shell 中为空，会导致 -f 异常（如报「xxx is a directory」）
             export COMPOSE_FILE="${APP_DIR}/docker-compose.yml"
             export COMPOSE_ENV="${APP_DIR}/deploy/.env.docker"
@@ -168,16 +98,9 @@ jobs:
             export COMPOSE_DOCKER_CLI_BUILD=1
 
             # 始终对齐远端 main，确保部署内容可追踪、可复现。
-            # 部署目录常见存在本地改动（如历史残留、临时文件、权限导致的索引脏状态），
-            # 这里采用“强制对齐”而非 pull 合并，避免被本地脏工作区阻塞。
-            git fetch --prune origin main
-            git checkout -f main || git checkout -f -B main origin/main
-            git reset --hard origin/main
-            # 清理未跟踪文件，保留运行所需白名单文件/目录。
-            git clean -fd \
-              -e deploy/.env.docker \
-              -e deploy/.env.docker.local \
-              -e data/
+            git fetch origin main
+            git checkout main
+            git pull --ff-only origin main
             echo "[DEPLOY] git sync done"
 
             # 1) 先确保依赖服务在线（若已在线会保持不变；MinIO 数据在 MINIO_HOST_DATA_DIR 绑定目录，默认仓库下 data/minio）
