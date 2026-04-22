@@ -1,3 +1,9 @@
+## [1.6.1](https://github.com/HarveyWebLee/blog-next/compare/v1.6.0...v1.6.1) (2026-04-22)
+
+### Bug Fixes
+
+- **api-docs:** 新增API文档生成与校验功能 ([69785ad](https://github.com/HarveyWebLee/blog-next/commit/69785adf4643b4a4ca9a9a2cd37f23321f07f5dd))
+
 # [1.6.0](https://github.com/HarveyWebLee/blog-next/compare/v1.5.4...v1.6.0) (2026-04-22)
 
 ### Features
