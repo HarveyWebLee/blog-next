@@ -282,8 +282,18 @@ export class ApiScanner {
       const httpMethods = ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"];
 
       for (const method of httpMethods) {
-        const methodRegex = new RegExp(`export\\s+async\\s+function\\s+${method}\\s*\\(`, "g");
-        if (methodRegex.test(content)) {
+        const functionExportRegex = new RegExp(`export\\s+async\\s+function\\s+${method}\\s*\\(`, "g");
+        const wrappedHandlersRegex = new RegExp(
+          `export\\s+const\\s*\\{[^}]*\\b${method}\\b[^}]*\\}\\s*=\\s*defineApiHandlers\\s*\\(`,
+          "m"
+        );
+        const directConstExportRegex = new RegExp(`export\\s+const\\s+${method}\\s*=`, "m");
+
+        if (
+          functionExportRegex.test(content) ||
+          wrappedHandlersRegex.test(content) ||
+          directConstExportRegex.test(content)
+        ) {
           const endpoint = this.parseEndpoint(content, method, apiPath, filePath);
           if (endpoint) {
             endpoints.push(endpoint);
