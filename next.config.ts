@@ -3,6 +3,34 @@ import type { NextConfig } from "next";
 // standalone 在 Windows 上常因 pnpm symlink 触发 EPERM；Docker/Linux 构建时通过 NEXT_STANDALONE=true 开启（见 Dockerfile）
 const useStandalone = process.env.NEXT_STANDALONE === "true";
 
+function resolvePasswordTransportRequired(): boolean {
+  const raw = process.env.PASSWORD_TRANSPORT_REQUIRED?.trim().toLowerCase();
+  if (raw === "true") return true;
+  if (raw === "false") return false;
+  return process.env.NODE_ENV === "production";
+}
+
+function isPasswordTransportKeyConfigured(): boolean {
+  const b64 = process.env.PASSWORD_TRANSPORT_RSA_PRIVATE_KEY_B64?.trim();
+  const pem = process.env.PASSWORD_TRANSPORT_RSA_PRIVATE_KEY?.trim();
+  return Boolean((b64 && b64.length > 0) || (pem && pem.length > 0));
+}
+
+function logPasswordTransportStartupStatus(): void {
+  const required = resolvePasswordTransportRequired();
+  const configured = isPasswordTransportKeyConfigured();
+  const ready = !required || configured;
+  const mode = process.env.NODE_ENV || "development";
+  const requiredSource = process.env.PASSWORD_TRANSPORT_REQUIRED == null ? "default" : "env";
+  const reason = ready ? (required ? "required+configured" : "not-required") : "required-but-missing-key";
+  // 启动时打印一次，便于本地与部署环境快速确认加固状态（不输出敏感值）。
+  console.log(
+    `[password-transport][startup] mode=${mode} required=${required} configured=${configured} ready=${ready} source=${requiredSource} reason=${reason}`
+  );
+}
+
+logPasswordTransportStartupStatus();
+
 /**
  * 从 MinIO 对外基址生成 next/image 允许的远程图规则。
  * 线上若只用 127.0.0.1 配在 remotePatterns 里，而库里/前端存的是公网 IP 或域名，优化器会拒绝 URL，图片会裂。

@@ -1,16 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 
+import { resolveSecretFromBody } from "@/lib/crypto/password-transport/resolve-secret";
 import { db } from "@/lib/db/config";
 import { emailVerifications, users } from "@/lib/db/schema";
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
+import { logger } from "@/lib/server/logger";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
 import { hashPassword, validatePasswordStrength } from "@/lib/utils";
 import { ApiResponse } from "@/types/blog";
 
-export async function POST(request: NextRequest) {
+async function handleAuthResetPasswordPOST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { token, newPassword } = body;
+    const body = (await request.json()) as Record<string, unknown>;
+    const secret = await resolveSecretFromBody({ body, plainField: "newPassword" });
+    if (!secret.ok) {
+      return NextResponse.json<ApiResponse>(
+        {
+          success: false,
+          message: secret.message,
+          timestamp: new Date().toISOString(),
+        },
+        { status: secret.status }
+      );
+    }
+    const newPassword = secret.plaintext;
+    const token = typeof body.token === "string" ? body.token : "";
 
     // 验证输入
     if (!token || !newPassword) {
@@ -106,15 +121,8 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("重置密码错误:", error);
-    return NextResponse.json<ApiResponse>(
-      {
-        success: false,
-        message: "服务器内部错误",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
+
+export const { POST } = defineApiHandlers({ POST: handleAuthResetPasswordPOST });

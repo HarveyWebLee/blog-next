@@ -3,18 +3,64 @@ import { and, eq } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { emailSubscriptions, users } from "@/lib/db/schema";
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { consumeEmailVerificationCode } from "@/lib/services/email-verification-consume";
 import { logUserActivity, maskEmailForActivityLog, UserActivityAction } from "@/lib/services/user-activity-log.service";
 import { isValidEmail } from "@/lib/utils/auth";
-import { isMysqlTableMissingError } from "@/lib/utils/mysql-error";
+import { isMysqlConnectionError, isMysqlTableMissingError, logDbError } from "@/lib/utils/mysql-error";
 import { requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, CreateSubscriptionRequest, EmailSubscription } from "@/types/blog";
+
+/**
+ * 订阅相关接口共用的 DB 异常响应：先结构化落日志，再返回不把 SQL/堆栈暴露给前端的 JSON。
+ */
+function subscriptionDbErrorResponse(scope: string, error: unknown, http500UserMessage: string): NextResponse {
+  logDbError(scope, error);
+  const timestamp = new Date().toISOString();
+
+  if (isMysqlTableMissingError(error)) {
+    return NextResponse.json(
+      {
+        success: false,
+        message: "订阅服务暂时不可用，请稍后再试",
+        code: "DB_SCHEMA_OUTDATED",
+        timestamp,
+      } as ApiResponse<null>,
+      { status: 503 }
+    );
+  }
+
+  if (isMysqlConnectionError(error)) {
+    return NextResponse.json(
+      {
+        success: false,
+        message: "服务暂时不可用，请稍后再试",
+        code: "DB_UNAVAILABLE",
+        timestamp,
+      } as ApiResponse<null>,
+      { status: 503 }
+    );
+  }
+
+  return NextResponse.json(
+    {
+      success: false,
+      message: http500UserMessage,
+      code: "INTERNAL_ERROR",
+      ...(process.env.NODE_ENV === "development" && error instanceof Error
+        ? { debug: error.message.slice(0, 500) }
+        : {}),
+      timestamp,
+    } as ApiResponse<null>,
+    { status: 500 }
+  );
+}
 
 /**
  * GET /api/subscriptions?email=xxx
  * 查询某邮箱的订阅状态
  */
-export async function GET(request: NextRequest) {
+async function handleSubscriptionsGET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const email = (searchParams.get("email") || "").trim().toLowerCase();
@@ -46,28 +92,7 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString(),
     } as ApiResponse<{ email: string; isSubscribed: boolean }>);
   } catch (error) {
-    console.error("查询订阅状态失败:", error);
-    // 线上常见：未执行 Drizzle 迁移，缺少 email_subscriptions 表
-    if (isMysqlTableMissingError(error)) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "订阅服务暂时不可用，请稍后再试",
-          code: "DB_SCHEMA_OUTDATED",
-          timestamp: new Date().toISOString(),
-        } as ApiResponse<null>,
-        { status: 503 }
-      );
-    }
-    return NextResponse.json(
-      {
-        success: false,
-        message: "查询订阅状态失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      } as ApiResponse<null>,
-      { status: 500 }
-    );
+    return subscriptionDbErrorResponse("GET /api/subscriptions", error, "查询订阅状态失败");
   }
 }
 
@@ -75,7 +100,7 @@ export async function GET(request: NextRequest) {
  * 已登录用户：须携带有效 JWT，且 body.email 与账号邮箱一致（防止伪造 userId）。
  * 访客：须先通过邮件收到验证码，并在 body.verificationCode 中提交，校验通过后写入订阅。
  */
-export async function POST(request: NextRequest) {
+async function handleSubscriptionsPOST(request: NextRequest) {
   try {
     const auth = requireAuthUser(request);
     /** 带了 Bearer 但 JWT 无效/过期：与访客缺码区分，提示重新登录 */
@@ -211,27 +236,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("订阅失败:", error);
-    if (isMysqlTableMissingError(error)) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "订阅服务暂时不可用，请稍后再试",
-          code: "DB_SCHEMA_OUTDATED",
-          timestamp: new Date().toISOString(),
-        } as ApiResponse<null>,
-        { status: 503 }
-      );
-    }
-    return NextResponse.json(
-      {
-        success: false,
-        message: "订阅失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      } as ApiResponse<null>,
-      { status: 500 }
-    );
+    return subscriptionDbErrorResponse("POST /api/subscriptions", error, "订阅失败");
   }
 }
 
@@ -245,7 +250,7 @@ type DeleteSubscriptionBody = {
  * 已登录用户：JWT 有效且邮箱与账号一致即可退订。
  * 访客：须提交邮箱验证码（类型 subscription_unsubscribe）校验通过后再退订。
  */
-export async function DELETE(request: NextRequest) {
+async function handleSubscriptionsDELETE(request: NextRequest) {
   try {
     const auth = requireAuthUser(request);
     if (!auth.ok && auth.reason === "invalid") {
@@ -360,26 +365,13 @@ export async function DELETE(request: NextRequest) {
       timestamp: new Date().toISOString(),
     } as ApiResponse<null>);
   } catch (error) {
-    console.error("取消订阅失败:", error);
-    if (isMysqlTableMissingError(error)) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "订阅服务暂时不可用，请稍后再试",
-          code: "DB_SCHEMA_OUTDATED",
-          timestamp: new Date().toISOString(),
-        } as ApiResponse<null>,
-        { status: 503 }
-      );
-    }
-    return NextResponse.json(
-      {
-        success: false,
-        message: "取消订阅失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      } as ApiResponse<null>,
-      { status: 500 }
-    );
+    return subscriptionDbErrorResponse("DELETE /api/subscriptions", error, "取消订阅失败");
   }
 }
+
+/** 统一访问日志与未捕获异常记录，见 lib/server/define-api-handlers.ts */
+export const { GET, POST, DELETE } = defineApiHandlers({
+  GET: handleSubscriptionsGET,
+  POST: handleSubscriptionsPOST,
+  DELETE: handleSubscriptionsDELETE,
+});

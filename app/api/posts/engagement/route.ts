@@ -7,6 +7,7 @@ import { and, eq, inArray } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { userFavorites, userPostLikes } from "@/lib/db/schema";
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { createErrorResponse, createSuccessResponse } from "@/lib/utils";
 import { findMysqlDriverError } from "@/lib/utils/mysql-error";
 import { requireAuthUser } from "@/lib/utils/request-auth";
@@ -17,7 +18,7 @@ type PostEngagementState = {
   favorited: boolean;
 };
 
-export async function GET(request: NextRequest) {
+async function handlePostsEngagementGET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const idsRaw = (searchParams.get("ids") || "").trim();
@@ -71,11 +72,16 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(createSuccessResponse(states, "获取互动状态成功"), { status: 200 });
   } catch (error) {
-    const my = findMysqlDriverError(error);
-    console.error("[GET /api/posts/engagement]", error instanceof Error ? error.message : error, my);
-    return NextResponse.json(
-      createErrorResponse("获取互动状态失败", error instanceof Error ? error.message : "未知错误"),
-      { status: 500 }
-    );
+    throw error;
   }
 }
+
+export const { GET } = defineApiHandlers(
+  { GET: handlePostsEngagementGET },
+  {
+    onUnhandledErrorResponse: ({ error }) => {
+      const my = findMysqlDriverError(error);
+      return NextResponse.json(createErrorResponse("获取互动状态失败", my?.code || "未知错误"), { status: 500 });
+    },
+  }
+);

@@ -23,6 +23,8 @@ import {
   userProfiles,
   users,
 } from "@/lib/db/schema";
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
+import { logger } from "@/lib/server/logger";
 import { getAuthUserFromRequest } from "@/lib/utils/request-auth";
 import { ApiResponse, PaginatedResponseData, PostData, ProfileStats, UserActivity } from "@/types/blog";
 
@@ -88,7 +90,10 @@ function toPositiveInt(v: string | null, fallback: number): number {
   return n;
 }
 
-export async function GET(request: NextRequest, { params }: { params: Promise<{ userId: string }> }) {
+async function handleProfilePublicByUserIdGET(
+  request: NextRequest,
+  { params }: { params: Promise<{ userId: string }> }
+) {
   try {
     const { userId: userIdRaw } = await params;
     const targetUserId = Number.parseInt(userIdRaw, 10);
@@ -460,15 +465,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       { headers: NO_STORE_HEADERS }
     );
   } catch (error) {
-    console.error("获取公开资料失败:", error);
-    return NextResponse.json<ApiResponse>(
-      {
-        success: false,
-        message: "获取公开资料失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500, headers: NO_STORE_HEADERS }
-    );
+    throw error;
   }
 }
+
+export const { GET } = defineApiHandlers({
+  GET: handleProfilePublicByUserIdGET,
+});

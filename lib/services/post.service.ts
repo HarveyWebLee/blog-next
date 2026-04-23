@@ -8,6 +8,7 @@ import { and, asc, count, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db/config";
 import { categories, comments, posts, postTags, tags, userFavorites, users } from "@/lib/db/schema";
 import { calculatePagination, generateSlug, truncateText } from "@/lib/utils";
+import { logDbError } from "@/lib/utils/mysql-error";
 import { CreatePostRequest, PaginatedResponseData, PostData, PostQueryParams, UpdatePostRequest } from "@/types/blog";
 
 /** 列表接口允许的排序字段（防注入；未命中则走默认「最近优先」） */
@@ -396,7 +397,7 @@ export class PostService {
         },
       };
     } catch (error) {
-      console.error("查询文章列表失败:", error);
+      logDbError("PostService.getPosts", error);
       throw error;
     }
   }

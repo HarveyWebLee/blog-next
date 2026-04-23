@@ -3,6 +3,8 @@ import { count, desc, eq, like, or } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { users } from "@/lib/db/schema";
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
+import { notifyRouteUnhandledError } from "@/lib/server/route-alert";
 import { requireInMemorySuperRoot } from "@/lib/utils/authz";
 import { mapDbUserToAdminManagedUserRow } from "@/lib/utils/map-db-user-to-admin-row";
 import type { AdminManagedUserRow, ApiResponse, PaginatedResponseData } from "@/types/blog";
@@ -16,7 +18,7 @@ function applyRootRoleSemantic(row: AdminManagedUserRow, rootUserId: number): Ad
  * GET /api/admin/users?page=&limit=&q=
  * 分页列出数据库注册用户（不含超级管理员）。仅超级管理员可调用。
  */
-export async function GET(request: NextRequest) {
+async function handleAdminUsersGET(request: NextRequest) {
   const gate = requireInMemorySuperRoot(request);
   if (!gate.ok) {
     return NextResponse.json<ApiResponse>(
@@ -90,15 +92,22 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (e) {
-    console.error("[api/admin/users] GET", e);
-    return NextResponse.json<ApiResponse>(
-      {
-        success: false,
-        message: "获取用户列表失败",
-        error: e instanceof Error ? e.message : String(e),
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw e;
   }
 }
+
+export const { GET } = defineApiHandlers(
+  { GET: handleAdminUsersGET },
+  {
+    onError: (payload) => notifyRouteUnhandledError(payload),
+    onUnhandledErrorResponse: () =>
+      NextResponse.json<ApiResponse>(
+        {
+          success: false,
+          message: "获取用户列表失败",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 500 }
+      ),
+  }
+);

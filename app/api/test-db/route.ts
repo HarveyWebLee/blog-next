@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import mysql from "mysql2/promise";
 
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { requireInMemorySuperRoot } from "@/lib/utils/authz";
 
 /**
@@ -129,7 +130,7 @@ function checkEnvironmentVariables() {
   };
 }
 
-export async function GET(request: NextRequest) {
+async function handleTestDbGET(request: NextRequest) {
   try {
     const auth = requireInMemorySuperRoot(request);
     if (!auth.ok) {
@@ -189,3 +190,5 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+export const { GET } = defineApiHandlers({ GET: handleTestDbGET });

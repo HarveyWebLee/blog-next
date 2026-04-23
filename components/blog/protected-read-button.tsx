@@ -8,6 +8,7 @@ import { Lock } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/contexts/auth-context";
+import { sealPasswordInRequestBody } from "@/lib/crypto/password-transport/body";
 
 type ProtectedReadButtonProps = {
   lang: string;
@@ -48,18 +49,22 @@ export default function ProtectedReadButton({
     try {
       setSubmitting(true);
       setError("");
+      const payload = await sealPasswordInRequestBody({ password }, password, "password");
       const response = await fetch(`/api/posts/slug/${slug}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify(payload),
       });
       const result = await response.json();
       if (!result.success) {
         setError(result.message || "密码错误");
         return;
       }
+      const unlockToken = (result?.data as { unlockToken?: string } | undefined)?.unlockToken;
       setOpen(false);
-      router.push(`/${lang}/blog/${slug}?password=${encodeURIComponent(password)}`);
+      router.push(
+        unlockToken ? `/${lang}/blog/${slug}?unlock=${encodeURIComponent(unlockToken)}` : `/${lang}/blog/${slug}`
+      );
     } catch (e) {
       console.error("密码校验失败:", e);
       setError("密码校验失败，请重试");

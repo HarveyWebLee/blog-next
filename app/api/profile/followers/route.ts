@@ -9,6 +9,8 @@ import { and, count, desc, eq, inArray, like, or } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { userFollows, users } from "@/lib/db/schema";
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
+import { logger } from "@/lib/server/logger";
 import { requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, PaginatedResponseData, ProfileRelationItem } from "@/types/blog";
 
@@ -24,7 +26,7 @@ function parseLimit(v: string | null): number {
   return Math.min(n, 100);
 }
 
-export async function GET(request: NextRequest) {
+async function handleProfileFollowersGET(request: NextRequest) {
   try {
     const auth = requireAuthUser(request);
     if (!auth.ok) {
@@ -149,15 +151,8 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("获取粉丝列表失败:", error);
-    return NextResponse.json<ApiResponse>(
-      {
-        success: false,
-        message: "获取粉丝列表失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
+
+export const { GET } = defineApiHandlers({ GET: handleProfileFollowersGET });

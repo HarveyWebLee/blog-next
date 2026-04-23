@@ -6,8 +6,12 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
+import { resolveSecretFromBody } from "@/lib/crypto/password-transport/resolve-secret";
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
+import { logger } from "@/lib/server/logger";
 import { postService } from "@/lib/services/post.service";
 import { createErrorResponse, createSuccessResponse } from "@/lib/utils";
+import { generatePostUnlockTicket, verifyPostUnlockTicket } from "@/lib/utils/post-password-ticket";
 import { getAuthUserFromRequest } from "@/lib/utils/request-auth";
 
 type PostCore = {
@@ -54,7 +58,7 @@ function sanitizePostForResponse(post: unknown, passwordVerified: boolean, hideC
  * GET /api/posts/slug/[slug]
  * 根据slug获取文章详情
  */
-export async function GET(request: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
+async function handlePostBySlugGET(request: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   try {
     const { slug } = await params;
 
@@ -71,24 +75,19 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const isPasswordProtected = core.visibility === "password";
     const authUser = getAuthUserFromRequest(request);
     const isAuthor = Boolean(authUser && core.authorId && authUser.userId === core.authorId);
-    const passwordFromQuery = new URL(request.url).searchParams.get("password") || "";
-    const passwordVerified =
-      !isPasswordProtected || isAuthor || (!!core.password && passwordFromQuery === String(core.password));
+    const unlockToken = new URL(request.url).searchParams.get("unlock") || "";
+    const passwordVerified = !isPasswordProtected || isAuthor || verifyPostUnlockTicket(unlockToken, slug);
     const responsePost = sanitizePostForResponse(post, passwordVerified, isPasswordProtected && !passwordVerified);
 
     if (passwordVerified) {
       postService.incrementViewCount(core.id).catch((error) => {
-        console.error("增加浏览次数失败:", error);
+        logger.warn("api/posts/slug/[slug]", "incrementViewCount 异步失败", { slug, err: String(error) });
       });
     }
 
     return NextResponse.json(createSuccessResponse(responsePost, "获取文章详情成功"), { status: 200 });
   } catch (error) {
-    console.error("获取文章详情失败:", error);
-    return NextResponse.json(
-      createErrorResponse("获取文章详情失败", error instanceof Error ? error.message : "未知错误"),
-      { status: 500 }
-    );
+    throw error;
   }
 }
 
@@ -96,7 +95,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
  * PATCH /api/posts/slug/[slug]
  * 校验密码保护文章密码
  */
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
+async function handlePostBySlugPATCH(request: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   try {
     const { slug } = await params;
     if (!slug) {
@@ -108,8 +107,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       return NextResponse.json(createErrorResponse("文章不存在"), { status: 404 });
     }
     const core = resolvePostCore(post);
-    const body = (await request.json()) as { password?: string };
-    const password = (body.password || "").trim();
+    const rawBody = (await request.json()) as Record<string, unknown>;
+    const secret = await resolveSecretFromBody({ body: rawBody, plainField: "password" });
+    if (!secret.ok) {
+      return NextResponse.json(createErrorResponse(secret.message), { status: secret.status });
+    }
+    const password = secret.plaintext.trim();
 
     if (core.visibility !== "password") {
       return NextResponse.json(createSuccessResponse(sanitizePostForResponse(post, true, false), "文章无需密码"), {
@@ -123,14 +126,21 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       return NextResponse.json(createErrorResponse("密码错误"), { status: 403 });
     }
 
-    return NextResponse.json(createSuccessResponse(sanitizePostForResponse(post, true, false), "密码验证成功"), {
+    const unlockToken = generatePostUnlockTicket(slug);
+    const responsePost = {
+      ...sanitizePostForResponse(post, true, false),
+      unlockToken,
+    };
+
+    return NextResponse.json(createSuccessResponse(responsePost, "密码验证成功"), {
       status: 200,
     });
   } catch (error) {
-    console.error("校验文章密码失败:", error);
-    return NextResponse.json(
-      createErrorResponse("校验文章密码失败", error instanceof Error ? error.message : "未知错误"),
-      { status: 500 }
-    );
+    throw error;
   }
 }
+
+export const { GET, PATCH } = defineApiHandlers({
+  GET: handlePostBySlugGET,
+  PATCH: handlePostBySlugPATCH,
+});

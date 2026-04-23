@@ -8,6 +8,7 @@ import { Divider } from "@heroui/divider";
 import { Input } from "@heroui/input";
 import { KeyRound, LogIn, RefreshCw } from "lucide-react";
 
+import { sealPasswordInRequestBody } from "@/lib/crypto/password-transport/body";
 import { message } from "@/lib/utils";
 import type { ApiResponse, LoginResponse } from "@/types/blog";
 import { useApiDocsTester } from "./api-docs-tester-context";
@@ -42,10 +43,11 @@ export function ApiDocsAuthPanel({
     setLoading(true);
     setLastMessage(null);
     try {
+      const payload = await sealPasswordInRequestBody({ username: u, password: p }, p, "password");
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: u, password: p }),
+        body: JSON.stringify(payload),
       });
       const json = (await res.json()) as ApiResponse<LoginResponse>;
       if (!json.success || !json.data?.token) {

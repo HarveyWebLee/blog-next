@@ -7,10 +7,10 @@ import { and, eq } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { posts, userFavorites } from "@/lib/db/schema";
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
 import { createErrorResponse, createSuccessResponse } from "@/lib/utils";
 import { isJwtInMemorySuperRoot } from "@/lib/utils/authz";
-import { findMysqlDriverError } from "@/lib/utils/mysql-error";
 import type { AuthJwtPayload } from "@/lib/utils/request-auth";
 import { requireAuthUser } from "@/lib/utils/request-auth";
 
@@ -29,7 +29,7 @@ function canInteractPost(
   return Boolean(authUser && (authUser.userId === post.authorId || isJwtInMemorySuperRoot(authUser)));
 }
 
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePostFavoriteGET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const postId = Number(id);
@@ -72,19 +72,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       { status: 200 }
     );
   } catch (error) {
-    console.error(
-      "[GET /api/posts/[id]/favorite]",
-      error instanceof Error ? error.message : error,
-      findMysqlDriverError(error)
-    );
-    return NextResponse.json(
-      createErrorResponse("获取收藏状态失败", error instanceof Error ? error.message : "未知错误"),
-      { status: 500 }
-    );
+    throw error;
   }
 }
 
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePostFavoritePOST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const auth = requireAuthUser(request);
     if (!auth.ok) {
@@ -144,13 +136,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       }
     );
   } catch (error) {
-    console.error(
-      "[POST /api/posts/[id]/favorite]",
-      error instanceof Error ? error.message : error,
-      findMysqlDriverError(error)
-    );
-    return NextResponse.json(createErrorResponse("收藏操作失败", error instanceof Error ? error.message : "未知错误"), {
-      status: 500,
-    });
+    throw error;
   }
 }
+
+export const { GET, POST } = defineApiHandlers(
+  {
+    GET: handlePostFavoriteGET,
+    POST: handlePostFavoritePOST,
+  },
+  {
+    onUnhandledErrorResponse: ({ method }) =>
+      NextResponse.json(createErrorResponse(method === "GET" ? "获取收藏状态失败" : "收藏操作失败"), { status: 500 }),
+  }
+);

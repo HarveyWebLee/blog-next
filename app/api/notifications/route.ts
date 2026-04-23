@@ -12,6 +12,8 @@ import { and, count, desc, eq, inArray } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { userNotifications } from "@/lib/db/schema";
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
+import { notifyRouteUnhandledError } from "@/lib/server/route-alert";
 import { isJwtInMemorySuperRoot } from "@/lib/utils/authz";
 import { requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, PaginatedResponseData, UserNotification } from "@/types/blog";
@@ -24,7 +26,7 @@ const NOTIFICATION_TYPES = new Set(["comment", "like", "follow", "mention", "sys
  * @tag 通知
  * @version 1.1.0
  */
-export async function GET(request: NextRequest) {
+async function handleNotificationsListGET(request: NextRequest) {
   try {
     const auth = requireAuthUser(request);
     if (!auth.ok) {
@@ -112,16 +114,7 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("获取通知列表失败:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: "获取通知列表失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
 
@@ -131,7 +124,7 @@ export async function GET(request: NextRequest) {
  * @tag 通知
  * @version 1.2.0
  */
-export async function PUT(request: NextRequest) {
+async function handleNotificationsMarkReadPUT(request: NextRequest) {
   try {
     const auth = requireAuthUser(request);
     if (!auth.ok) {
@@ -212,16 +205,7 @@ export async function PUT(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("批量标记通知失败:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: "批量标记通知失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
 
@@ -231,7 +215,7 @@ export async function PUT(request: NextRequest) {
  * @tag 通知
  * @version 1.3.0
  */
-export async function DELETE(request: NextRequest) {
+async function handleNotificationsBulkDELETE(request: NextRequest) {
   try {
     const auth = requireAuthUser(request);
     if (!auth.ok) {
@@ -291,16 +275,7 @@ export async function DELETE(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("批量删除通知失败:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: "批量删除通知失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
 
@@ -310,7 +285,7 @@ export async function DELETE(request: NextRequest) {
  * @tag 通知
  * @version 1.1.0
  */
-export async function POST(request: NextRequest) {
+async function handleNotificationsCreatePOST(request: NextRequest) {
   try {
     const auth = requireAuthUser(request);
     if (!auth.ok) {
@@ -395,15 +370,36 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("创建通知失败:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: "创建通知失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
+
+export const { GET, PUT, DELETE, POST } = defineApiHandlers(
+  {
+    GET: handleNotificationsListGET,
+    PUT: handleNotificationsMarkReadPUT,
+    DELETE: handleNotificationsBulkDELETE,
+    POST: handleNotificationsCreatePOST,
+  },
+  {
+    onError: (payload) => {
+      notifyRouteUnhandledError(payload);
+    },
+    onUnhandledErrorResponse: ({ method }) => {
+      const messageMap: Record<string, string> = {
+        GET: "获取通知列表失败",
+        PUT: "批量标记通知失败",
+        DELETE: "批量删除通知失败",
+        POST: "创建通知失败",
+      };
+      return NextResponse.json(
+        {
+          success: false,
+          message: messageMap[method] || "通知接口处理失败",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 500 }
+      );
+    },
+  }
+);

@@ -15,6 +15,8 @@ import { and, count, eq, ne } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { categories, posts } from "@/lib/db/schema";
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
+import { logger } from "@/lib/server/logger";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
 import { isJwtInMemorySuperRoot } from "@/lib/utils/authz";
 import { requireAuthUser } from "@/lib/utils/request-auth";
@@ -24,7 +26,7 @@ import { ApiResponse, Category, UpdateCategoryRequest } from "@/types/blog";
  * GET /api/categories/[id]
  * 获取单个分类
  */
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handleCategoryByIdGET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const auth = requireAuthUser(request);
     if (!auth.ok) {
@@ -89,16 +91,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       timestamp: new Date().toISOString(),
     } as ApiResponse<Category & { postCount: number }>);
   } catch (error) {
-    console.error("获取分类失败:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: "获取分类失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
 
@@ -106,7 +99,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
  * PUT /api/categories/[id]
  * 更新分类
  */
-export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handleCategoryByIdPUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const auth = requireAuthUser(request);
     if (!auth.ok) {
@@ -246,16 +239,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       timestamp: new Date().toISOString(),
     } as ApiResponse<Category>);
   } catch (error) {
-    console.error("更新分类失败:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: "更新分类失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
 
@@ -263,7 +247,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
  * DELETE /api/categories/[id]
  * 删除分类
  */
-export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handleCategoryByIdDELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const auth = requireAuthUser(request);
     if (!auth.ok) {
@@ -362,15 +346,12 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       timestamp: new Date().toISOString(),
     } as ApiResponse<null>);
   } catch (error) {
-    console.error("删除分类失败:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: "删除分类失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
+
+export const { GET, PUT, DELETE } = defineApiHandlers({
+  GET: handleCategoryByIdGET,
+  PUT: handleCategoryByIdPUT,
+  DELETE: handleCategoryByIdDELETE,
+});

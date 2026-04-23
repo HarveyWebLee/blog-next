@@ -6,18 +6,31 @@ import {
   getSuperAdminProfileUserId,
   resolveSuperAdminLogin,
 } from "@/lib/config/super-admin";
+import { resolveSecretFromBody } from "@/lib/crypto/password-transport/resolve-secret";
 import { db } from "@/lib/db/config";
 import { userProfiles, users } from "@/lib/db/schema";
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
+import { notifyRouteUnhandledError } from "@/lib/server/route-alert";
 import { generateAccessToken, generateRefreshToken, verifyPassword } from "@/lib/utils";
-import { ApiResponse, LoginRequest, LoginResponse } from "@/types/blog";
+import { ApiResponse, LoginResponse } from "@/types/blog";
 
-export async function POST(request: NextRequest) {
+async function handleAuthLoginPOST(request: NextRequest) {
   try {
-    const body: LoginRequest = await request.json();
+    const body = (await request.json()) as Record<string, unknown>;
+    const secret = await resolveSecretFromBody({ body, plainField: "password" });
+    if (!secret.ok) {
+      return NextResponse.json<ApiResponse>(
+        {
+          success: false,
+          message: secret.message,
+          timestamp: new Date().toISOString(),
+        },
+        { status: secret.status }
+      );
+    }
     const usernameRaw = body.username;
-    const passwordRaw = body.password;
+    const password = secret.plaintext;
     const username = typeof usernameRaw === "string" ? usernameRaw.trim() : String(usernameRaw ?? "").trim();
-    const password = typeof passwordRaw === "string" ? passwordRaw : String(passwordRaw ?? "");
 
     // 验证输入
     if (!username || !password) {
@@ -181,15 +194,24 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("登录错误:", error);
-    return NextResponse.json<ApiResponse>(
-      {
-        success: false,
-        message: "服务器内部错误",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
+
+export const { POST } = defineApiHandlers(
+  { POST: handleAuthLoginPOST },
+  {
+    onError: (payload) => {
+      notifyRouteUnhandledError(payload);
+    },
+    onUnhandledErrorResponse: () =>
+      NextResponse.json<ApiResponse>(
+        {
+          success: false,
+          message: "服务器内部错误",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 500 }
+      ),
+  }
+);

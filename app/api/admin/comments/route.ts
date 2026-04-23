@@ -3,6 +3,8 @@ import { and, count, desc, eq, gte, inArray, like, lte, or } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { comments, posts, users } from "@/lib/db/schema";
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
+import { notifyRouteUnhandledError } from "@/lib/server/route-alert";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
 import { requireInMemorySuperRoot } from "@/lib/utils/authz";
 import type { ApiResponse, CommentStatus, PaginatedResponseData } from "@/types/blog";
@@ -22,7 +24,7 @@ type AdminCommentRow = {
  * GET /api/admin/comments?page=&limit=&status=&q=&authorId=&postId=&dateFrom=&dateTo=
  * 评论审核列表（仅超级管理员可访问）
  */
-export async function GET(request: NextRequest) {
+async function handleAdminCommentsGET(request: NextRequest) {
   const gate = requireInMemorySuperRoot(request);
   if (!gate.ok) {
     return NextResponse.json<ApiResponse>(
@@ -125,16 +127,7 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("[GET /api/admin/comments]", error);
-    return NextResponse.json<ApiResponse>(
-      {
-        success: false,
-        message: "获取评论审核列表失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
 
@@ -143,7 +136,7 @@ export async function GET(request: NextRequest) {
  * 批量更新评论审核状态（仅超级管理员可访问）
  * Body: { ids: number[]; status: "pending" | "approved" | "spam"; reason?: string }
  */
-export async function PATCH(request: NextRequest) {
+async function handleAdminCommentsPATCH(request: NextRequest) {
   const gate = requireInMemorySuperRoot(request);
   if (!gate.ok) {
     return NextResponse.json<ApiResponse>(
@@ -202,16 +195,7 @@ export async function PATCH(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("[PATCH /api/admin/comments]", error);
-    return NextResponse.json<ApiResponse>(
-      {
-        success: false,
-        message: "批量更新评论状态失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
 
@@ -220,7 +204,7 @@ export async function PATCH(request: NextRequest) {
  * 批量删除评论（仅超级管理员可访问）
  * Body: { ids: number[] }
  */
-export async function DELETE(request: NextRequest) {
+async function handleAdminCommentsDELETE(request: NextRequest) {
   const gate = requireInMemorySuperRoot(request);
   if (!gate.ok) {
     return NextResponse.json<ApiResponse>(
@@ -257,15 +241,32 @@ export async function DELETE(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("[DELETE /api/admin/comments]", error);
-    return NextResponse.json<ApiResponse>(
-      {
-        success: false,
-        message: "批量删除评论失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
+
+export const { GET, PATCH, DELETE } = defineApiHandlers(
+  {
+    GET: handleAdminCommentsGET,
+    PATCH: handleAdminCommentsPATCH,
+    DELETE: handleAdminCommentsDELETE,
+  },
+  {
+    onError: (payload) => notifyRouteUnhandledError(payload),
+    onUnhandledErrorResponse: ({ method }) => {
+      const map: Record<string, string> = {
+        GET: "获取评论审核列表失败",
+        PATCH: "批量更新评论状态失败",
+        DELETE: "批量删除评论失败",
+      };
+      return NextResponse.json<ApiResponse>(
+        {
+          success: false,
+          message: map[method] || "评论管理处理失败",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 500 }
+      );
+    },
+  }
+);

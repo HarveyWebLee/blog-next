@@ -2,21 +2,35 @@ import { NextRequest, NextResponse } from "next/server";
 import { and, eq, gt } from "drizzle-orm";
 
 import { getSuperAdminProfileUserId } from "@/lib/config/super-admin";
+import { resolveSecretFromBody } from "@/lib/crypto/password-transport/resolve-secret";
 import { db } from "@/lib/db/config";
 import { emailVerifications, userProfiles, users } from "@/lib/db/schema";
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
+import { logger } from "@/lib/server/logger";
 import { hashPassword, isValidEmail, validatePasswordStrength } from "@/lib/utils";
 import { ApiResponse } from "@/types/blog";
 
-export async function POST(request: NextRequest) {
+async function handleAuthRegisterPOST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { useEmailVerification = false } = body;
+    const body = (await request.json()) as Record<string, unknown>;
+    const resolved = await resolveSecretFromBody({ body, plainField: "password" });
+    if (!resolved.ok) {
+      return NextResponse.json<ApiResponse>(
+        {
+          success: false,
+          message: resolved.message,
+          timestamp: new Date().toISOString(),
+        },
+        { status: resolved.status }
+      );
+    }
+    const password = resolved.plaintext;
+    const { useEmailVerification = false } = body as { useEmailVerification?: boolean };
 
     // 统一 trim 文本字段，避免仅空白字符通过必填校验
     const username = typeof body.username === "string" ? body.username.trim() : "";
     const email = typeof body.email === "string" ? body.email.trim() : "";
     const displayName = typeof body.displayName === "string" ? body.displayName.trim() : "";
-    const password = typeof body.password === "string" ? body.password : "";
     const verificationCode = typeof body.verificationCode === "string" ? body.verificationCode.trim() : "";
 
     // 分项校验，便于前端将提示展示在对应字段旁（尤其邮箱：必填与格式分开说明）
@@ -210,15 +224,8 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("注册错误:", error);
-    return NextResponse.json<ApiResponse>(
-      {
-        success: false,
-        message: "服务器内部错误",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
+
+export const { POST } = defineApiHandlers({ POST: handleAuthRegisterPOST });

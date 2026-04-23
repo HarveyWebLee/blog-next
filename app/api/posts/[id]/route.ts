@@ -9,6 +9,10 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
+import { resolveOptionalPasswordForPostBody } from "@/lib/crypto/password-transport/resolve-secret";
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
+import { logger } from "@/lib/server/logger";
+import { notifyRouteUnhandledError } from "@/lib/server/route-alert";
 import { postService } from "@/lib/services/post.service";
 import { subscriptionService } from "@/lib/services/subscription.service";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
@@ -21,7 +25,7 @@ import { UpdatePostRequest } from "@/types/blog";
  * 获取指定文章的详细信息
  * 支持包含关联数据（作者、分类、标签、评论等）
  */
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePostByIdGET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const { searchParams } = new URL(request.url);
@@ -49,7 +53,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     // 增加浏览次数（异步操作，不等待结果）
     postService.incrementViewCount(postId).catch((error) => {
-      console.error("增加浏览次数失败:", error);
+      logger.warn("api/posts/[id]", "incrementViewCount 异步失败", { postId, err: String(error) });
     });
 
     // 返回成功响应
@@ -57,13 +61,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       status: 200,
     });
   } catch (error) {
-    console.error("获取文章详情失败:", error);
-
-    // 返回错误响应
-    return NextResponse.json(
-      createErrorResponse("获取文章详情失败", error instanceof Error ? error.message : "未知错误"),
-      { status: 500 }
-    );
+    throw error;
   }
 }
 
@@ -72,7 +70,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
  * 更新指定文章的信息
  * 需要登录且 **仅文章作者本人** 可操作（非作者含管理员亦不可代编辑）。
  */
-export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePostByIdPUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
 
@@ -90,8 +88,17 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
     const beforePost = guard.post;
 
-    // 获取请求体数据
-    const body: UpdatePostRequest = await request.json();
+    // 获取请求体数据（密码字段支持 passwordTransport）
+    const raw = (await request.json()) as Record<string, unknown>;
+    const pwdPart = await resolveOptionalPasswordForPostBody(raw);
+    if (!pwdPart.ok) {
+      return NextResponse.json(createErrorResponse(pwdPart.message), { status: pwdPart.status });
+    }
+    const { passwordTransport: _pt, password: _pp, ...rest } = raw;
+    const body: UpdatePostRequest = {
+      ...(rest as UpdatePostRequest),
+      ...(pwdPart.password !== undefined ? { password: pwdPart.password } : {}),
+    };
 
     // 验证更新数据
     if (body.title && body.title.length > 200) {
@@ -126,8 +133,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     // 返回成功响应
     return NextResponse.json(createSuccessResponse(updatedPost, "文章更新成功"), { status: 200 });
   } catch (error) {
-    console.error("更新文章失败:", error);
-
     // 处理特定错误类型
     if (error instanceof Error) {
       if (error.message.includes("文章不存在")) {
@@ -141,10 +146,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       }
     }
 
-    // 返回通用错误响应
-    return NextResponse.json(createErrorResponse("更新文章失败", error instanceof Error ? error.message : "未知错误"), {
-      status: 500,
-    });
+    throw error;
   }
 }
 
@@ -153,7 +155,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
  * 删除指定文章
  * 需要登录且 **仅文章作者本人** 可删除。
  */
-export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePostByIdDELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
 
@@ -196,8 +198,6 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       status: 200,
     });
   } catch (error) {
-    console.error("删除文章失败:", error);
-
     // 处理特定错误类型
     if (error instanceof Error) {
       if (error.message.includes("文章不存在")) {
@@ -207,10 +207,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       }
     }
 
-    // 返回通用错误响应
-    return NextResponse.json(createErrorResponse("删除文章失败", error instanceof Error ? error.message : "未知错误"), {
-      status: 500,
-    });
+    throw error;
   }
 }
 
@@ -219,7 +216,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
  * 部分更新文章信息
  * 主要用于更新文章状态、可见性等字段；**仅作者本人**。
  */
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePostByIdPATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
 
@@ -237,8 +234,17 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
     const beforePost = guard.post;
 
-    // 获取请求体数据
-    const body = await request.json();
+    // 获取请求体数据（密码字段支持 passwordTransport）
+    const raw = (await request.json()) as Record<string, unknown>;
+    const pwdPart = await resolveOptionalPasswordForPostBody(raw);
+    if (!pwdPart.ok) {
+      return NextResponse.json(createErrorResponse(pwdPart.message), { status: pwdPart.status });
+    }
+    const { passwordTransport: _pt, password: _pp, ...rest } = raw;
+    const body: UpdatePostRequest = {
+      ...(rest as unknown as UpdatePostRequest),
+      ...(pwdPart.password !== undefined ? { password: pwdPart.password } : {}),
+    };
 
     // 验证更新数据
     if (body.status && !["draft", "published", "archived"].includes(body.status)) {
@@ -277,11 +283,25 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     // 返回成功响应
     return NextResponse.json(createSuccessResponse(updatedPost, "文章更新成功"), { status: 200 });
   } catch (error) {
-    console.error("部分更新文章失败:", error);
-
-    // 返回错误响应
-    return NextResponse.json(createErrorResponse("更新文章失败", error instanceof Error ? error.message : "未知错误"), {
-      status: 500,
-    });
+    throw error;
   }
 }
+
+export const { GET, PUT, DELETE, PATCH } = defineApiHandlers(
+  {
+    GET: handlePostByIdGET,
+    PUT: handlePostByIdPUT,
+    DELETE: handlePostByIdDELETE,
+    PATCH: handlePostByIdPATCH,
+  },
+  {
+    onError: (payload) => {
+      notifyRouteUnhandledError(payload);
+    },
+    onUnhandledErrorResponse: ({ method }) => {
+      if (method === "GET") return NextResponse.json(createErrorResponse("获取文章详情失败"), { status: 500 });
+      if (method === "DELETE") return NextResponse.json(createErrorResponse("删除文章失败"), { status: 500 });
+      return NextResponse.json(createErrorResponse("更新文章失败"), { status: 500 });
+    },
+  }
+);

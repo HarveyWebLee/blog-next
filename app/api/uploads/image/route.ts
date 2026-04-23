@@ -6,6 +6,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
+import { logger } from "@/lib/server/logger";
 import {
   ALLOWED_IMAGE_MIME_TYPES,
   assertUserOwnsObjectKey,
@@ -22,7 +24,7 @@ import { getAuthUserFromRequest } from "@/lib/utils/request-auth";
 
 const MAX_BYTES = 10 * 1024 * 1024;
 
-export async function POST(request: NextRequest) {
+async function handleUploadsImagePOST(request: NextRequest) {
   try {
     const user = getAuthUserFromRequest(request);
     if (!user) {
@@ -69,7 +71,7 @@ export async function POST(request: NextRequest) {
         try {
           await deleteObjectByKey(previousKey);
         } catch (e) {
-          console.error("[uploads/image] 删除旧对象失败（已忽略）:", e);
+          logger.warn("api/uploads/image", "删除旧对象失败（已忽略）", { err: String(e) });
         }
       }
     }
@@ -85,14 +87,11 @@ export async function POST(request: NextRequest) {
       status: 200,
     });
   } catch (error) {
-    console.error("[uploads/image] POST:", error);
-    return NextResponse.json(createErrorResponse("上传失败", error instanceof Error ? error.message : "未知错误"), {
-      status: 500,
-    });
+    throw error;
   }
 }
 
-export async function DELETE(request: NextRequest) {
+async function handleUploadsImageDELETE(request: NextRequest) {
   try {
     const user = getAuthUserFromRequest(request);
     if (!user) {
@@ -122,9 +121,17 @@ export async function DELETE(request: NextRequest) {
     await deleteObjectByKey(key);
     return NextResponse.json(createSuccessResponse(null, "已删除"), { status: 200 });
   } catch (error) {
-    console.error("[uploads/image] DELETE:", error);
-    return NextResponse.json(createErrorResponse("删除失败", error instanceof Error ? error.message : "未知错误"), {
-      status: 500,
-    });
+    throw error;
   }
 }
+
+export const { POST, DELETE } = defineApiHandlers(
+  {
+    POST: handleUploadsImagePOST,
+    DELETE: handleUploadsImageDELETE,
+  },
+  {
+    onUnhandledErrorResponse: ({ method }) =>
+      NextResponse.json(createErrorResponse(method === "POST" ? "上传失败" : "删除失败"), { status: 500 }),
+  }
+);

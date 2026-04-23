@@ -11,10 +11,12 @@ import { and, count, desc, eq } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { userActivities } from "@/lib/db/schema";
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
+import { logger } from "@/lib/server/logger";
 import { requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, PaginatedResponseData, UserActivity } from "@/types/blog";
 
-export async function GET(request: NextRequest) {
+async function handleProfileActivitiesGET(request: NextRequest) {
   try {
     const auth = requireAuthUser(request);
     if (!auth.ok) {
@@ -84,20 +86,11 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("获取活动日志失败:", error);
-    return NextResponse.json<ApiResponse>(
-      {
-        success: false,
-        message: "获取活动日志失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
 
-export async function POST(request: NextRequest) {
+async function handleProfileActivitiesPOST(request: NextRequest) {
   try {
     const auth = requireAuthUser(request);
     if (!auth.ok) {
@@ -150,15 +143,11 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("记录活动失败:", error);
-    return NextResponse.json<ApiResponse>(
-      {
-        success: false,
-        message: "记录活动失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
+
+export const { GET, POST } = defineApiHandlers({
+  GET: handleProfileActivitiesGET,
+  POST: handleProfileActivitiesPOST,
+});

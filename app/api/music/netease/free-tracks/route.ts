@@ -1,4 +1,8 @@
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
+import { logger } from "@/lib/server/logger";
 
 type NeteasePlaylistTrack = {
   id: number;
@@ -36,7 +40,7 @@ function withTimeout(ms: number) {
   };
 }
 
-export async function GET() {
+async function handleNeteaseFreeTracksGET(_request: NextRequest) {
   const baseUrl = (process.env.NETEASE_OPEN_API_BASE_URL || DEFAULT_BASE_URL).replace(/\/+$/, "");
   const playlistId = process.env.NETEASE_PLAYLIST_ID || DEFAULT_PLAYLIST_ID;
   const limit = Number(process.env.NETEASE_PLAYLIST_LIMIT || "12");
@@ -129,14 +133,8 @@ export async function GET() {
       tracks,
     });
   } catch (error) {
-    return NextResponse.json(
-      {
-        success: false,
-        message: "网易云接口暂不可用",
-        error: error instanceof Error ? error.message : "未知错误",
-        tracks: [] as NeteaseTrackDto[],
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
+
+export const { GET } = defineApiHandlers({ GET: handleNeteaseFreeTracksGET });

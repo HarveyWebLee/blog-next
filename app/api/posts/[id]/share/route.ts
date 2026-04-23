@@ -8,12 +8,13 @@ import { eq } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { posts } from "@/lib/db/schema";
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
 import { createErrorResponse, createSuccessResponse } from "@/lib/utils";
 import { getAuthUserFromRequest } from "@/lib/utils/request-auth";
 import { checkRateLimit } from "@/lib/utils/request-rate-limit";
 
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePostSharePOST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const postId = Number(id);
@@ -63,9 +64,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     return NextResponse.json(createSuccessResponse({ postId: row.id }, "已记录分享"), { status: 200 });
   } catch (error) {
-    console.error("[POST /api/posts/[id]/share]", error);
-    return NextResponse.json(createErrorResponse("记录分享失败", error instanceof Error ? error.message : "未知错误"), {
-      status: 500,
-    });
+    throw error;
   }
 }
+
+export const { POST } = defineApiHandlers(
+  { POST: handlePostSharePOST },
+  { onUnhandledErrorResponse: () => NextResponse.json(createErrorResponse("记录分享失败"), { status: 500 }) }
+);

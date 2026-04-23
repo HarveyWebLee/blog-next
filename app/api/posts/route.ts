@@ -8,6 +8,10 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
+import { resolveOptionalPasswordForPostBody } from "@/lib/crypto/password-transport/resolve-secret";
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
+import { logger } from "@/lib/server/logger";
+import { notifyRouteUnhandledError } from "@/lib/server/route-alert";
 import { postService } from "@/lib/services/post.service";
 import { subscriptionService } from "@/lib/services/subscription.service";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
@@ -21,7 +25,7 @@ import { CreatePostRequest, PostQueryParams } from "@/types/blog";
  * 获取文章列表
  * 支持分页、搜索、状态过滤、标签过滤等
  */
-export async function GET(request: NextRequest) {
+async function handlePostsGET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
 
@@ -76,13 +80,7 @@ export async function GET(request: NextRequest) {
     // 返回成功响应
     return NextResponse.json(createSuccessResponse(result, "获取文章列表成功"), { status: 200 });
   } catch (error) {
-    console.error("获取文章列表失败:", error);
-
-    // 返回错误响应
-    return NextResponse.json(
-      createErrorResponse("获取文章列表失败", error instanceof Error ? error.message : "未知错误"),
-      { status: 500 }
-    );
+    throw error;
   }
 }
 
@@ -91,10 +89,19 @@ export async function GET(request: NextRequest) {
  * 创建新文章
  * 需要用户认证和适当的权限
  */
-export async function POST(request: NextRequest) {
+async function handlePostsPOST(request: NextRequest) {
   try {
-    // 获取请求体数据
-    const body: CreatePostRequest = await request.json();
+    // 获取请求体数据（密码字段支持 passwordTransport）
+    const raw = (await request.json()) as Record<string, unknown>;
+    const pwdPart = await resolveOptionalPasswordForPostBody(raw);
+    if (!pwdPart.ok) {
+      return NextResponse.json(createErrorResponse(pwdPart.message), { status: pwdPart.status });
+    }
+    const { passwordTransport: _pt, password: _pp, ...rest } = raw;
+    const body: CreatePostRequest = {
+      ...(rest as unknown as CreatePostRequest),
+      ...(pwdPart.password !== undefined ? { password: pwdPart.password } : {}),
+    };
 
     // 验证必需字段
     if (!body.title || !body.content) {
@@ -147,8 +154,6 @@ export async function POST(request: NextRequest) {
       status: 201,
     });
   } catch (error) {
-    console.error("创建文章失败:", error);
-
     // 处理特定错误类型
     if (error instanceof Error) {
       if (error.message.includes("文章别名已存在")) {
@@ -156,9 +161,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 返回通用错误响应
-    return NextResponse.json(createErrorResponse("创建文章失败", error instanceof Error ? error.message : "未知错误"), {
-      status: 500,
-    });
+    throw error;
   }
 }
+
+export const { GET, POST } = defineApiHandlers(
+  {
+    GET: handlePostsGET,
+    POST: handlePostsPOST,
+  },
+  {
+    // 示例：对核心路由的未捕获异常触发 5xx 告警桥接（开关由 LOG_ALERTS_ENABLED 控制）
+    onError: (payload) => {
+      notifyRouteUnhandledError(payload);
+    },
+    onUnhandledErrorResponse: ({ method }) =>
+      NextResponse.json(createErrorResponse(method === "GET" ? "获取文章列表失败" : "创建文章失败"), { status: 500 }),
+  }
+);

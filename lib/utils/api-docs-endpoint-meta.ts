@@ -51,10 +51,13 @@ export const API_DOCS_ENDPOINT_DESCRIPTIONS: Record<string, Partial<Record<strin
   "/api/auth/reset-password": {
     POST: "使用一次性 token 重置密码并失效 token",
   },
+  "/api/auth/password-transport-params": {
+    GET: "获取密码传输封装参数（RSA 公钥、keyId、时钟偏差窗口）",
+  },
   "/api/subscriptions": {
-    GET: "按邮箱查询是否处于订阅中",
-    POST: "订阅：已登录带 JWT；访客须带 subscription 验证码",
-    DELETE: "退订：已登录带 JWT；访客须带 subscription_unsubscribe 验证码",
+    GET: "按邮箱查询是否处于订阅中。异常：503+code=DB_SCHEMA_OUTDATED（未迁移）或 DB_UNAVAILABLE（库不可达）；500+code=INTERNAL_ERROR（开发环境可带 debug）",
+    POST: "订阅：已登录带 JWT；访客须带 subscription 验证码。异常码同 GET",
+    DELETE: "退订：已登录带 JWT；访客须带 subscription_unsubscribe 验证码。异常码同 GET",
   },
   "/api/profile": {
     GET: "获取当前用户资料（Bearer）",
@@ -192,7 +195,7 @@ export const API_DOCS_ENDPOINT_DESCRIPTIONS: Record<string, Partial<Record<strin
     GET: "检测数据库连接",
   },
   "/api/test-env": {
-    GET: "检测关键环境变量是否配置",
+    GET: "检测环境变量并输出 passwordTransport 就绪状态（required/configured/ready/reason）",
   },
 };
 
@@ -202,10 +205,10 @@ export const API_DOCS_AUTH_HINTS: Record<string, Partial<Record<string, string>>
     GET: "必须：Authorization: Bearer + 超级管理员 accessToken（JWT：role=super_admin、isRoot=true）。支持 query: refresh=true 强制重扫、version=<x>|none 版本过滤、format=openapi 返回 OpenAPI 3.0 JSON、download=true 触发下载头。",
   },
   "/api/auth/login": {
-    POST: "无需 Bearer。Body：{ username, password }。",
+    POST: "无需 Bearer。Body：{ username, password } 或 { username, passwordTransport }（优先；生产环境默认强制后者，可由 PASSWORD_TRANSPORT_REQUIRED 覆盖）。",
   },
   "/api/auth/register": {
-    POST: "无需 Bearer。常配合先发验证码。",
+    POST: "无需 Bearer。Body 支持 password 或 passwordTransport；常配合先发验证码。",
   },
   "/api/auth/refresh": {
     POST: "无需 Bearer。Body：{ refreshToken }。",
@@ -220,7 +223,10 @@ export const API_DOCS_AUTH_HINTS: Record<string, Partial<Record<string, string>>
     POST: "无需 Bearer。Body：{ email }，会失效旧 reset_password token 并发送 30 分钟有效链接；限流策略为 Redis 优先、数据库回退。",
   },
   "/api/auth/reset-password": {
-    POST: "无需 Bearer。Body：{ token, newPassword }，token 必须未使用且未过期。",
+    POST: "无需 Bearer。Body：{ token, newPassword } 或 { token, passwordTransport }，token 必须未使用且未过期。",
+  },
+  "/api/auth/password-transport-params": {
+    GET: "无需 Bearer。客户端先取公钥参数，再将 password/newPassword 封装到 passwordTransport 提交。",
   },
   "/api/subscriptions": {
     GET: "无需 Bearer（公开查询某邮箱是否订阅）。",
@@ -284,13 +290,13 @@ export const API_DOCS_AUTH_HINTS: Record<string, Partial<Record<string, string>>
   },
   "/api/posts": {
     GET: "公开列表通常无需 Bearer。默认仅返回 public 可见性且不含 content 字段。",
-    POST: "必须：Authorization: Bearer（作者/管理员）",
+    POST: "必须：Authorization: Bearer（作者/管理员）。当 visibility=password 时，body.password 可替换为 passwordTransport。",
   },
   "/api/posts/{id}": {
     GET: "公开只读通常无需；草稿等见代码。",
-    PUT: "必须：Authorization: Bearer",
+    PUT: "必须：Authorization: Bearer。若更新访问密码，支持 password 或 passwordTransport。",
     DELETE: "必须：Authorization: Bearer",
-    PATCH: "必须：Authorization: Bearer",
+    PATCH: "必须：Authorization: Bearer。若更新访问密码，支持 password 或 passwordTransport。",
   },
   "/api/posts/{id}/view": {
     POST: "无需 Bearer；按 IP + 文章限流，且仅已发布且非 private 文章可计数。",
@@ -307,8 +313,8 @@ export const API_DOCS_AUTH_HINTS: Record<string, Partial<Record<string, string>>
     GET: "Query: ids。未登录：匿名占位；已登录：真实状态。",
   },
   "/api/posts/slug/{slug}": {
-    GET: "无需 Bearer。密码保护文章可携带 query.password 进行只读校验。",
-    PATCH: "无需 Bearer。Body：{ password }，用于密码保护文章解锁验证。",
+    GET: "无需 Bearer。密码保护文章可携带短期 query.unlock 票据进行只读校验。",
+    PATCH: "无需 Bearer。Body：{ password } 或 { passwordTransport }，用于密码保护文章解锁验证。",
   },
   "/api/comments": {
     POST: "可选 Bearer（匿名亦可）。Body：postId、content；匿名可带 authorName/authorEmail；登录写入 authorId。含限流防刷（429 + Retry-After）。",
@@ -367,7 +373,7 @@ export const API_DOCS_AUTH_HINTS: Record<string, Partial<Record<string, string>>
     GET: "必须：Authorization: Bearer + 超级管理员 accessToken（运维自检）。",
   },
   "/api/test-env": {
-    GET: "必须：Authorization: Bearer + 超级管理员 accessToken（运维自检）。",
+    GET: "必须：Authorization: Bearer + 超级管理员 accessToken（运维自检；返回 details.passwordTransport 就绪状态）。",
   },
 };
 

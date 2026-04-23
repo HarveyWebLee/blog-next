@@ -8,6 +8,8 @@ import { eq } from "drizzle-orm";
 import { ensureSuperAdminDbIdentity, isSuperAdminEnabled } from "@/lib/config/super-admin";
 import { db } from "@/lib/db/config";
 import { users } from "@/lib/db/schema";
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
+import { logger } from "@/lib/server/logger";
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from "@/lib/utils/auth";
 import { ApiResponse } from "@/types/blog";
 
@@ -15,7 +17,7 @@ type RefreshBody = {
   refreshToken?: string;
 };
 
-export async function POST(request: NextRequest) {
+async function handleAuthRefreshPOST(request: NextRequest) {
   try {
     const body = (await request.json()) as RefreshBody;
     const refreshToken = body.refreshToken;
@@ -145,15 +147,8 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("刷新令牌错误:", error);
-    return NextResponse.json<ApiResponse>(
-      {
-        success: false,
-        message: "服务器内部错误",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
+
+export const { POST } = defineApiHandlers({ POST: handleAuthRefreshPOST });

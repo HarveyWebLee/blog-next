@@ -9,6 +9,8 @@ import { and, count, desc, eq } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { categories, posts, userPostLikes, users } from "@/lib/db/schema";
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
+import { logger } from "@/lib/server/logger";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
 import { requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, PaginatedResponseData, PostData } from "@/types/blog";
@@ -20,7 +22,7 @@ type ProfileLikeItem = {
   post?: PostData;
 };
 
-export async function GET(request: NextRequest) {
+async function handleProfileLikesGET(request: NextRequest) {
   try {
     const auth = requireAuthUser(request);
     if (!auth.ok) {
@@ -155,20 +157,11 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("获取点赞列表失败:", error);
-    return NextResponse.json<ApiResponse>(
-      {
-        success: false,
-        message: "获取点赞列表失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
 
-export async function DELETE(request: NextRequest) {
+async function handleProfileLikesDELETE(request: NextRequest) {
   try {
     const auth = requireAuthUser(request);
     if (!auth.ok) {
@@ -223,15 +216,11 @@ export async function DELETE(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("取消点赞失败:", error);
-    return NextResponse.json<ApiResponse>(
-      {
-        success: false,
-        message: "取消点赞失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
+
+export const { GET, DELETE } = defineApiHandlers({
+  GET: handleProfileLikesGET,
+  DELETE: handleProfileLikesDELETE,
+});

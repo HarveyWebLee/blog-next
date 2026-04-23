@@ -12,10 +12,12 @@ import { and, desc, eq, inArray, SQL } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { userNotifications } from "@/lib/db/schema";
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
+import { notifyRouteUnhandledError } from "@/lib/server/route-alert";
 import { requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, NotificationQueryParams, PaginatedResponseData, UserNotification } from "@/types/blog";
 
-export async function GET(request: NextRequest) {
+async function handleProfileNotificationsGET(request: NextRequest) {
   try {
     const auth = requireAuthUser(request);
     if (!auth.ok) {
@@ -93,20 +95,11 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("获取通知列表失败:", error);
-    return NextResponse.json<ApiResponse>(
-      {
-        success: false,
-        message: "获取通知列表失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
 
-export async function PUT(request: NextRequest) {
+async function handleProfileNotificationsPUT(request: NextRequest) {
   try {
     const auth = requireAuthUser(request);
     if (!auth.ok) {
@@ -160,20 +153,11 @@ export async function PUT(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("标记通知失败:", error);
-    return NextResponse.json<ApiResponse>(
-      {
-        success: false,
-        message: "标记通知失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
 
-export async function DELETE(request: NextRequest) {
+async function handleProfileNotificationsDELETE(request: NextRequest) {
   try {
     const auth = requireAuthUser(request);
     if (!auth.ok) {
@@ -214,15 +198,34 @@ export async function DELETE(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("删除通知失败:", error);
-    return NextResponse.json<ApiResponse>(
-      {
-        success: false,
-        message: "删除通知失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
+
+export const { GET, PUT, DELETE } = defineApiHandlers(
+  {
+    GET: handleProfileNotificationsGET,
+    PUT: handleProfileNotificationsPUT,
+    DELETE: handleProfileNotificationsDELETE,
+  },
+  {
+    onError: (payload) => {
+      notifyRouteUnhandledError(payload);
+    },
+    onUnhandledErrorResponse: ({ method }) => {
+      const messageMap: Record<string, string> = {
+        GET: "获取通知列表失败",
+        PUT: "标记通知失败",
+        DELETE: "删除通知失败",
+      };
+      return NextResponse.json<ApiResponse>(
+        {
+          success: false,
+          message: messageMap[method] || "通知处理失败",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 500 }
+      );
+    },
+  }
+);

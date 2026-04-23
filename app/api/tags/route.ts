@@ -14,6 +14,8 @@ import { and, asc, count, desc, eq, like, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { postTags, tags } from "@/lib/db/schema";
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
+import { logger } from "@/lib/server/logger";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
 import { isJwtInMemorySuperRoot } from "@/lib/utils/authz";
 import { requireAuthUser } from "@/lib/utils/request-auth";
@@ -24,7 +26,7 @@ import { ApiResponse, CreateTagRequest, PaginatedResponseData, Tag, TagQueryPara
  * 获取标签列表
  * 支持分页、搜索、状态过滤等
  */
-export async function GET(request: NextRequest) {
+async function handleTagsGET(request: NextRequest) {
   try {
     const auth = requireAuthUser(request);
     if (!auth.ok) {
@@ -140,16 +142,7 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString(),
     } as ApiResponse<PaginatedResponseData<Tag>>);
   } catch (error) {
-    console.error("获取标签列表失败:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: "获取标签列表失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
 
@@ -157,7 +150,7 @@ export async function GET(request: NextRequest) {
  * POST /api/tags
  * 创建新标签
  */
-export async function POST(request: NextRequest) {
+async function handleTagsPOST(request: NextRequest) {
   try {
     const auth = requireAuthUser(request);
     if (!auth.ok) {
@@ -263,15 +256,11 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString(),
     } as ApiResponse<Tag>);
   } catch (error) {
-    console.error("创建标签失败:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: "创建标签失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
+
+export const { GET, POST } = defineApiHandlers({
+  GET: handleTagsGET,
+  POST: handleTagsPOST,
+});

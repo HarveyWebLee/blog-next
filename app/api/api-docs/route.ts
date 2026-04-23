@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
+import { logger } from "@/lib/server/logger";
 import { createErrorResponse, createSuccessResponse } from "@/lib/utils";
 import { ApiEndpoint, ApiGroup, ApiScanner } from "@/lib/utils/api-scanner";
 import { requireInMemorySuperRoot } from "@/lib/utils/authz";
@@ -197,7 +199,7 @@ function buildOpenApiSpec(groups: ApiGroup[], request: NextRequest) {
  *
  * 安全：仅超级管理员可访问，避免泄露全站路由结构给未授权用户。
  */
-export async function GET(request: NextRequest) {
+async function handleApiDocsGET(request: NextRequest) {
   const gate = requireInMemorySuperRoot(request);
   if (!gate.ok) {
     return NextResponse.json(
@@ -306,10 +308,8 @@ export async function GET(request: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("获取API文档失败:", error);
-    return NextResponse.json(
-      createErrorResponse("获取API文档失败", error instanceof Error ? error.message : "未知错误"),
-      { status: 500 }
-    );
+    throw error;
   }
 }
+
+export const { GET } = defineApiHandlers({ GET: handleApiDocsGET });

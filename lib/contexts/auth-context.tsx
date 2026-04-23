@@ -2,6 +2,7 @@
 
 import React, { createContext, ReactNode, useCallback, useContext, useEffect, useState } from "react";
 
+import { sealPasswordInRequestBody } from "@/lib/crypto/password-transport/body";
 import { LoginRequest, LoginResponse, User } from "@/types/blog";
 
 interface AuthContextType {
@@ -73,12 +74,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       setIsLoading(true);
 
+      const plain = credentials.password ?? "";
+      const payload = await sealPasswordInRequestBody(
+        {
+          username: credentials.username,
+          password: plain,
+        },
+        plain,
+        "password"
+      );
+
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(credentials),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();

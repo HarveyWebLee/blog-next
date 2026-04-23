@@ -27,6 +27,7 @@ import { BlogSidebar } from "@/components/blog/blog-sidebar";
 import { PostCard } from "@/components/blog/post-card";
 import PostsAPI from "@/lib/api/posts";
 import { useAuth } from "@/lib/contexts/auth-context";
+import { sealPasswordInRequestBody } from "@/lib/crypto/password-transport/body";
 import { usePosts } from "@/lib/hooks/usePosts";
 import { PostData } from "@/types/blog";
 
@@ -254,19 +255,25 @@ export function BlogPageContent({ lang, initialTagId, initialAuthorId, initialPo
     try {
       setPasswordVerifying(true);
       setPasswordError("");
+      const payload = await sealPasswordInRequestBody({ password: passwordInput }, passwordInput, "password");
       const response = await fetch(`/api/posts/slug/${pendingPost.slug}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password: passwordInput }),
+        body: JSON.stringify(payload),
       });
       const result = await response.json();
       if (!result.success) {
         setPasswordError(result.message || t.passwordInvalid);
         return;
       }
+      const unlockToken = (result?.data as { unlockToken?: string } | undefined)?.unlockToken;
       setPasswordModalOpen(false);
       await incrementViewCount(pendingPost.id);
-      router.push(`/${lang}/blog/${pendingPost.slug}?password=${encodeURIComponent(passwordInput)}`);
+      router.push(
+        unlockToken
+          ? `/${lang}/blog/${pendingPost.slug}?unlock=${encodeURIComponent(unlockToken)}`
+          : `/${lang}/blog/${pendingPost.slug}`
+      );
     } catch (e) {
       console.error("密码校验失败:", e);
       setPasswordError(t.passwordInvalid);

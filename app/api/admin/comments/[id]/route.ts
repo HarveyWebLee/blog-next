@@ -3,6 +3,8 @@ import { eq } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { comments } from "@/lib/db/schema";
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
+import { notifyRouteUnhandledError } from "@/lib/server/route-alert";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
 import { requireInMemorySuperRoot } from "@/lib/utils/authz";
 import type { ApiResponse, CommentStatus } from "@/types/blog";
@@ -13,7 +15,7 @@ type RouteContext = { params: Promise<{ id: string }> };
  * PATCH /api/admin/comments/:id
  * 更新评论审核状态（pending/approved/spam）
  */
-export async function PATCH(request: NextRequest, context: RouteContext) {
+async function handleAdminCommentByIdPATCH(request: NextRequest, context: RouteContext) {
   const gate = requireInMemorySuperRoot(request);
   if (!gate.ok) {
     return NextResponse.json<ApiResponse>(
@@ -68,16 +70,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("[PATCH /api/admin/comments/[id]]", error);
-    return NextResponse.json<ApiResponse>(
-      {
-        success: false,
-        message: "更新评论状态失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
 
@@ -85,7 +78,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
  * DELETE /api/admin/comments/:id
  * 删除单条评论（仅超级管理员可访问）
  */
-export async function DELETE(request: NextRequest, context: RouteContext) {
+async function handleAdminCommentByIdDELETE(request: NextRequest, context: RouteContext) {
   const gate = requireInMemorySuperRoot(request);
   if (!gate.ok) {
     return NextResponse.json<ApiResponse>(
@@ -120,15 +113,25 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("[DELETE /api/admin/comments/[id]]", error);
-    return NextResponse.json<ApiResponse>(
-      {
-        success: false,
-        message: "删除评论失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
+
+export const { PATCH, DELETE } = defineApiHandlers(
+  {
+    PATCH: handleAdminCommentByIdPATCH,
+    DELETE: handleAdminCommentByIdDELETE,
+  },
+  {
+    onError: (payload) => notifyRouteUnhandledError(payload),
+    onUnhandledErrorResponse: ({ method }) =>
+      NextResponse.json<ApiResponse>(
+        {
+          success: false,
+          message: method === "PATCH" ? "更新评论状态失败" : "删除评论失败",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 500 }
+      ),
+  }
+);

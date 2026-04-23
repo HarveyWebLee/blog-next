@@ -3,13 +3,15 @@ import { and, eq, gt } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { emailVerifications } from "@/lib/db/schema";
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
+import { logger } from "@/lib/server/logger";
 import { ApiResponse } from "@/types/blog";
 
 /**
  * 验证邮箱验证码
  * POST /api/auth/verify-code
  */
-export async function POST(request: NextRequest) {
+async function handleAuthVerifyCodePOST(request: NextRequest) {
   try {
     const body = await request.json();
     const { email, code, type = "register" } = body;
@@ -61,15 +63,8 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("验证码验证错误:", error);
-    return NextResponse.json<ApiResponse>(
-      {
-        success: false,
-        message: "服务器内部错误",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
+
+export const { POST } = defineApiHandlers({ POST: handleAuthVerifyCodePOST });

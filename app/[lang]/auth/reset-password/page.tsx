@@ -8,6 +8,8 @@ import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Input } from "@heroui/input";
 import { AlertCircle, ArrowLeft, CheckCircle, Eye, EyeOff, Lock } from "lucide-react";
 
+import { sealPasswordInRequestBody } from "@/lib/crypto/password-transport/body";
+
 export default function ResetPasswordPage() {
   const router = useRouter();
   const params = useParams<{ lang: string }>();
@@ -165,15 +167,18 @@ export default function ResetPasswordPage() {
     setErrors({});
 
     try {
+      const payload = await sealPasswordInRequestBody(
+        { token, newPassword: formData.password },
+        formData.password,
+        "newPassword"
+      );
+
       const response = await fetch("/api/auth/reset-password", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          token,
-          newPassword: formData.password,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();

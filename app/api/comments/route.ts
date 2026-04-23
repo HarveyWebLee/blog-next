@@ -10,6 +10,7 @@ import { eq } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { comments, posts, users } from "@/lib/db/schema";
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import {
   getClientMetaFromRequest,
   logUserActivity,
@@ -37,7 +38,7 @@ function detectSpamContent(content: string): { isSpam: boolean; reasons: string[
   return { isSpam: reasons.length > 0, reasons };
 }
 
-export async function POST(request: NextRequest) {
+async function handleCommentsPOST(request: NextRequest) {
   try {
     const body = (await request.json()) as {
       postId?: number;
@@ -131,9 +132,11 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("[POST /api/comments]", error);
-    return NextResponse.json(createErrorResponse("评论提交失败", error instanceof Error ? error.message : "未知错误"), {
-      status: 500,
-    });
+    throw error;
   }
 }
+
+export const { POST } = defineApiHandlers(
+  { POST: handleCommentsPOST },
+  { onUnhandledErrorResponse: () => NextResponse.json(createErrorResponse("评论提交失败"), { status: 500 }) }
+);

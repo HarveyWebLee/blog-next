@@ -3,6 +3,8 @@
  * 定义所有数据模型、API请求和响应的类型接口
  */
 
+import type { PasswordTransportEnvelopeV1 } from "@/lib/crypto/password-transport/types";
+
 // ==================== 基础类型 ====================
 
 /**
@@ -118,7 +120,10 @@ export interface UpdateUserRequest {
  */
 export interface LoginRequest {
   username: string;
-  password: string;
+  /** 明文密码（未启用传输封装或未拉取公钥时使用） */
+  password?: string;
+  /** AES-GCM + RSA-OAEP v1 信封（优先于明文 password） */
+  passwordTransport?: PasswordTransportEnvelopeV1;
 }
 
 /**
@@ -333,6 +338,7 @@ export interface CreatePostRequest {
   status?: PostStatus;
   visibility?: PostVisibility;
   password?: string;
+  passwordTransport?: PasswordTransportEnvelopeV1;
   allowComments?: boolean;
   tagIds?: number[]; // 标签ID数组
 }
@@ -350,6 +356,7 @@ export interface UpdatePostRequest {
   status?: PostStatus;
   visibility?: PostVisibility;
   password?: string;
+  passwordTransport?: PasswordTransportEnvelopeV1;
   allowComments?: boolean;
   tagIds?: number[];
 }

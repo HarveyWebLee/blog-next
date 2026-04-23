@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { categories, posts, tags, users } from "@/lib/db/schema";
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { requireInMemorySuperRoot } from "@/lib/utils/authz";
 
 const DEFAULT_OWNER_ID = 1;
@@ -310,7 +311,7 @@ async function verifyData() {
   }
 }
 
-export async function GET(request: NextRequest) {
+async function handleSeedGET(request: NextRequest) {
   try {
     const auth = requireInMemorySuperRoot(request);
     if (!auth.ok) {
@@ -359,3 +360,5 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+export const { GET } = defineApiHandlers({ GET: handleSeedGET });

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { requireInMemorySuperRoot } from "@/lib/utils/authz";
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
+async function handleProxyGET(req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   const auth = requireInMemorySuperRoot(req);
   if (!auth.ok) {
     return NextResponse.json(
@@ -40,3 +41,5 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ path
     },
   });
 }
+
+export const { GET } = defineApiHandlers({ GET: handleProxyGET });

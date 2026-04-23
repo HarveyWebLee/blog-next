@@ -28,6 +28,7 @@ import {
 
 import MarkdownRenderer from "@/components/blog/markdown-renderer";
 import { useAuth } from "@/lib/contexts/auth-context";
+import { sealPasswordInRequestBody } from "@/lib/crypto/password-transport/body";
 import { message } from "@/lib/utils";
 import { stripMarkdownForExcerpt } from "@/lib/utils/markdown-plain";
 import { PostData } from "@/types/blog";
@@ -162,9 +163,9 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
     const fetchPost = async () => {
       try {
         setLoading(true);
-        const passwordParam = searchParams.get("password");
-        const passwordQuery = passwordParam ? `&password=${encodeURIComponent(passwordParam)}` : "";
-        const response = await fetch(`/api/posts/slug/${resolvedParams.slug}?includeRelations=true${passwordQuery}`);
+        const unlockParam = searchParams.get("unlock");
+        const unlockQuery = unlockParam ? `&unlock=${encodeURIComponent(unlockParam)}` : "";
+        const response = await fetch(`/api/posts/slug/${resolvedParams.slug}?includeRelations=true${unlockQuery}`);
         const result = await response.json();
 
         if (result.success) {
@@ -275,17 +276,22 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
     setPasswordError("");
 
     try {
+      const payload = await sealPasswordInRequestBody({ password }, password, "password");
       const response = await fetch(`/api/posts/slug/${resolvedParams?.slug}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify(payload),
       });
 
       const result = await response.json();
 
       if (result.success) {
+        const unlockToken = (result?.data as { unlockToken?: string } | undefined)?.unlockToken;
+        if (unlockToken && resolvedParams?.slug) {
+          router.replace(`/${lang}/blog/${resolvedParams.slug}?unlock=${encodeURIComponent(unlockToken)}`);
+        }
         setShowPasswordForm(false);
         setPost(result.data);
       } else {

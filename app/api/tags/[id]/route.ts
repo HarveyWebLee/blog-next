@@ -15,6 +15,8 @@ import { and, count, eq, ne } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { postTags, tags } from "@/lib/db/schema";
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
+import { logger } from "@/lib/server/logger";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
 import { isJwtInMemorySuperRoot } from "@/lib/utils/authz";
 import { requireAuthUser } from "@/lib/utils/request-auth";
@@ -24,7 +26,7 @@ import { ApiResponse, Tag, UpdateTagRequest } from "@/types/blog";
  * GET /api/tags/[id]
  * 获取单个标签
  */
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handleTagByIdGET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const auth = requireAuthUser(request);
     if (!auth.ok) {
@@ -85,16 +87,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       timestamp: new Date().toISOString(),
     } as ApiResponse<Tag & { postCount: number }>);
   } catch (error) {
-    console.error("获取标签失败:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: "获取标签失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
 
@@ -102,7 +95,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
  * PUT /api/tags/[id]
  * 更新标签
  */
-export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handleTagByIdPUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const auth = requireAuthUser(request);
     if (!auth.ok) {
@@ -221,16 +214,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       timestamp: new Date().toISOString(),
     } as ApiResponse<Tag>);
   } catch (error) {
-    console.error("更新标签失败:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: "更新标签失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
 
@@ -238,7 +222,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
  * DELETE /api/tags/[id]
  * 删除标签
  */
-export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+async function handleTagByIdDELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const auth = requireAuthUser(request);
     if (!auth.ok) {
@@ -315,15 +299,12 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
       timestamp: new Date().toISOString(),
     } as ApiResponse<null>);
   } catch (error) {
-    console.error("删除标签失败:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: "删除标签失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
+
+export const { GET, PUT, DELETE } = defineApiHandlers({
+  GET: handleTagByIdGET,
+  PUT: handleTagByIdPUT,
+  DELETE: handleTagByIdDELETE,
+});

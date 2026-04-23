@@ -3,13 +3,15 @@ import { and, count, eq, gt } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { emailVerifications, userProfiles, users } from "@/lib/db/schema";
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
+import { logger } from "@/lib/server/logger";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
 import { generatePasswordResetToken, isValidEmail } from "@/lib/utils";
 import { checkDistributedRateLimit } from "@/lib/utils/distributed-rate-limit";
 import { sendPasswordResetLinkEmail } from "@/lib/utils/email";
 import { ApiResponse } from "@/types/blog";
 
-export async function POST(request: NextRequest) {
+async function handleAuthForgotPasswordPOST(request: NextRequest) {
   try {
     /**
      * 兼容 API 文档调试器的空请求体场景：
@@ -175,14 +177,8 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("忘记密码处理失败:", error);
-    return NextResponse.json<ApiResponse>(
-      {
-        success: false,
-        message: "服务器内部错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
+
+export const { POST } = defineApiHandlers({ POST: handleAuthForgotPasswordPOST });

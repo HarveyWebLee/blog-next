@@ -10,10 +10,12 @@ import { and, count, eq, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { comments, posts, userActivities, userFavorites, userFollows, userNotifications } from "@/lib/db/schema";
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
+import { logger } from "@/lib/server/logger";
 import { requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, ProfileStats } from "@/types/blog";
 
-export async function GET(request: NextRequest) {
+async function handleProfileStatsGET(request: NextRequest) {
   try {
     const auth = requireAuthUser(request);
     if (!auth.ok) {
@@ -109,15 +111,8 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("获取统计信息失败:", error);
-    return NextResponse.json<ApiResponse>(
-      {
-        success: false,
-        message: "获取统计信息失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
+
+export const { GET } = defineApiHandlers({ GET: handleProfileStatsGET });

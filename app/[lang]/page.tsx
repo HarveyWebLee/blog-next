@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { getDictionary } from "@/lib/dictionaries";
 import { postService } from "@/lib/services/post.service";
 import { stripMarkdownForExcerpt } from "@/lib/utils/markdown-plain";
+import { logDbError } from "@/lib/utils/mysql-error";
 import type { Locale } from "@/types";
 
 // 首页依赖数据库实时数据，强制运行时渲染，避免 Docker/CI 构建阶段预渲染触发连库失败。
@@ -215,7 +216,8 @@ export default async function HomePage({ params }: { params: Promise<{ lang: Loc
     });
     latest = postsResult.data as HomePost[];
   } catch (e) {
-    console.error("[home] 数据加载失败:", e);
+    // 统一结构化日志：连接超时等不再刷屏打印整段 Drizzle SQL
+    logDbError("[home] latest posts", e);
   }
 
   return (

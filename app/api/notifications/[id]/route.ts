@@ -12,6 +12,8 @@ import { eq } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { userNotifications } from "@/lib/db/schema";
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
+import { notifyRouteUnhandledError } from "@/lib/server/route-alert";
 import { isJwtInMemorySuperRoot } from "@/lib/utils/authz";
 import { requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, UserNotification } from "@/types/blog";
@@ -70,7 +72,7 @@ async function getScopedNotification(notificationId: number, request: NextReques
  * @tag 通知
  * @version 1.1.0
  */
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handleNotificationByIdGET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const notificationId = parseInt(id);
@@ -111,16 +113,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("获取通知详情失败:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: "获取通知详情失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
 
@@ -130,7 +123,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
  * @tag 通知
  * @version 1.1.0
  */
-export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handleNotificationByIdPUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const notificationId = parseInt(id);
@@ -217,16 +210,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("更新通知失败:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: "更新通知失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
 
@@ -236,7 +220,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
  * @tag 通知
  * @version 1.1.0
  */
-export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handleNotificationByIdDELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const notificationId = parseInt(id);
@@ -265,15 +249,34 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("删除通知失败:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: "删除通知失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
+
+export const { GET, PUT, DELETE } = defineApiHandlers(
+  {
+    GET: handleNotificationByIdGET,
+    PUT: handleNotificationByIdPUT,
+    DELETE: handleNotificationByIdDELETE,
+  },
+  {
+    onError: (payload) => {
+      notifyRouteUnhandledError(payload);
+    },
+    onUnhandledErrorResponse: ({ method }) => {
+      const messageMap: Record<string, string> = {
+        GET: "获取通知详情失败",
+        PUT: "更新通知失败",
+        DELETE: "删除通知失败",
+      };
+      return NextResponse.json<ApiResponse>(
+        {
+          success: false,
+          message: messageMap[method] || "通知处理失败",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 500 }
+      );
+    },
+  }
+);

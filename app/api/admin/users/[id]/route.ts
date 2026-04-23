@@ -3,6 +3,8 @@ import { eq } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { userProfiles, users } from "@/lib/db/schema";
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
+import { notifyRouteUnhandledError } from "@/lib/server/route-alert";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
 import { requireInMemorySuperRoot } from "@/lib/utils/authz";
 import { mapDbUserToAdminManagedUserRow } from "@/lib/utils/map-db-user-to-admin-row";
@@ -25,7 +27,7 @@ function parseId(raw: string): number | null {
  * GET /api/admin/users/:id
  * 用户详情 + user_profiles 摘要（不含密码）
  */
-export async function GET(request: NextRequest, context: RouteContext) {
+async function handleAdminUserByIdGET(request: NextRequest, context: RouteContext) {
   const gate = requireInMemorySuperRoot(request);
   if (!gate.ok) {
     return NextResponse.json<ApiResponse>(
@@ -79,16 +81,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       timestamp: new Date().toISOString(),
     });
   } catch (e) {
-    console.error("[api/admin/users/[id]] GET", e);
-    return NextResponse.json<ApiResponse>(
-      {
-        success: false,
-        message: "获取用户失败",
-        error: e instanceof Error ? e.message : String(e),
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw e;
   }
 }
 
@@ -97,7 +90,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
  * 更新角色、启用状态（非 active 时无法登录；与登录/刷新令牌校验一致）。
  * 目标用户 id 与当前令牌中的根账户 userId 相同时拒绝修改（根账户在管理端展示为 super_admin）。
  */
-export async function PATCH(request: NextRequest, context: RouteContext) {
+async function handleAdminUserByIdPATCH(request: NextRequest, context: RouteContext) {
   const gate = requireInMemorySuperRoot(request);
   if (!gate.ok) {
     return NextResponse.json<ApiResponse>(
@@ -217,15 +210,25 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       timestamp: new Date().toISOString(),
     });
   } catch (e) {
-    console.error("[api/admin/users/[id]] PATCH", e);
-    return NextResponse.json<ApiResponse>(
-      {
-        success: false,
-        message: "更新用户失败",
-        error: e instanceof Error ? e.message : String(e),
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw e;
   }
 }
+
+export const { GET, PATCH } = defineApiHandlers(
+  {
+    GET: handleAdminUserByIdGET,
+    PATCH: handleAdminUserByIdPATCH,
+  },
+  {
+    onError: (payload) => notifyRouteUnhandledError(payload),
+    onUnhandledErrorResponse: ({ method }) =>
+      NextResponse.json<ApiResponse>(
+        {
+          success: false,
+          message: method === "GET" ? "获取用户失败" : "更新用户失败",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 500 }
+      ),
+  }
+);

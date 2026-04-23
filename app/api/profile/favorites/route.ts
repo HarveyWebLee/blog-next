@@ -12,6 +12,8 @@ import { and, count, desc, eq } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { categories, posts, userFavorites, users } from "@/lib/db/schema";
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
+import { notifyRouteUnhandledError } from "@/lib/server/route-alert";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
 import { isJwtInMemorySuperRoot } from "@/lib/utils/authz";
 import type { AuthJwtPayload } from "@/lib/utils/request-auth";
@@ -27,7 +29,7 @@ function canInteractPost(
   return authUser.userId === post.authorId || isJwtInMemorySuperRoot(authUser);
 }
 
-export async function GET(request: NextRequest) {
+async function handleProfileFavoritesGET(request: NextRequest) {
   try {
     const auth = requireAuthUser(request);
     if (!auth.ok) {
@@ -174,20 +176,11 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("获取收藏列表失败:", error);
-    return NextResponse.json<ApiResponse>(
-      {
-        success: false,
-        message: "获取收藏列表失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
 
-export async function POST(request: NextRequest) {
+async function handleProfileFavoritesPOST(request: NextRequest) {
   try {
     const auth = requireAuthUser(request);
     if (!auth.ok) {
@@ -284,20 +277,11 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("收藏文章失败:", error);
-    return NextResponse.json<ApiResponse>(
-      {
-        success: false,
-        message: "收藏文章失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
 
-export async function DELETE(request: NextRequest) {
+async function handleProfileFavoritesDELETE(request: NextRequest) {
   try {
     const auth = requireAuthUser(request);
     if (!auth.ok) {
@@ -345,15 +329,34 @@ export async function DELETE(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("取消收藏失败:", error);
-    return NextResponse.json<ApiResponse>(
-      {
-        success: false,
-        message: "取消收藏失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
+
+export const { GET, POST, DELETE } = defineApiHandlers(
+  {
+    GET: handleProfileFavoritesGET,
+    POST: handleProfileFavoritesPOST,
+    DELETE: handleProfileFavoritesDELETE,
+  },
+  {
+    onError: (payload) => {
+      notifyRouteUnhandledError(payload);
+    },
+    onUnhandledErrorResponse: ({ method }) => {
+      const messageMap: Record<string, string> = {
+        GET: "获取收藏列表失败",
+        POST: "收藏文章失败",
+        DELETE: "取消收藏失败",
+      };
+      return NextResponse.json<ApiResponse>(
+        {
+          success: false,
+          message: messageMap[method] || "收藏接口处理失败",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 500 }
+      );
+    },
+  }
+);

@@ -9,11 +9,13 @@ import { and, eq } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { userFollows, userNotifications, users } from "@/lib/db/schema";
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
+import { logger } from "@/lib/server/logger";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
 import { requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, FollowUserRequest } from "@/types/blog";
 
-export async function POST(request: NextRequest) {
+async function handleProfileFollowPOST(request: NextRequest) {
   try {
     const auth = requireAuthUser(request);
     if (!auth.ok) {
@@ -100,7 +102,7 @@ export async function POST(request: NextRequest) {
         isRead: false,
       });
     } catch (e) {
-      console.error("创建关注通知失败:", e);
+      logger.warn("api/profile/follow", "创建关注通知失败", { err: String(e) });
     }
 
     logUserActivity({
@@ -120,15 +122,8 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("关注用户失败:", error);
-    return NextResponse.json<ApiResponse>(
-      {
-        success: false,
-        message: "关注用户失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
+
+export const { POST } = defineApiHandlers({ POST: handleProfileFollowPOST });

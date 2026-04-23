@@ -9,6 +9,7 @@ import { Input } from "@heroui/input";
 import { Form } from "@heroui/react";
 import { AlertCircle, ArrowLeftIcon, CheckCircle, Clock, Eye, EyeOff, Lock, Mail, Shield, User } from "lucide-react";
 
+import { sealPasswordInRequestBody } from "@/lib/crypto/password-transport/body";
 import { isValidEmailFormat } from "@/lib/utils/email-format";
 
 export default function RegisterPage() {
@@ -288,17 +289,21 @@ export default function RegisterPage() {
     setIsSubmitting(true);
 
     try {
+      const base: Record<string, unknown> = {
+        ...(formData as Record<string, unknown>),
+        email: emailTrimmed,
+        useEmailVerification: true,
+        verificationCode,
+      };
+      const plainPwd = typeof formData.password === "string" ? formData.password : "";
+      const payload = await sealPasswordInRequestBody(base, plainPwd, "password");
+
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          ...formData,
-          email: emailTrimmed,
-          useEmailVerification: true,
-          verificationCode,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();

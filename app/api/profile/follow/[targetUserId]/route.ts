@@ -9,11 +9,16 @@ import { and, eq } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { userFollows } from "@/lib/db/schema";
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
+import { logger } from "@/lib/server/logger";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
 import { requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse } from "@/types/blog";
 
-export async function DELETE(request: NextRequest, { params }: { params: Promise<{ targetUserId: string }> }) {
+async function handleProfileFollowByTargetDELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ targetUserId: string }> }
+) {
   try {
     const auth = requireAuthUser(request);
     if (!auth.ok) {
@@ -77,15 +82,8 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("取消关注失败:", error);
-    return NextResponse.json<ApiResponse>(
-      {
-        success: false,
-        message: "取消关注失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
+
+export const { DELETE } = defineApiHandlers({ DELETE: handleProfileFollowByTargetDELETE });

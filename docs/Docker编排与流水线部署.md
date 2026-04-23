@@ -323,7 +323,142 @@ chown -R deployer:deployer /home/deployer/.ssh
 - **普通** `pnpm run build`：**不**设置 `NEXT_STANDALONE`，可在 Windows 上完成构建。
 - **验证 standalone**（Linux/WSL/容器）：`NEXT_STANDALONE=true pnpm run build`。
 
-## 9. 常见问题
+## 9. 详细上线执行清单（命令版）
+
+> 目标：你可以从 0 到上线，严格按命令一步步执行。  
+> 前提：已安装 `docker` + `docker compose`，并在仓库根目录执行命令。
+
+### 9.1 首次准备（仅首次）
+
+```bash
+# 0) 进入项目根目录
+cd /opt/blog-next
+
+# 1) 准备部署环境文件（勿提交真实值）
+cp deploy/env.docker.example deploy/.env.docker
+```
+
+编辑 `deploy/.env.docker`，至少确认以下键：
+
+- 基础：`MYSQL_ROOT_PASSWORD`、`REDIS_PASSWORD`、`JWT_SECRET`、`JWT_REFRESH_SECRET`
+- 对外地址：`NEXT_PUBLIC_APP_URL`、`CORS_ORIGIN`
+- MinIO：`MINIO_ROOT_USER`、`MINIO_ROOT_PASSWORD`、`MINIO_BUCKET`、`MINIO_PUBLIC_BASE_URL`、`NEXT_PUBLIC_MINIO_PUBLIC_BASE_URL`
+- 密码传输加固（生产）：
+  - `PASSWORD_TRANSPORT_REQUIRED=true`
+  - `PASSWORD_TRANSPORT_RSA_PRIVATE_KEY_B64=<生成值>`
+  - `PASSWORD_TRANSPORT_MAX_SKEW_MS=300000`
+  - `POST_PASSWORD_UNLOCK_EXPIRES_SECONDS=600`
+  - `POST_PASSWORD_UNLOCK_SECRET=<强随机串>`
+
+### 9.2 生成密码传输私钥（本地或服务器执行一次）
+
+```bash
+# 在仓库根目录执行
+node scripts/generate-password-transport-keys.mjs
+```
+
+将输出的：
+
+- `PASSWORD_TRANSPORT_RSA_PRIVATE_KEY_B64=...`
+
+复制到 `deploy/.env.docker`。
+
+### 9.3 启动依赖服务
+
+```bash
+# 2) 启动 mysql + redis + minio
+docker compose --env-file deploy/.env.docker up -d mysql redis minio
+
+# 3) 初始化 MinIO bucket（幂等）
+docker compose --env-file deploy/.env.docker --profile minio-init run --rm minio-init
+```
+
+### 9.4 执行数据库迁移
+
+```bash
+# 4) 迁移（建议带 --build，确保迁移镜像使用最新 drizzle）
+docker compose --env-file deploy/.env.docker --profile migrate run --rm --build db-migrate
+```
+
+### 9.5 启动应用
+
+```bash
+# 5) 构建并启动应用
+docker compose --env-file deploy/.env.docker up -d --build blog-web
+```
+
+### 9.6 上线后健康检查（强烈建议逐项执行）
+
+```bash
+# 6) 查看容器状态
+docker compose --env-file deploy/.env.docker ps
+
+# 7) 查看应用启动日志（应看到 [password-transport][startup] 状态行）
+docker compose --env-file deploy/.env.docker logs --tail=200 blog-web
+
+# 8) 环境与策略自检（需超级管理员 token）
+curl -sS -H "Authorization: Bearer <SUPER_ADMIN_ACCESS_TOKEN>" \
+  "http://127.0.0.1:${APP_PORT:-13001}/api/test-env"
+```
+
+`/api/test-env` 重点看：
+
+- `details.passwordTransport.required` 应为 `true`（生产默认）
+- `details.passwordTransport.configured` 应为 `true`
+- `details.passwordTransport.ready` 应为 `true`
+
+### 9.7 验证密码加固链路（建议）
+
+1. 打开登录页，正常输入账号密码应可登录。
+2. 浏览器 DevTools 网络面板确认登录请求 body 为 `passwordTransport`（而非明文 `password`）。
+3. 访问密码保护文章，解锁后 URL 参数应为 `?unlock=...`（不应再出现 `?password=...`）。
+
+### 9.8 常用回滚/重启命令
+
+```bash
+# 重启应用
+docker compose --env-file deploy/.env.docker restart blog-web
+
+# 仅重建应用镜像并拉起
+docker compose --env-file deploy/.env.docker up -d --build blog-web
+
+# 停止所有服务
+docker compose --env-file deploy/.env.docker down
+```
+
+### 9.9 失败场景快速定位
+
+- **密码接口返回 503**：
+  - 检查 `PASSWORD_TRANSPORT_REQUIRED` 与 `PASSWORD_TRANSPORT_RSA_PRIVATE_KEY_B64` 是否同时正确配置。
+  - 查 `blog-web` 日志是否有 `CRITICAL` 提示（password-transport 配置缺失）。
+- **前端仍发送明文 password**：
+  - 确认部署的是最新镜像（执行过 `up -d --build blog-web`）。
+  - 清缓存后再测（避免旧前端资源）。
+- **`/api/test-env` 显示 passwordTransport not ready**：
+  - 以 `details.passwordTransport.reason` 为准修复配置，然后重启 `blog-web`。
+
+### 9.10 一键执行脚本（可选）
+
+仓库提供与本节清单对应的脚本：
+
+```bash
+bash scripts/deploy-prod-checklist.sh
+```
+
+常见用法：
+
+```bash
+# 指定 env 文件
+ENV_FILE=deploy/.env.docker bash scripts/deploy-prod-checklist.sh
+
+# 跳过 minio-init / migrate（仅排障场景）
+SKIP_MINIO_INIT=1 SKIP_MIGRATE=1 bash scripts/deploy-prod-checklist.sh
+
+# 启用 /api/test-env 自检（需超管 token）
+SUPER_ADMIN_TOKEN=<TOKEN> CHECK_URL=http://127.0.0.1:13001 bash scripts/deploy-prod-checklist.sh
+```
+
+## 10. 常见问题
 
 | 现象                                          | 处理                                                                                                                                                                                                                                                                                  |
 | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

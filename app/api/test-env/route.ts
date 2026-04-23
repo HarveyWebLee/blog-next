@@ -1,6 +1,8 @@
 import * as fs from "fs";
 import { NextRequest, NextResponse } from "next/server";
 
+import { isPasswordTransportConfigured } from "@/lib/crypto/password-transport/server";
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { requireInMemorySuperRoot } from "@/lib/utils/authz";
 
 /**
@@ -108,7 +110,26 @@ function checkEnvironmentVariables() {
   return { missingVars, presentVars };
 }
 
-export async function GET(request: NextRequest) {
+function resolvePasswordTransportRequired(): boolean {
+  const raw = process.env.PASSWORD_TRANSPORT_REQUIRED?.trim().toLowerCase();
+  if (raw === "true") return true;
+  if (raw === "false") return false;
+  return process.env.NODE_ENV === "production";
+}
+
+function checkPasswordTransportReadiness() {
+  const required = resolvePasswordTransportRequired();
+  const configured = isPasswordTransportConfigured();
+  const ready = !required || configured;
+  const reason = ready
+    ? required
+      ? "已启用并满足强制策略"
+      : "当前环境未强制，可按需启用"
+    : "策略要求强制 passwordTransport，但未配置 RSA 私钥";
+  return { required, configured, ready, reason };
+}
+
+async function handleTestEnvGET(request: NextRequest) {
   try {
     const auth = requireInMemorySuperRoot(request);
     if (!auth.ok) {
@@ -140,9 +161,16 @@ export async function GET(request: NextRequest) {
     // 显示配置指南
     showConfigurationGuide();
 
+    const passwordTransport = checkPasswordTransportReadiness();
+    const isEnvVarsOk = missingVars.length === 0;
+    const overallOk = isEnvVarsOk && passwordTransport.ready;
     const result = {
-      success: missingVars.length === 0,
-      message: missingVars.length === 0 ? "环境配置检查通过" : `缺少 ${missingVars.length} 个必要的环境变量`,
+      success: overallOk,
+      message: overallOk
+        ? "环境配置检查通过"
+        : !isEnvVarsOk
+          ? `缺少 ${missingVars.length} 个必要的环境变量`
+          : "密码传输策略要求已开启，但服务端未配置 RSA 私钥",
       details: {
         envFiles: {
           existing: existingFiles,
@@ -153,9 +181,14 @@ export async function GET(request: NextRequest) {
           present: presentVars,
           missing: missingVars,
         },
-        recommendations:
-          missingVars.length > 0
-            ? ["请检查 .env.local 文件配置", "确保所有必要的环境变量都已设置", "参考上述配置指南进行设置"]
+        passwordTransport,
+        recommendations: !isEnvVarsOk
+          ? ["请检查 .env.local 文件配置", "确保所有必要的环境变量都已设置", "参考上述配置指南进行设置"]
+          : !passwordTransport.ready
+            ? [
+                "请配置 PASSWORD_TRANSPORT_RSA_PRIVATE_KEY_B64（或 PASSWORD_TRANSPORT_RSA_PRIVATE_KEY）",
+                "若需临时放开，可显式设置 PASSWORD_TRANSPORT_REQUIRED=false（不推荐生产）",
+              ]
             : ["环境配置完整，可以继续下一步操作"],
       },
     };
@@ -184,3 +217,5 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+export const { GET } = defineApiHandlers({ GET: handleTestEnvGET });

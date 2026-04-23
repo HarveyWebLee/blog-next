@@ -31,6 +31,7 @@ import { FeaturedImageUpload } from "@/components/blog/featured-image-upload";
 import SimpleEditor from "@/components/blog/simple-editor";
 import { CategoryTreeSelect } from "@/components/ui/category-tree-select";
 import { useAuth } from "@/lib/contexts/auth-context";
+import { sealPasswordInRequestBody } from "@/lib/crypto/password-transport/body";
 import { useCategories } from "@/lib/hooks/useCategories";
 import { useTags } from "@/lib/hooks/useTags";
 import { generateRandomUrlAlias, message } from "@/lib/utils";
@@ -300,13 +301,19 @@ export default function CreateBlogPage() {
     try {
       setLoading(true);
 
+      const payload = await sealPasswordInRequestBody(
+        { ...(formData as unknown as Record<string, unknown>) },
+        formData.password || "",
+        "password"
+      );
+
       const response = await fetch("/api/posts", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...clientBearerHeaders(),
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       const result = await response.json();

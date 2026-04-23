@@ -5,11 +5,13 @@ import { eq } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { posts } from "@/lib/db/schema";
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
+import { logger } from "@/lib/server/logger";
 import { postService } from "@/lib/services/post.service";
 import { createErrorResponse, createSuccessResponse } from "@/lib/utils";
 import { checkRateLimit } from "@/lib/utils/request-rate-limit";
 
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePostViewPOST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const postId = parseInt(id, 10);
   if (!Number.isFinite(postId) || postId <= 0) {
@@ -40,10 +42,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 
   postService.incrementViewCount(postId).catch((error) => {
-    console.error("增加浏览次数失败:", error);
+    logger.warn("api/posts/[id]/view", "incrementViewCount 异步失败", { postId, err: String(error) });
   });
   // 返回成功响应
   return NextResponse.json(createSuccessResponse(true, "增加浏览次数成功"), {
     status: 200,
   });
 }
+
+export const { POST } = defineApiHandlers({ POST: handlePostViewPOST });

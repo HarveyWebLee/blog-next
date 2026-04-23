@@ -12,6 +12,8 @@ import { eq } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { userProfiles, users } from "@/lib/db/schema";
+import { defineApiHandlers } from "@/lib/server/define-api-handlers";
+import { notifyRouteUnhandledError } from "@/lib/server/route-alert";
 import { resolveProfileEmailUpdateOrError, verifyProfileEmailCodeOrError } from "@/lib/services/profile-email.service";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
 import { requireAuthUser } from "@/lib/utils/request-auth";
@@ -57,7 +59,7 @@ function parseJsonRecord(raw: string | null): Record<string, unknown> {
   }
 }
 
-export async function GET(request: NextRequest) {
+async function handleProfileGET(request: NextRequest) {
   try {
     // 验证用户身份（JWT 无效时由 requireAuthUser 处理，避免 verifyToken 抛错落入外层 500）
     const auth = requireAuthUser(request);
@@ -120,20 +122,11 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("获取个人资料失败:", error);
-    return NextResponse.json<ApiResponse>(
-      {
-        success: false,
-        message: "获取个人资料失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
 
-export async function POST(request: NextRequest) {
+async function handleProfilePOST(request: NextRequest) {
   try {
     const auth = requireAuthUser(request);
     if (!auth.ok) {
@@ -259,20 +252,11 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("创建个人资料失败:", error);
-    return NextResponse.json<ApiResponse>(
-      {
-        success: false,
-        message: "创建个人资料失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
 
-export async function PUT(request: NextRequest) {
+async function handleProfilePUT(request: NextRequest) {
   try {
     const auth = requireAuthUser(request);
     if (!auth.ok) {
@@ -403,15 +387,28 @@ export async function PUT(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("更新个人资料失败:", error);
-    return NextResponse.json<ApiResponse>(
-      {
-        success: false,
-        message: "更新个人资料失败",
-        error: error instanceof Error ? error.message : "未知错误",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    throw error;
   }
 }
+
+export const { GET, POST, PUT } = defineApiHandlers(
+  {
+    GET: handleProfileGET,
+    POST: handleProfilePOST,
+    PUT: handleProfilePUT,
+  },
+  {
+    onError: (payload) => {
+      notifyRouteUnhandledError(payload);
+    },
+    onUnhandledErrorResponse: ({ method }) =>
+      NextResponse.json<ApiResponse>(
+        {
+          success: false,
+          message: method === "GET" ? "获取个人资料失败" : method === "POST" ? "创建个人资料失败" : "更新个人资料失败",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 500 }
+      ),
+  }
+);

@@ -25,6 +25,7 @@ import {
   PROFILE_NATIVE_CONTROL,
 } from "@/components/profile/profile-ui-presets";
 import { useAuth } from "@/lib/contexts/auth-context";
+import { sealPasswordInRequestBody } from "@/lib/crypto/password-transport/body";
 import { message } from "@/lib/utils";
 import { clientBearerHeaders } from "@/lib/utils/client-bearer-auth";
 import { stripMarkdownForExcerpt } from "@/lib/utils/markdown-plain";
@@ -254,18 +255,24 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
     try {
       setPasswordSubmitting(true);
       setPasswordError("");
+      const payload = await sealPasswordInRequestBody({ password: passwordInput }, passwordInput, "password");
       const response = await fetch(`/api/posts/slug/${pendingPostSlug}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password: passwordInput }),
+        body: JSON.stringify(payload),
       });
       const result = await response.json();
       if (!result.success) {
         setPasswordError(result.message || t.passwordInvalid);
         return;
       }
+      const unlockToken = (result?.data as { unlockToken?: string } | undefined)?.unlockToken;
       setPasswordModalOpen(false);
-      router.push(`/${routeLang}/blog/${pendingPostSlug}?password=${encodeURIComponent(passwordInput)}`);
+      router.push(
+        unlockToken
+          ? `/${routeLang}/blog/${pendingPostSlug}?unlock=${encodeURIComponent(unlockToken)}`
+          : `/${routeLang}/blog/${pendingPostSlug}`
+      );
     } catch (error) {
       console.error("密码校验失败:", error);
       setPasswordError(t.passwordInvalid);
