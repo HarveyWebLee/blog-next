@@ -1,3 +1,9 @@
+## [1.6.2](https://github.com/HarveyWebLee/blog-next/compare/v1.6.1...v1.6.2) (2026-04-24)
+
+### Performance Improvements
+
+- **auth:** 增强验证码邮件发送功能 ([39e9e93](https://github.com/HarveyWebLee/blog-next/commit/39e9e93b42add310e8f731ef1089c34c823132df))
+
 ## [1.6.1](https://github.com/HarveyWebLee/blog-next/compare/v1.6.0...v1.6.1) (2026-04-22)
 
 ### Bug Fixes
