@@ -13,6 +13,17 @@ interface EmailConfig {
   };
 }
 
+export type SendVerificationEmailFailureCode =
+  | "RECIPIENT_NOT_FOUND"
+  | "RECIPIENT_REJECTED"
+  | "SMTP_TIMEOUT"
+  | "SMTP_AUTH_FAILED"
+  | "SMTP_ERROR";
+
+export type SendVerificationEmailResult =
+  | { ok: true; messageId?: string }
+  | { ok: false; code: SendVerificationEmailFailureCode; detail?: string };
+
 /**
  * 创建邮件传输器
  */
@@ -48,6 +59,21 @@ export async function sendVerificationEmail(
   code: string,
   type: "register" | "reset_password" | "change_email" | "subscription" | "subscription_unsubscribe" = "register"
 ): Promise<boolean> {
+  const result = await sendVerificationEmailDetailed(email, code, type);
+  return result.ok;
+}
+
+/**
+ * 发送验证码邮件（带失败原因）
+ * @param email 收件人邮箱
+ * @param code 验证码
+ * @param type 验证码类型
+ */
+export async function sendVerificationEmailDetailed(
+  email: string,
+  code: string,
+  type: "register" | "reset_password" | "change_email" | "subscription" | "subscription_unsubscribe" = "register"
+): Promise<SendVerificationEmailResult> {
   try {
     const transporter = createTransporter();
 
@@ -147,10 +173,34 @@ export async function sendVerificationEmail(
 
     const result = await transporter.sendMail(mailOptions);
     console.log("邮件发送成功:", result.messageId);
-    return true;
+    return { ok: true, messageId: result.messageId };
   } catch (error) {
     console.error("邮件发送失败:", error);
-    return false;
+    const err = error as {
+      code?: string;
+      command?: string;
+      responseCode?: number;
+      response?: string;
+      message?: string;
+    };
+
+    if (err.code === "EENVELOPE" && err.responseCode === 550) {
+      const resp = (err.response || err.message || "").toLowerCase();
+      if (resp.includes("user not found") || resp.includes("no such user")) {
+        return { ok: false, code: "RECIPIENT_NOT_FOUND", detail: err.response || err.message };
+      }
+      return { ok: false, code: "RECIPIENT_REJECTED", detail: err.response || err.message };
+    }
+
+    if (err.code === "ETIMEDOUT") {
+      return { ok: false, code: "SMTP_TIMEOUT", detail: err.message };
+    }
+
+    if (err.code === "EAUTH") {
+      return { ok: false, code: "SMTP_AUTH_FAILED", detail: err.message };
+    }
+
+    return { ok: false, code: "SMTP_ERROR", detail: err.message };
   }
 }
 

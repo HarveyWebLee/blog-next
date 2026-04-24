@@ -6,8 +6,19 @@ import { emailSubscriptions, emailVerifications, users } from "@/lib/db/schema";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { logger } from "@/lib/server/logger";
 import { isValidEmail } from "@/lib/utils";
-import { generateVerificationCode, sendVerificationEmail } from "@/lib/utils/email";
+import {
+  generateVerificationCode,
+  sendVerificationEmailDetailed,
+  type SendVerificationEmailResult,
+} from "@/lib/utils/email";
 import { ApiResponse } from "@/types/blog";
+
+function mapEmailSendErrorMessage(result: Exclude<SendVerificationEmailResult, { ok: true }>): string {
+  if (result.code === "RECIPIENT_NOT_FOUND" || result.code === "RECIPIENT_REJECTED") {
+    return "邮箱不存在或无法接收邮件，请检查后重试";
+  }
+  return "邮件发送失败，请稍后重试";
+}
 
 /**
  * 发送邮箱验证码
@@ -160,14 +171,20 @@ async function handleAuthSendVerificationCodePOST(request: NextRequest) {
       expiresAt,
     });
 
-    // 发送邮件
-    const emailSent = await sendVerificationEmail(email, code, verificationType);
+    // 发送邮件：若 SMTP 返回收件人不存在/拒收，向前端返回更明确提示。
+    const emailSendResult = await sendVerificationEmailDetailed(email, code, verificationType);
 
-    if (!emailSent) {
+    if (!emailSendResult.ok) {
+      logger.warn("auth", "send verification email failed", {
+        email,
+        type: verificationType,
+        code: emailSendResult.code,
+        detail: emailSendResult.detail,
+      });
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "邮件发送失败，请稍后重试",
+          message: mapEmailSendErrorMessage(emailSendResult),
           timestamp: new Date().toISOString(),
         },
         { status: 500 }
