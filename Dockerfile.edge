@@ -2,16 +2,28 @@
 # 敏感配置仅通过运行时挂载的 secret 文件注入，不在本文件中写死域名、邮箱等。
 FROM nginx:1.27-alpine
 
-ARG ALPINE_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/alpine
+ARG ALPINE_MIRRORS="https://mirrors.tencent.com/alpine https://mirrors.aliyun.com/alpine https://mirrors.tuna.tsinghua.edu.cn/alpine https://mirrors.ustc.edu.cn/alpine"
 
 RUN set -eux; \
-    # 构建期优先使用可配置镜像源，降低 apk 索引下载超时/卡顿概率。
+    # 构建期优先探测并使用可用镜像源，降低 apk 下载超时/卡顿概率。
     ALPINE_SERIES="v$(cut -d. -f1,2 /etc/alpine-release)"; \
-    if [ -n "${ALPINE_MIRROR:-}" ]; then \
-      printf '%s\n%s\n' \
-        "${ALPINE_MIRROR%/}/${ALPINE_SERIES}/main" \
-        "${ALPINE_MIRROR%/}/${ALPINE_SERIES}/community" \
-        > /etc/apk/repositories; \
+    if [ -n "${ALPINE_MIRRORS:-}" ]; then \
+      SELECTED_MIRROR=""; \
+      for MIRROR in ${ALPINE_MIRRORS}; do \
+        printf '%s\n%s\n' \
+          "${MIRROR%/}/${ALPINE_SERIES}/main" \
+          "${MIRROR%/}/${ALPINE_SERIES}/community" \
+          > /etc/apk/repositories; \
+        if apk update >/dev/null 2>&1; then \
+          SELECTED_MIRROR="${MIRROR}"; \
+          break; \
+        fi; \
+      done; \
+      if [ -z "${SELECTED_MIRROR}" ]; then \
+        echo "No reachable Alpine mirror from ALPINE_MIRRORS: ${ALPINE_MIRRORS}" >&2; \
+        exit 1; \
+      fi; \
+      echo "Using Alpine mirror: ${SELECTED_MIRROR}"; \
     fi; \
     apk add --no-cache \
         bash \
