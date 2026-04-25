@@ -173,6 +173,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.edge
+      args:
+        # 默认使用国内 Alpine 镜像，加速 certbot 相关依赖安装。
+        ALPINE_MIRROR: ${ALPINE_MIRROR:-https://mirrors.tuna.tsinghua.edu.cn/alpine}
     image: blog-next-edge:local
     container_name: blog-next-edge
     restart: unless-stopped

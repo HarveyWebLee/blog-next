@@ -2,7 +2,17 @@
 # 敏感配置仅通过运行时挂载的 secret 文件注入，不在本文件中写死域名、邮箱等。
 FROM nginx:1.27-alpine
 
+ARG ALPINE_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/alpine
+
 RUN set -eux; \
+    # 构建期优先使用可配置镜像源，降低 apk 索引下载超时/卡顿概率。
+    ALPINE_SERIES="v$(cut -d. -f1,2 /etc/alpine-release)"; \
+    if [ -n "${ALPINE_MIRROR:-}" ]; then \
+      printf '%s\n%s\n' \
+        "${ALPINE_MIRROR%/}/${ALPINE_SERIES}/main" \
+        "${ALPINE_MIRROR%/}/${ALPINE_SERIES}/community" \
+        > /etc/apk/repositories; \
+    fi; \
     apk add --no-cache \
         bash \
         openssl \
