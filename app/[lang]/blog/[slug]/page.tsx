@@ -909,19 +909,14 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
                                     className="hover-lift"
                                   />
                                   <div className="flex-1">
-                                    <p className="font-semibold text-lg">
-                                      {comment.author?.displayName || comment.authorName || t.anonymous}
+                                    <div className="flex flex-wrap items-center gap-2 text-lg font-semibold">
+                                      <span>{comment.author?.displayName || comment.authorName || t.anonymous}</span>
                                       {comment.authorId != null && comment.authorId === post.authorId && (
-                                        <Chip
-                                          size="sm"
-                                          color="warning"
-                                          variant="flat"
-                                          className="ml-2 align-middle font-medium"
-                                        >
+                                        <Chip size="sm" color="warning" variant="flat" className="font-medium">
                                           {t.authorBadge}
                                         </Chip>
                                       )}
-                                    </p>
+                                    </div>
                                     <p className="text-sm text-default-400">
                                       {new Date(comment.createdAt).toLocaleDateString("zh-CN", {
                                         year: "numeric",

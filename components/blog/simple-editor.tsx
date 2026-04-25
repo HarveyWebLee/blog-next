@@ -7,6 +7,8 @@ import { Card, CardBody, CardHeader } from "@heroui/card";
 import { ChevronDown, Maximize2, Minimize2, Settings, Sparkles, Type } from "lucide-react";
 import { useTheme } from "next-themes";
 
+import { mountMarkdownCodeEnhancer } from "@/lib/utils/markdown-code-enhancer";
+
 // 动态导入Toast UI Editor，禁用SSR
 const Editor = dynamic(() => import("@toast-ui/react-editor").then((mod) => mod.Editor), {
   ssr: false,
@@ -47,12 +49,42 @@ const SimpleEditor = ({
   const [tipsOpen, setTipsOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [currentTheme, setCurrentTheme] = useState<string>("light");
+  const [prismHighlighter, setPrismHighlighter] = useState<unknown | null>(null);
   const editorRef = useRef<typeof Editor>(null);
   const { theme, resolvedTheme } = useTheme();
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!isMounted) return;
+    let cancelled = false;
+    const loadSyntax = async () => {
+      try {
+        const prismModule = await import("prismjs");
+        const prismInstance = (prismModule as any).default ?? prismModule;
+        (globalThis as any).Prism = prismInstance;
+        await import("prismjs/components/prism-bash");
+        await import("prismjs/components/prism-css");
+        await import("prismjs/components/prism-javascript");
+        await import("prismjs/components/prism-json");
+        await import("prismjs/components/prism-jsx");
+        await import("prismjs/components/prism-markdown");
+        await import("prismjs/components/prism-typescript");
+        await import("prismjs/components/prism-tsx");
+        await import("prismjs/components/prism-yaml");
+        if (cancelled) return;
+        setPrismHighlighter(prismInstance);
+      } catch (error) {
+        console.error("加载代码高亮插件失败:", error);
+      }
+    };
+    void loadSyntax();
+    return () => {
+      cancelled = true;
+    };
+  }, [isMounted]);
 
   const updateEditorTheme = useCallback((themeName: string) => {
     if (editorRef.current) {
@@ -196,6 +228,39 @@ const SimpleEditor = ({
     };
   }, [isMounted, handleContentChange, currentTheme]);
 
+  useEffect(() => {
+    if (!isMounted) return;
+    let stopped = false;
+    let rafId = 0;
+    let unmount: (() => void) | undefined;
+    let attempts = 0;
+    const maxAttempts = 30;
+
+    const tryMount = () => {
+      if (stopped) return;
+      attempts += 1;
+      const root = editorRef.current?.getRootElement?.() as HTMLElement | null;
+      const previewRoot = root?.querySelector(".te-preview") as HTMLElement | null;
+      // 仅增强预览面板，避免干扰 WYSIWYG 编辑区（点击代码块按钮时可能触发高频变更）。
+      if (previewRoot) {
+        unmount = mountMarkdownCodeEnhancer(previewRoot, {
+          highlighter: (prismHighlighter as any) ?? undefined,
+        });
+        return;
+      }
+      if (attempts < maxAttempts) {
+        rafId = requestAnimationFrame(tryMount);
+      }
+    };
+
+    rafId = requestAnimationFrame(tryMount);
+    return () => {
+      stopped = true;
+      cancelAnimationFrame(rafId);
+      unmount?.();
+    };
+  }, [isMounted, value, currentTheme, prismHighlighter]);
+
   const headerBar = (
     <div className="flex w-full items-center justify-between gap-2">
       <div className="flex min-w-0 items-center gap-2">
@@ -265,6 +330,15 @@ const SimpleEditor = ({
             <span className="text-default-600 dark:text-default-400">
               字符 <strong className="text-foreground">{value.length}</strong>
             </span>
+            <span className="text-default-600 dark:text-default-400">
+              行数 <strong className="text-foreground">{Math.max(1, value.split("\n").length)}</strong>
+            </span>
+            <span className="text-default-600 dark:text-default-400">
+              预计阅读{" "}
+              <strong className="text-foreground">
+                {Math.max(1, Math.ceil(value.split(/\s+/).filter((w) => w.length > 0).length / 240))} 分钟
+              </strong>
+            </span>
             {autoSave && onSave && isAutoSaving && <span className="text-warning text-[11px]">自动保存…</span>}
           </div>
 
@@ -279,6 +353,7 @@ const SimpleEditor = ({
               initialValue={value ?? ""}
               previewStyle="vertical"
               usageStatistics={false}
+              plugins={[]}
               {...(placeholder?.trim() ? { placeholder: placeholder.trim() } : {})}
               toolbarItems={[
                 ["heading", "bold", "italic", "strike"],

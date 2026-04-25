@@ -5,6 +5,8 @@ import dynamic from "next/dynamic";
 import { Spinner } from "@heroui/spinner";
 import { useTheme } from "next-themes";
 
+import { mountMarkdownCodeEnhancer } from "@/lib/utils/markdown-code-enhancer";
+
 // 动态导入 Toast UI Viewer，禁用 SSR（与正文编辑器同引擎，保证渲染一致）
 const Viewer = dynamic(() => import("@toast-ui/react-editor").then((mod) => mod.Viewer), {
   ssr: false,
@@ -32,6 +34,7 @@ interface MarkdownRendererProps {
 const MarkdownRenderer = ({ content, className = "", showHeader = false, height = "auto" }: MarkdownRendererProps) => {
   const [isMounted, setIsMounted] = useState(false);
   const [currentTheme, setCurrentTheme] = useState<string>("light");
+  const [prismHighlighter, setPrismHighlighter] = useState<unknown | null>(null);
   const viewerRef = useRef<{
     getInstance?: () => { setMarkdown: (v: string) => void };
     getRootElement?: () => HTMLElement | null;
@@ -61,6 +64,35 @@ const MarkdownRenderer = ({ content, className = "", showHeader = false, height 
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!isMounted) return;
+    let cancelled = false;
+    const loadSyntax = async () => {
+      try {
+        const prismModule = await import("prismjs");
+        const prismInstance = (prismModule as any).default ?? prismModule;
+        (globalThis as any).Prism = prismInstance;
+        await import("prismjs/components/prism-bash");
+        await import("prismjs/components/prism-css");
+        await import("prismjs/components/prism-javascript");
+        await import("prismjs/components/prism-json");
+        await import("prismjs/components/prism-jsx");
+        await import("prismjs/components/prism-markdown");
+        await import("prismjs/components/prism-typescript");
+        await import("prismjs/components/prism-tsx");
+        await import("prismjs/components/prism-yaml");
+        if (cancelled) return;
+        setPrismHighlighter(prismInstance);
+      } catch (error) {
+        console.error("加载代码高亮插件失败:", error);
+      }
+    };
+    void loadSyntax();
+    return () => {
+      cancelled = true;
+    };
+  }, [isMounted]);
 
   useEffect(() => {
     if (!isMounted) return;
@@ -96,6 +128,37 @@ const MarkdownRenderer = ({ content, className = "", showHeader = false, height 
       cancelAnimationFrame(rafId);
     };
   }, [isMounted, content, currentTheme]);
+
+  useEffect(() => {
+    if (!isMounted) return;
+    let stopped = false;
+    let rafId = 0;
+    let unmount: (() => void) | undefined;
+    let attempts = 0;
+    const maxAttempts = 30;
+
+    const tryMount = () => {
+      if (stopped) return;
+      attempts += 1;
+      const root = viewerRef.current?.getRootElement?.() as HTMLElement | null;
+      if (root) {
+        unmount = mountMarkdownCodeEnhancer(root, {
+          highlighter: (prismHighlighter as any) ?? undefined,
+        });
+        return;
+      }
+      if (attempts < maxAttempts) {
+        rafId = requestAnimationFrame(tryMount);
+      }
+    };
+
+    rafId = requestAnimationFrame(tryMount);
+    return () => {
+      stopped = true;
+      cancelAnimationFrame(rafId);
+      unmount?.();
+    };
+  }, [isMounted, content, currentTheme, prismHighlighter]);
 
   if (!isMounted) {
     return (
@@ -144,6 +207,7 @@ const MarkdownRenderer = ({ content, className = "", showHeader = false, height 
           ref={viewerRef}
           initialValue={content || ""}
           usageStatistics={false}
+          plugins={[]}
           className="toastui-editor-viewer"
         />
       </div>

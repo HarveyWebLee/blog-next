@@ -284,7 +284,8 @@ function BlogAuroraCanvas() {
     renderer.domElement.style.height = "100%";
     renderer.domElement.style.display = "block";
 
-    const clock = new THREE.Clock();
+    // THREE.Clock 已弃用，改为使用高精度时间戳驱动着色器时间。
+    const startTime = performance.now();
 
     const resize = (w: number, h: number) => {
       if (!el || disposed) return;
@@ -304,7 +305,7 @@ function BlogAuroraCanvas() {
     const { dispose: disposeRaf } = runTabVisibleRafLoop({
       getDisposed: () => disposed,
       onFrame: () => {
-        material.uniforms.uTime.value = clock.getElapsedTime();
+        material.uniforms.uTime.value = (performance.now() - startTime) / 1000;
         if (!scrollBudget.shouldRenderFrame()) return;
         renderer.render(scene, camera);
       },

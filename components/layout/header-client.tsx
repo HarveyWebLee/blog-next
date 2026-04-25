@@ -56,6 +56,7 @@ export function HeaderClient({ navigation, lang }: HeaderClientProps) {
           src="/images/logo.png"
           width={40}
           height={40}
+          priority
           isZoomed
           isBlurred
           fallbackSrc="/images/fallback.svg"

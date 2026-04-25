@@ -219,7 +219,8 @@ function HomeGlassRainCanvas() {
     renderer.domElement.style.height = "100%";
     renderer.domElement.style.display = "block";
 
-    const clock = new THREE.Clock();
+    // THREE.Clock 已弃用，改为使用高精度时间戳驱动着色器时间。
+    const startTime = performance.now();
 
     const resize = (w: number, h: number) => {
       if (!el || disposed) return;
@@ -251,7 +252,7 @@ function HomeGlassRainCanvas() {
         material.uniforms.uScrollOptimized.value = scrollActive ? 1 : 0;
         material.uniforms.uIntensity.value = scrollActive ? baseIntensity * 0.84 : baseIntensity;
         material.uniforms.uStaticMotion.value = scrollActive ? baseStaticMotion * 0.55 : baseStaticMotion;
-        material.uniforms.uTime.value = clock.getElapsedTime() * (reduceMotion ? 0.15 : 1.0);
+        material.uniforms.uTime.value = ((performance.now() - startTime) / 1000) * (reduceMotion ? 0.15 : 1.0);
         renderer.render(scene, camera);
       },
     });

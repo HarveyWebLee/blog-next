@@ -49,21 +49,6 @@ export function generateVerificationCode(): string {
 }
 
 /**
- * 发送验证码邮件
- * @param email 收件人邮箱
- * @param code 验证码
- * @param type 验证码类型
- */
-export async function sendVerificationEmail(
-  email: string,
-  code: string,
-  type: "register" | "reset_password" | "change_email" | "subscription" | "subscription_unsubscribe" = "register"
-): Promise<boolean> {
-  const result = await sendVerificationEmailDetailed(email, code, type);
-  return result.ok;
-}
-
-/**
  * 发送验证码邮件（带失败原因）
  * @param email 收件人邮箱
  * @param code 验证码
@@ -202,6 +187,21 @@ export async function sendVerificationEmailDetailed(
 
     return { ok: false, code: "SMTP_ERROR", detail: err.message };
   }
+}
+
+/**
+ * 发送验证码邮件
+ * @param email 收件人邮箱
+ * @param code 验证码
+ * @param type 验证码类型
+ */
+export async function sendVerificationEmail(
+  email: string,
+  code: string,
+  type: "register" | "reset_password" | "change_email" | "subscription" | "subscription_unsubscribe" = "register"
+): Promise<boolean> {
+  const result = await sendVerificationEmailDetailed(email, code, type);
+  return result.ok;
 }
 
 /**
