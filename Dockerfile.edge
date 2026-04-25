@@ -1,0 +1,28 @@
+# 对外 HTTPS 入口（Nginx + certbot），与根目录 docker-compose 中 profile: edge 的 blog-edge 服务配合。
+# 敏感配置仅通过运行时挂载的 secret 文件注入，不在本文件中写死域名、邮箱等。
+FROM nginx:1.27-alpine
+
+RUN set -eux; \
+    apk add --no-cache \
+        bash \
+        openssl \
+        gettext \
+        certbot \
+        wget
+
+COPY deploy/edge/nginx.full.template.conf /etc/nginx/templates/nginx.full.template.conf
+COPY deploy/edge/nginx.bootstrap.template.conf /etc/nginx/templates/nginx.bootstrap.template.conf
+COPY deploy/edge/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY deploy/edge/cert-manager.sh /usr/local/bin/cert-manager.sh
+
+RUN set -eux; \
+    rm -f /etc/nginx/conf.d/default.conf; \
+    mkdir -p /var/www/certbot /etc/letsencrypt; \
+    chmod +x /usr/local/bin/docker-entrypoint.sh /usr/local/bin/cert-manager.sh
+
+EXPOSE 80 443
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD wget -q --spider http://127.0.0.1/.well-known/acme-challenge/health || exit 1
+
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]

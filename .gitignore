@@ -45,6 +45,9 @@ bun.lockb
 # Docker Compose 本地密钥（从 deploy/env.docker.example 复制）
 deploy/.env.docker
 
+# blog-edge：生产真实 Secret（单行文件目录；模板见 deploy/secrets/edge.example/）
+deploy/secrets/edge/
+
 # 若将 MinIO 数据绑定到仓库下目录（如 ./data/minio:/data），勿提交对象文件
 /data/minio/
 

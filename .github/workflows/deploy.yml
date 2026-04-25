@@ -176,6 +176,18 @@ jobs:
             dc up -d --build blog-web
             echo "[DEPLOY] step3 done"
 
+            # 3b) 对外 HTTPS 入口（可选）：若服务器已准备 deploy/secrets/edge/，则构建并启动 blog-edge
+            # 说明：EDGE_SECRETS_DIR 在 deploy/.env.docker 中应设为 ./deploy/secrets/edge；此处用绝对路径 export，避免工作目录差异。
+            EDGE_REAL_DIR="${APP_DIR}/deploy/secrets/edge"
+            if [ -f "${EDGE_REAL_DIR}/domains" ] && [ -f "${EDGE_REAL_DIR}/certbot_email" ]; then
+              echo "[DEPLOY] step3b: build and start blog-edge (EDGE_SECRETS_DIR=${EDGE_REAL_DIR})"
+              export EDGE_SECRETS_DIR="${EDGE_REAL_DIR}"
+              dc --profile edge up -d --build blog-edge
+              echo "[DEPLOY] step3b done"
+            else
+              echo "[DEPLOY] step3b: skip blog-edge (missing ${EDGE_REAL_DIR}/domains or certbot_email; copy from deploy/secrets/edge.example when ready)"
+            fi
+
             # 4) 打印当前服务状态，便于在 GitHub Actions 日志中直接确认部署结果
             echo "[DEPLOY] step4: print compose status"
             dc ps

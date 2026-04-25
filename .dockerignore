@@ -19,6 +19,7 @@ coverage
 
 # 部署密钥模板以外的本地文件（示例仍可复制进构建上下文）
 deploy/.env.docker
+deploy/secrets/edge/
 
 # 文档不参与构建，减小 context
 docs

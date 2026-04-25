@@ -9,8 +9,10 @@
 # MinIO 首次创建公开读 bucket（幂等）：docker compose --env-file deploy/.env.docker --profile minio-init run --rm minio-init
 # 执行迁移（建议加 --build，避免沿用旧镜像内 drizzle/）：docker compose --env-file deploy/.env.docker --profile migrate run --rm --build db-migrate
 # 启动应用：docker compose --env-file deploy/.env.docker up -d blog-web
+# 对外 HTTPS（可选）：先准备 deploy/secrets/edge/（可从 deploy/secrets/edge.example 复制），并在 deploy/.env.docker 设置 EDGE_SECRETS_DIR=./deploy/secrets/edge
+# docker compose --env-file deploy/.env.docker --profile edge up -d --build blog-edge
 #
-# 流水线建议顺序：build 镜像 → up mysql/redis → migrate → up blog-web
+# 流水线建议顺序：build 镜像 → up mysql/redis → migrate → up blog-web →（若存在 edge secrets）up blog-edge
 
 name: blog-next
 
@@ -165,10 +167,71 @@ services:
     networks:
       - blog-net
 
+  # Nginx + certbot：TLS 终结、反代 blog-web、/blog-resource/ 反代 MinIO；仅随 --profile edge 启动。
+  # Secret 单行文件路径由 EDGE_SECRETS_DIR 控制（默认指向仓库内 edge.example，便于本地 compose 校验；生产勿用示例邮箱申请证书）。
+  blog-edge:
+    build:
+      context: .
+      dockerfile: Dockerfile.edge
+    image: blog-next-edge:local
+    container_name: blog-next-edge
+    restart: unless-stopped
+    profiles:
+      - edge
+    ports:
+      - "${EDGE_HTTP_PORT:-80}:80"
+      - "${EDGE_HTTPS_PORT:-443}:443"
+    depends_on:
+      blog-web:
+        condition: service_started
+    networks:
+      - blog-net
+    volumes:
+      - letsencrypt_data:/etc/letsencrypt
+      - certbot_webroot:/var/www/certbot
+    environment:
+      DOMAINS_FILE: /run/secrets/edge_domains
+      CERTBOT_EMAIL_FILE: /run/secrets/edge_certbot_email
+      APP_UPSTREAM_FILE: /run/secrets/edge_app_upstream
+      CHECK_INTERVAL_SECONDS_FILE: /run/secrets/edge_check_interval_seconds
+      RENEW_STRATEGY_FILE: /run/secrets/edge_renew_strategy
+      OFFICIAL_RENEW_WINDOW_SECONDS_FILE: /run/secrets/edge_official_renew_window_seconds
+      RENEW_BEFORE_SECONDS_FILE: /run/secrets/edge_renew_before_seconds
+      TLS_MODE_FILE: /run/secrets/edge_tls_mode
+    secrets:
+      - edge_domains
+      - edge_certbot_email
+      - edge_app_upstream
+      - edge_check_interval_seconds
+      - edge_renew_strategy
+      - edge_official_renew_window_seconds
+      - edge_renew_before_seconds
+      - edge_tls_mode
+
 volumes:
   mysql_data:
   redis_data:
+  letsencrypt_data:
+  certbot_webroot:
 
 networks:
   blog-net:
     driver: bridge
+
+secrets:
+  edge_domains:
+    file: ${EDGE_SECRETS_DIR:-./deploy/secrets/edge.example}/domains
+  edge_certbot_email:
+    file: ${EDGE_SECRETS_DIR:-./deploy/secrets/edge.example}/certbot_email
+  edge_app_upstream:
+    file: ${EDGE_SECRETS_DIR:-./deploy/secrets/edge.example}/app_upstream
+  edge_check_interval_seconds:
+    file: ${EDGE_SECRETS_DIR:-./deploy/secrets/edge.example}/check_interval_seconds
+  edge_renew_strategy:
+    file: ${EDGE_SECRETS_DIR:-./deploy/secrets/edge.example}/renew_strategy
+  edge_official_renew_window_seconds:
+    file: ${EDGE_SECRETS_DIR:-./deploy/secrets/edge.example}/official_renew_window_seconds
+  edge_renew_before_seconds:
+    file: ${EDGE_SECRETS_DIR:-./deploy/secrets/edge.example}/renew_before_seconds
+  edge_tls_mode:
+    file: ${EDGE_SECRETS_DIR:-./deploy/secrets/edge.example}/tls_mode
