@@ -1,3 +1,9 @@
+## [1.6.3](https://github.com/HarveyWebLee/blog-next/compare/v1.6.2...v1.6.3) (2026-04-25)
+
+### Bug Fixes
+
+- **drizzle:** 优化索引删除逻辑以兼容历史库差异 ([5efd405](https://github.com/HarveyWebLee/blog-next/commit/5efd405bb8fc77de4ba5372af5ab33c143a2e346))
+
 ## [1.6.2](https://github.com/HarveyWebLee/blog-next/compare/v1.6.1...v1.6.2) (2026-04-24)
 
 ### Performance Improvements
