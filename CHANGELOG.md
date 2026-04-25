@@ -1,3 +1,9 @@
+## [1.6.4](https://github.com/HarveyWebLee/blog-next/compare/v1.6.3...v1.6.4) (2026-04-25)
+
+### Performance Improvements
+
+- **editor:** 新增代码高亮功能与Markdown增强 ([c585df8](https://github.com/HarveyWebLee/blog-next/commit/c585df848f8bb934b08a4fced820c9a2e337681d))
+
 ## [1.6.3](https://github.com/HarveyWebLee/blog-next/compare/v1.6.2...v1.6.3) (2026-04-25)
 
 ### Bug Fixes
