@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -164,6 +164,11 @@ export default function PublicUserProfile({ lang, userId }: PublicUserProfilePro
   const [hasNext, setHasNext] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+  const [likedMap, setLikedMap] = useState<Record<number, boolean>>({});
+  const [favoritedMap, setFavoritedMap] = useState<Record<number, boolean>>({});
+  const [likeLoadingMap, setLikeLoadingMap] = useState<Record<number, boolean>>({});
+  const [favoriteLoadingMap, setFavoriteLoadingMap] = useState<Record<number, boolean>>({});
+  const lastActionAtRef = useRef<Record<string, number>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -223,6 +228,118 @@ export default function PublicUserProfile({ lang, userId }: PublicUserProfilePro
       cancelled = true;
     };
   }, [userId, page, search, categoryId, tagId]);
+
+  useEffect(() => {
+    if (posts.length === 0) {
+      setLikedMap({});
+      setFavoritedMap({});
+      return;
+    }
+
+    let cancelled = false;
+    const loadEngagement = async () => {
+      try {
+        const ids = posts.map((p) => p.id).join(",");
+        const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+        const res = await fetch(`/api/posts/engagement?ids=${ids}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        const json = await res.json();
+        const list = Array.isArray(json?.data)
+          ? (json.data as Array<{ id: number; liked: boolean; favorited: boolean }>)
+          : [];
+        if (cancelled) return;
+        const nextLiked: Record<number, boolean> = {};
+        const nextFavorited: Record<number, boolean> = {};
+        for (const item of list) {
+          nextLiked[item.id] = Boolean(item.liked);
+          nextFavorited[item.id] = Boolean(item.favorited);
+        }
+        setLikedMap(nextLiked);
+        setFavoritedMap(nextFavorited);
+      } catch (error) {
+        console.error("加载公开页互动状态失败:", error);
+      }
+    };
+    void loadEngagement();
+    return () => {
+      cancelled = true;
+    };
+  }, [posts]);
+
+  const requireLoginToken = (): string | null => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+    if (!token) {
+      message.warning(t.needLogin);
+      router.push(`/${lang}/auth/login`);
+      return null;
+    }
+    return token;
+  };
+
+  const handleToggleLike = async (postId: number) => {
+    const likeKey = `like:${postId}`;
+    const now = Date.now();
+    const lastAt = lastActionAtRef.current[likeKey] || 0;
+    if (now - lastAt < 300) return;
+    lastActionAtRef.current[likeKey] = now;
+    const token = requireLoginToken();
+    if (!token) return;
+    setLikeLoadingMap((prev) => ({ ...prev, [postId]: true }));
+    try {
+      const res = await fetch(`/api/posts/${postId}/like`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = (await res.json()) as ApiResponse<{ liked: boolean; likeCount: number }>;
+      if (!json.success || !json.data) {
+        message.error(json.message || "点赞失败");
+        return;
+      }
+      setLikedMap((prev) => ({ ...prev, [postId]: Boolean(json.data?.liked) }));
+      setPosts((prev) =>
+        prev.map((p) => (p.id === postId ? { ...p, likeCount: Number(json.data?.likeCount || p.likeCount || 0) } : p))
+      );
+    } catch (error) {
+      console.error("公开页点赞失败:", error);
+      message.error("点赞失败");
+    } finally {
+      setLikeLoadingMap((prev) => ({ ...prev, [postId]: false }));
+    }
+  };
+
+  const handleToggleFavorite = async (postId: number) => {
+    const favoriteKey = `favorite:${postId}`;
+    const now = Date.now();
+    const lastAt = lastActionAtRef.current[favoriteKey] || 0;
+    if (now - lastAt < 300) return;
+    lastActionAtRef.current[favoriteKey] = now;
+    const token = requireLoginToken();
+    if (!token) return;
+    setFavoriteLoadingMap((prev) => ({ ...prev, [postId]: true }));
+    try {
+      const res = await fetch(`/api/posts/${postId}/favorite`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = (await res.json()) as ApiResponse<{ favorited: boolean; favoriteCount: number }>;
+      if (!json.success || !json.data) {
+        message.error(json.message || "收藏失败");
+        return;
+      }
+      setFavoritedMap((prev) => ({ ...prev, [postId]: Boolean(json.data?.favorited) }));
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === postId ? { ...p, favoriteCount: Number(json.data?.favoriteCount || p.favoriteCount || 0) } : p
+        )
+      );
+    } catch (error) {
+      console.error("公开页收藏失败:", error);
+      message.error("收藏失败");
+    } finally {
+      setFavoriteLoadingMap((prev) => ({ ...prev, [postId]: false }));
+    }
+  };
 
   const handleFollowToggle = async () => {
     const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
@@ -517,6 +634,12 @@ export default function PublicUserProfile({ lang, userId }: PublicUserProfilePro
                   key={post.id}
                   post={post}
                   lang={lang}
+                  isLiked={Boolean(likedMap[post.id])}
+                  isFavorited={Boolean(favoritedMap[post.id])}
+                  likeLoading={Boolean(likeLoadingMap[post.id])}
+                  favoriteLoading={Boolean(favoriteLoadingMap[post.id])}
+                  onToggleLike={() => void handleToggleLike(post.id)}
+                  onToggleFavorite={() => void handleToggleFavorite(post.id)}
                   onView={() => router.push(`/${lang}/blog/${post.slug}`)}
                 />
               ))}

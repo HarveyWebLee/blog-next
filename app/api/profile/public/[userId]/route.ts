@@ -186,7 +186,11 @@ async function handleProfilePublicByUserIdGET(
     const postConditions = [
       eq(posts.authorId, targetUserId),
       eq(posts.status, "published"),
-      eq(posts.visibility, "public"),
+      // 公开资料页允许看到“公开 + 密码保护”文章：
+      // - public：可直接阅读
+      // - password：可见但需在详情页输入密码解锁
+      // - private：仍不在公开资料页暴露
+      or(eq(posts.visibility, "public"), eq(posts.visibility, "password"))!,
       ...(search
         ? [
             or(

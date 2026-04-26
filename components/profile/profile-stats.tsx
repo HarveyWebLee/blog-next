@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, CardBody } from "@heroui/react";
-import { Bell, BookOpen, Eye, Heart, MessageSquare, Star, UserPlus, Users } from "lucide-react";
+import { Bell, BookOpen, ChevronRight, Eye, Heart, MessageSquare, Star, UserPlus, Users } from "lucide-react";
 
 import { PROFILE_GLASS_CARD } from "@/components/profile/profile-ui-presets";
 import { useAuth } from "@/lib/contexts/auth-context";
@@ -12,6 +12,12 @@ import type { ApiResponse, ProfileStats as ProfileStatsData } from "@/types/blog
 
 interface ProfileStatsProps {
   lang: string;
+}
+
+/** 语言兜底：除 en-US / ja-JP 外全部按中文展示，避免异常语言值时回退英文 */
+function resolveLocale(lang: string): "zh-CN" | "en-US" | "ja-JP" {
+  if (lang === "en-US" || lang === "ja-JP") return lang;
+  return "zh-CN";
 }
 
 /** 统计块配色：与博客 Chip 的 primary/secondary 系协调，避免彩虹色块 */
@@ -36,14 +42,17 @@ const toneIconWrap: Record<(typeof statsItems)[number]["tone"], string> = {
 };
 
 export default function ProfileStats({ lang }: ProfileStatsProps) {
+  const locale = resolveLocale(lang);
   const t =
-    lang === "en-US"
+    locale === "en-US"
       ? {
           loadFailed: "Unable to load statistics",
           needLogin: "Please sign in to view your statistics.",
           login: "Sign in",
           title: "Statistics",
+          subtitle: "Overview of your content and engagement.",
           lastActivity: "Last activity",
+          clickableHint: "Click to view details",
           labels: {
             totalPosts: "My Posts",
             totalComments: "My Comments",
@@ -55,13 +64,15 @@ export default function ProfileStats({ lang }: ProfileStatsProps) {
             unreadNotifications: "Unread",
           },
         }
-      : lang === "ja-JP"
+      : locale === "ja-JP"
         ? {
             loadFailed: "統計情報を読み込めません",
             needLogin: "統計情報を表示するにはログインしてください。",
             login: "ログイン",
             title: "データ統計",
+            subtitle: "コンテンツとエンゲージメントの概要",
             lastActivity: "最終アクティビティ",
+            clickableHint: "クリックして詳細を見る",
             labels: {
               totalPosts: "自分の記事",
               totalComments: "自分のコメント",
@@ -78,7 +89,9 @@ export default function ProfileStats({ lang }: ProfileStatsProps) {
             needLogin: "请先登录后查看统计信息。",
             login: "去登录",
             title: "数据统计",
+            subtitle: "内容产出与互动表现一览",
             lastActivity: "最后活动",
+            clickableHint: "点击查看详情",
             labels: {
               totalPosts: "我的文章",
               totalComments: "我的评论",
@@ -175,38 +188,54 @@ export default function ProfileStats({ lang }: ProfileStatsProps) {
   return (
     <Card className={PROFILE_GLASS_CARD}>
       <CardBody className="p-6">
-        <div className="mb-6 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-4 flex flex-col gap-1">
           <h3 className="text-lg font-semibold text-foreground">{t.title}</h3>
+          <p className="text-xs text-default-500">{t.subtitle}</p>
           {stats.lastActivityAt && (
-            <p className="text-sm text-default-500">
-              {t.lastActivity}: {new Date(stats.lastActivityAt).toLocaleString(lang)}
-            </p>
+            <div className="mt-2 inline-flex w-fit rounded-large border border-default-200/60 bg-default-50/60 px-3 py-1.5 text-xs text-default-600 dark:border-default-100/10 dark:bg-default-100/5">
+              {t.lastActivity}: {new Date(stats.lastActivityAt).toLocaleString(locale)}
+            </div>
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {statsItems.map((item) => {
             const Icon = item.icon;
             const value = stats[item.key as keyof ProfileStatsData] as number;
             const wrap = toneIconWrap[item.tone];
+            const isLink = Boolean(item.href);
 
             const content = (
-              <div className="flex items-center gap-3">
-                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${wrap}`}>
-                  <Icon className="h-5 w-5" />
+              <>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium uppercase tracking-wide text-default-500">
+                      {t.labels[item.key as keyof typeof t.labels]}
+                    </p>
+                    <p className="mt-1 text-2xl font-bold leading-none tracking-tight text-foreground">
+                      {value.toLocaleString()}
+                    </p>
+                  </div>
+                  <div
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${wrap} ring-1 ring-black/5 dark:ring-white/5`}
+                  >
+                    <Icon className="h-5 w-5" />
+                  </div>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium text-default-500">{t.labels[item.key as keyof typeof t.labels]}</p>
-                  <p className="text-xl font-bold tracking-tight text-foreground">{value.toLocaleString()}</p>
-                </div>
-              </div>
+                {isLink ? (
+                  <div className="mt-3 inline-flex items-center gap-1 text-[11px] text-default-400">
+                    <span>{t.clickableHint}</span>
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </div>
+                ) : null}
+              </>
             );
 
             if (!item.href) {
               return (
                 <div
                   key={item.key}
-                  className="rounded-xl border border-white/10 bg-white/5 p-4 dark:border-white/10 dark:bg-black/20"
+                  className="rounded-xl border border-default-200/70 bg-content1/80 p-4 shadow-sm backdrop-blur-sm dark:border-default-100/10"
                 >
                   {content}
                 </div>
@@ -217,7 +246,7 @@ export default function ProfileStats({ lang }: ProfileStatsProps) {
               <Link
                 key={item.key}
                 href={`/${lang}${item.href}`}
-                className="rounded-xl border border-white/10 bg-white/5 p-4 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 dark:border-white/10 dark:bg-black/20 dark:hover:bg-black/30"
+                className="rounded-xl border border-default-200/70 bg-content1/80 p-4 shadow-sm backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 dark:border-default-100/10"
                 aria-label={t.labels[item.key as keyof typeof t.labels]}
               >
                 {content}

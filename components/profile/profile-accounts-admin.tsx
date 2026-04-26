@@ -26,7 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from "@heroui/react";
-import { Search, Shield } from "lucide-react";
+import { Search, Shield, UserRound } from "lucide-react";
 
 import { useAuth } from "@/lib/contexts/auth-context";
 import { message } from "@/lib/utils";
@@ -68,6 +68,7 @@ const T: Record<
     colActions: string;
     roles: Record<UserRole, string>;
     statuses: Record<UserStatus, string>;
+    viewProfile: string;
     viewEdit: string;
     detailTitle: string;
     profileSection: string;
@@ -115,6 +116,7 @@ const T: Record<
       inactive: "已停用",
       banned: "已封禁",
     },
+    viewProfile: "查看个人主页",
     viewEdit: "查看 / 编辑",
     detailTitle: "用户详情",
     profileSection: "扩展资料",
@@ -161,6 +163,7 @@ const T: Record<
       inactive: "Disabled",
       banned: "Banned",
     },
+    viewProfile: "View profile",
     viewEdit: "View / edit",
     detailTitle: "User detail",
     profileSection: "Profile",
@@ -207,6 +210,7 @@ const T: Record<
       inactive: "停止",
       banned: "利用禁止",
     },
+    viewProfile: "プロフィールを見る",
     viewEdit: "表示・編集",
     detailTitle: "ユーザー詳細",
     profileSection: "拡張プロフィール",
@@ -477,9 +481,28 @@ export default function ProfileAccountsAdmin({ lang }: { lang: string }) {
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-small">{formatDt(lang, row.createdAt)}</TableCell>
                       <TableCell>
-                        <Button size="sm" variant="flat" color="primary" onPress={() => void openDetail(row)}>
-                          {t.viewEdit}
-                        </Button>
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                          <Button
+                            as={Link}
+                            href={`${prefix}/users/${row.id}`}
+                            size="sm"
+                            variant="solid"
+                            color="secondary"
+                            startContent={<UserRound className="h-4 w-4" />}
+                            className="min-w-[120px]"
+                          >
+                            {t.viewProfile}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="flat"
+                            color="primary"
+                            className="min-w-[120px]"
+                            onPress={() => void openDetail(row)}
+                          >
+                            {t.viewEdit}
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
