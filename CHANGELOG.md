@@ -1,3 +1,9 @@
+## [1.6.7](https://github.com/HarveyWebLee/blog-next/compare/v1.6.6...v1.6.7) (2026-04-26)
+
+### Performance Improvements
+
+- **profile:** 增强用户资料页功能与交互体验 ([47667a4](https://github.com/HarveyWebLee/blog-next/commit/47667a42229e3b0b5b65102296794bcbcc149fa5))
+
 ## [1.6.6](https://github.com/HarveyWebLee/blog-next/compare/v1.6.5...v1.6.6) (2026-04-26)
 
 ### Bug Fixes
