@@ -145,6 +145,7 @@ export default function ProfilePosts({ lang }: ProfilePostsProps) {
           page: "1",
           limit: "100",
           authorId: String(user.id),
+          includePasswordProtected: "true",
           sortBy: "updatedAt",
           sortOrder: "desc",
         });

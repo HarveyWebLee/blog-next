@@ -369,6 +369,8 @@ export interface PostQueryParams extends PaginationParams {
   visibility?: PostVisibility;
   /** 为 true 时返回 public + password（不含 private）；优先级低于 visibility 精确筛选 */
   includePasswordProtected?: boolean;
+  /** 为 true 时放开 private（通常用于已鉴权的管理列表）；优先级低于 visibility 精确筛选 */
+  includePrivate?: boolean;
   authorId?: number;
   tagId?: number;
   search?: string;

@@ -30,6 +30,7 @@ import MarkdownRenderer from "@/components/blog/markdown-renderer";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { sealPasswordInRequestBody } from "@/lib/crypto/password-transport/body";
 import { message } from "@/lib/utils";
+import { clientBearerHeaders } from "@/lib/utils/client-bearer-auth";
 import { stripMarkdownForExcerpt } from "@/lib/utils/markdown-plain";
 import { PostData } from "@/types/blog";
 
@@ -165,7 +166,11 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
         setLoading(true);
         const unlockParam = searchParams.get("unlock");
         const unlockQuery = unlockParam ? `&unlock=${encodeURIComponent(unlockParam)}` : "";
-        const response = await fetch(`/api/posts/slug/${resolvedParams.slug}?includeRelations=true${unlockQuery}`);
+        const response = await fetch(`/api/posts/slug/${resolvedParams.slug}?includeRelations=true${unlockQuery}`, {
+          headers: {
+            ...clientBearerHeaders(),
+          },
+        });
         const result = await response.json();
 
         if (result.success) {
@@ -340,7 +345,11 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
         setComment("");
         message.success(t.commentSuccess);
         // 重新获取博客数据以显示新评论
-        const postResponse = await fetch(`/api/posts/slug/${resolvedParams?.slug}?includeRelations=true`);
+        const postResponse = await fetch(`/api/posts/slug/${resolvedParams?.slug}?includeRelations=true`, {
+          headers: {
+            ...clientBearerHeaders(),
+          },
+        });
         const postResult = await postResponse.json();
         if (postResult.success) {
           setPost(postResult.data);
@@ -526,9 +535,6 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
         <div className="animate-blog-scale-in">
           <Card className="max-w-md mx-auto glass-enhanced hover-lift-enhanced">
             <CardHeader className="flex gap-3 pb-6">
-              <div className="animate-blog-float">
-                <Lock className="w-6 h-6 text-warning" />
-              </div>
               <div className="flex flex-col">
                 <p className="text-xl font-bold blog-title-gradient">🔐 需要密码访问</p>
                 <p className="text-small text-default-500">请输入访问密码以查看内容</p>

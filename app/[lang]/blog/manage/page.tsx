@@ -258,14 +258,14 @@ export default function BlogManagePage() {
         limit: "12",
         sortOrder: "desc",
         search: appliedSearchTerm,
+        includePasswordProtected: "true",
+        includePrivate: "true",
         ...(appliedStatusFilter !== "all" && { status: appliedStatusFilter }),
         ...(appliedVisibilityFilter !== "all" && { visibility: appliedVisibilityFilter }),
         sortBy: appliedSortBy,
       });
-      // 普通用户只看自己的文章；超级管理员可查看全站文章列表
-      if (!isSuperAdmin) {
-        params.set("authorId", String(user.id));
-      }
+      // 管理页统一只展示当前登录用户自己的文章（即使是超级管理员也不展示他人文章）。
+      params.set("authorId", String(user.id));
 
       const response = await fetch(`/api/posts?${params}`, {
         headers: {

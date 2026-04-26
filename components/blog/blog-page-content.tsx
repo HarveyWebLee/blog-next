@@ -231,6 +231,7 @@ export function BlogPageContent({ lang, initialTagId, initialAuthorId, initialPo
   const handleViewPost = async (post: PostData) => {
     const isPasswordPost = post.visibility === "password";
     const isAuthor = user?.id === post.authorId;
+    // 密码保护文章：作者本人可免密直达，其他访问者需先输入密码。
     if (isPasswordPost && !isAuthor) {
       setPendingPost(post);
       setPasswordInput("");

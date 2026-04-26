@@ -57,6 +57,7 @@ export default function CreateBlogPage() {
           createDesc: "Create great content and share your ideas with the world",
           createMode: "Create Mode",
           fillRequired: "Please fill title and content",
+          passwordRequired: "Access password is required for password-protected posts",
           created: "Post created!",
           createFailed: "Create failed",
           creating: "Creating...",
@@ -117,6 +118,7 @@ export default function CreateBlogPage() {
             createDesc: "素晴らしいコンテンツを作り、世界にアイデアを共有しましょう",
             createMode: "作成モード",
             fillRequired: "タイトルと内容を入力してください",
+            passwordRequired: "パスワード保護の記事ではアクセスパスワードが必須です",
             created: "記事を作成しました！",
             createFailed: "作成に失敗しました",
             creating: "作成中...",
@@ -176,6 +178,7 @@ export default function CreateBlogPage() {
             createDesc: "创作您的精彩内容，与世界分享您的想法",
             createMode: "创作模式",
             fillRequired: "请填写标题和内容",
+            passwordRequired: "当可见性为密码保护时，访问密码为必填项",
             created: "博客创建成功！",
             createFailed: "创建失败",
             creating: "创建中...",
@@ -295,6 +298,10 @@ export default function CreateBlogPage() {
 
     if (!formData.title.trim() || !formData.content.trim()) {
       message.warning(t.fillRequired);
+      return;
+    }
+    if (formData.visibility === "password" && !formData.password?.trim()) {
+      message.warning(t.passwordRequired);
       return;
     }
 

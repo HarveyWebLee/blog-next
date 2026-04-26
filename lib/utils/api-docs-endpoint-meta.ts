@@ -113,14 +113,14 @@ export const API_DOCS_ENDPOINT_DESCRIPTIONS: Record<string, Partial<Record<strin
     DELETE: "超级管理员：删除单条评论",
   },
   "/api/posts": {
-    GET: "文章列表（默认仅公开文章，列表不返回 content 字段）",
-    POST: "创建文章（通常需作者或管理员）",
+    GET: "文章列表（默认仅 public；includePasswordProtected=true 返回 public+password；includePrivate=true（鉴权通过）放开 private；authorId 管理查询默认返回该作者全部可见性，列表不返回 content 字段）",
+    POST: "创建文章（通常需作者或管理员；visibility=password 时访问密码必填）",
   },
   "/api/posts/{id}": {
     GET: "文章详情",
-    PUT: "更新文章",
+    PUT: "更新文章（最终 visibility=password 时访问密码必填）",
     DELETE: "删除文章",
-    PATCH: "部分更新文章",
+    PATCH: "部分更新文章（最终 visibility=password 时访问密码必填）",
   },
   "/api/posts/{id}/view": {
     POST: "记录一次浏览（仅已发布且非 private 文章，含频率限制）",
@@ -289,14 +289,14 @@ export const API_DOCS_AUTH_HINTS: Record<string, Partial<Record<string, string>>
     DELETE: "必须：Authorization: Bearer + 超级管理员 accessToken。",
   },
   "/api/posts": {
-    GET: "公开列表通常无需 Bearer。默认仅返回 public 可见性且不含 content 字段。",
-    POST: "必须：Authorization: Bearer（作者/管理员）。当 visibility=password 时，body.password 可替换为 passwordTransport。",
+    GET: "公开列表通常无需 Bearer。默认仅返回 public；query.includePasswordProtected=true 返回 public+password（不含 private）；query.includePrivate=true 需登录（不带 authorId 时仅超级管理员），可放开 private。按 authorId 且通过权限校验后默认返回该作者全部可见性。列表均不含 content 字段。",
+    POST: "必须：Authorization: Bearer（作者/管理员）。当 visibility=password 时访问密码必填，body.password 可替换为 passwordTransport。",
   },
   "/api/posts/{id}": {
     GET: "公开只读通常无需；草稿等见代码。",
-    PUT: "必须：Authorization: Bearer。若更新访问密码，支持 password 或 passwordTransport。",
+    PUT: "必须：Authorization: Bearer。最终 visibility=password 时访问密码必填；支持 password 或 passwordTransport。",
     DELETE: "必须：Authorization: Bearer",
-    PATCH: "必须：Authorization: Bearer。若更新访问密码，支持 password 或 passwordTransport。",
+    PATCH: "必须：Authorization: Bearer。最终 visibility=password 时访问密码必填；支持 password 或 passwordTransport。",
   },
   "/api/posts/{id}/view": {
     POST: "无需 Bearer；按 IP + 文章限流，且仅已发布且非 private 文章可计数。",

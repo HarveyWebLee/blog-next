@@ -71,6 +71,7 @@ export default function EditBlogPage() {
           saving: "Saving...",
           save: "Save Changes",
           fillRequired: "Please fill title and content",
+          passwordRequired: "Access password is required for password-protected posts",
           editDescPrefix: "Editing:",
           lastUpdated: "Last updated:",
           basicInfo: "Basic Information",
@@ -140,6 +141,7 @@ export default function EditBlogPage() {
             saving: "保存中...",
             save: "変更を保存",
             fillRequired: "タイトルと内容を入力してください",
+            passwordRequired: "パスワード保護の記事ではアクセスパスワードが必須です",
             editDescPrefix: "編集中:",
             lastUpdated: "最終更新:",
             basicInfo: "基本情報",
@@ -208,6 +210,7 @@ export default function EditBlogPage() {
             saving: "保存中...",
             save: "保存更改",
             fillRequired: "请填写标题和内容",
+            passwordRequired: "当可见性为密码保护时，访问密码为必填项",
             editDescPrefix: "编辑:",
             lastUpdated: "最后更新:",
             basicInfo: "基本信息",
@@ -403,6 +406,10 @@ export default function EditBlogPage() {
 
     if (!formData.title?.trim() || !formData.content?.trim()) {
       message.warning(t.fillRequired);
+      return;
+    }
+    if (formData.visibility === "password" && !formData.password?.trim()) {
+      message.warning(t.passwordRequired);
       return;
     }
 

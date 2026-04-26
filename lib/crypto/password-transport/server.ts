@@ -100,7 +100,9 @@ function rsaUnwrapAesKey(wrappedB64: string, pem: string): Buffer {
 }
 
 function aesGcmDecrypt(iv: Buffer, ciphertextAndTag: Buffer, aesKey: Buffer): Buffer {
-  if (ciphertextAndTag.length <= PASSWORD_TRANSPORT_GCM_TAG_LENGTH) {
+  // 允许明文为空字符串：AES-GCM 此时输出仅包含 16 字节认证标签（无密文字节）
+  // 因此这里应仅拦截“小于 tag 长度”的非法数据，而不是“<=”。
+  if (ciphertextAndTag.length < PASSWORD_TRANSPORT_GCM_TAG_LENGTH) {
     throw new Error("密文过短");
   }
   const tag = ciphertextAndTag.subarray(ciphertextAndTag.length - PASSWORD_TRANSPORT_GCM_TAG_LENGTH);

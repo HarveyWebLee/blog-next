@@ -257,6 +257,14 @@ export class PostService {
       // 可见性过滤
       if (params.visibility) {
         conditions.push(eq(posts.visibility, params.visibility));
+      } else if (params.includePrivate) {
+        // includePrivate 由路由层完成权限校验后放开，这里不再附加可见性条件（返回 public/private/password）。
+      } else if (params.authorId != null && Number.isFinite(params.authorId)) {
+        // 管理视角（按 authorId 查本人/指定作者）默认返回该作者全部可见性文章，避免管理页漏掉 private/password。
+        // 对 authorId 的权限约束由路由层负责（普通用户仅本人，超级管理员可跨作者）。
+      } else if (params.includePasswordProtected) {
+        // 列表显式放开密码保护文章时，返回 public + password；private 仍保持不可见。
+        conditions.push(or(eq(posts.visibility, "public"), eq(posts.visibility, "password")));
       } else {
         // 默认仅返回公开文章，避免列表泄露 private/password 文章存在性
         conditions.push(eq(posts.visibility, "public"));

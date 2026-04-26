@@ -23,7 +23,6 @@ type ProtectedReadButtonProps = {
 export default function ProtectedReadButton({
   lang,
   slug,
-  postId,
   postAuthorId,
   isPasswordProtected,
   label,

@@ -108,6 +108,16 @@ async function handlePostByIdPUT(request: NextRequest, { params }: { params: Pro
     if (body.content && body.content.length < 10) {
       return NextResponse.json(createErrorResponse("文章内容不能少于10个字符"), { status: 400 });
     }
+    // 可见性切到 password 时必须保证“最终密码”存在：
+    // - 本次 body 传了 password：以本次为准；
+    // - 未传 password：沿用原文章密码；
+    // 为空则拒绝，避免出现“密码保护但无密码”的不可访问状态。
+    const nextVisibility =
+      body.visibility ?? ((beforePost as { visibility?: string }).visibility as string | undefined);
+    const nextPassword = body.password ?? (beforePost as { password?: string | null }).password ?? undefined;
+    if (nextVisibility === "password" && !nextPassword?.trim()) {
+      return NextResponse.json(createErrorResponse("可见性为密码保护时，访问密码不能为空"), { status: 400 });
+    }
 
     // 调用服务层更新文章
     const updatedPost = await postService.updatePost(postId, body);
@@ -257,6 +267,13 @@ async function handlePostByIdPATCH(request: NextRequest, { params }: { params: P
       return NextResponse.json(createErrorResponse("无效的文章可见性"), {
         status: 400,
       });
+    }
+    // PATCH 场景同样要求：最终可见性为 password 时必须存在访问密码（本次或历史）。
+    const nextVisibility =
+      body.visibility ?? ((beforePost as { visibility?: string }).visibility as string | undefined);
+    const nextPassword = body.password ?? (beforePost as { password?: string | null }).password ?? undefined;
+    if (nextVisibility === "password" && !nextPassword?.trim()) {
+      return NextResponse.json(createErrorResponse("可见性为密码保护时，访问密码不能为空"), { status: 400 });
     }
 
     // 调用服务层更新文章

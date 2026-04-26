@@ -32,6 +32,10 @@ async function handlePostsGET(request: NextRequest) {
     const rawSortOrder = searchParams.get("sortOrder");
     const sortOrder: "asc" | "desc" = rawSortOrder === "asc" || rawSortOrder === "desc" ? rawSortOrder : "desc";
 
+    const includePasswordProtectedFlag = searchParams.get("includePasswordProtected") === "true";
+    const includePrivateFlag = searchParams.get("includePrivate") === "true";
+    const authorId = searchParams.get("authorId") ? parseInt(searchParams.get("authorId")!) : undefined;
+
     // 解析查询参数
     const queryParams: PostQueryParams = {
       page: parseInt(searchParams.get("page") || "1"),
@@ -40,9 +44,11 @@ async function handlePostsGET(request: NextRequest) {
       sortOrder,
       status: (searchParams.get("status") as any) || undefined,
       visibility: (searchParams.get("visibility") as any) || undefined,
-      // 安全收敛：列表默认不放开密码保护文章，避免存在性侧信道暴露。
-      includePasswordProtected: false,
-      authorId: searchParams.get("authorId") ? parseInt(searchParams.get("authorId")!) : undefined,
+      // 列表默认不放开密码保护文章；但管理端（authorId 过滤）允许回看本人密码文章。
+      includePasswordProtected: includePasswordProtectedFlag || (authorId != null && !Number.isNaN(authorId)),
+      // private 可见性仅在管理查询中显式放开（需后续鉴权通过）。
+      includePrivate: includePrivateFlag,
+      authorId,
       tagId: searchParams.get("tagId") ? parseInt(searchParams.get("tagId")!) : undefined,
       search: searchParams.get("search") || undefined,
       featured: searchParams.get("featured") === "true",
@@ -71,6 +77,20 @@ async function handlePostsGET(request: NextRequest) {
       const canViewAnyAuthor = isJwtInMemorySuperRoot(viewer);
       if (!canViewAnyAuthor && viewer.userId !== queryParams.authorId) {
         return NextResponse.json(createErrorResponse("无权查看其他作者的管理列表"), { status: 403 });
+      }
+    }
+
+    // includePrivate=true：属于管理视角查询，必须登录。
+    // - 带 authorId：沿用上方 authorId 权限校验（普通用户仅本人，超级管理员可任意作者）。
+    // - 不带 authorId：仅超级管理员可看全站 private 列表。
+    if (queryParams.includePrivate) {
+      const viewer = getAuthUserFromRequest(request);
+      if (!viewer) {
+        return NextResponse.json(createErrorResponse("查看 private 文章需先登录"), { status: 401 });
+      }
+      const canViewAnyAuthor = isJwtInMemorySuperRoot(viewer);
+      if ((queryParams.authorId == null || Number.isNaN(queryParams.authorId)) && !canViewAnyAuthor) {
+        return NextResponse.json(createErrorResponse("仅超级管理员可查看全站 private 文章"), { status: 403 });
       }
     }
 
@@ -118,6 +138,10 @@ async function handlePostsPOST(request: NextRequest) {
     // 验证内容长度
     if (body.content.length < 10) {
       return NextResponse.json(createErrorResponse("文章内容不能少于10个字符"), { status: 400 });
+    }
+    // 当可见性为密码保护时，访问密码为必填（接口兜底，防止绕过前端校验）。
+    if (body.visibility === "password" && !body.password?.trim()) {
+      return NextResponse.json(createErrorResponse("可见性为密码保护时，访问密码不能为空"), { status: 400 });
     }
 
     const viewer = getAuthUserFromRequest(request);
@@ -175,7 +199,14 @@ export const { GET, POST } = defineApiHandlers(
     onError: (payload) => {
       notifyRouteUnhandledError(payload);
     },
-    onUnhandledErrorResponse: ({ method }) =>
-      NextResponse.json(createErrorResponse(method === "GET" ? "获取文章列表失败" : "创建文章失败"), { status: 500 }),
+    onUnhandledErrorResponse: ({ method, error }) => {
+      const fallbackMessage = method === "GET" ? "获取文章列表失败" : "创建文章失败";
+      // 开发环境透传真实异常，便于联调定位；生产环境保持通用提示，避免内部实现细节泄露。
+      const message =
+        process.env.NODE_ENV !== "production" && error instanceof Error && error.message
+          ? error.message
+          : fallbackMessage;
+      return NextResponse.json(createErrorResponse(message), { status: 500 });
+    },
   }
 );

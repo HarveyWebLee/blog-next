@@ -122,6 +122,13 @@ export async function resolveOptionalPasswordForPostBody(
   const misconfigured = checkRequiredButMissingKey(requireTransport, configured);
   const hasTransport = isEnvelopeV1(raw.passwordTransport);
   const hasPlain = "password" in raw && typeof raw.password === "string";
+  const hasExplicitNonPasswordVisibility = typeof raw.visibility === "string" && raw.visibility !== "password";
+
+  // 当请求显式声明可见性不是 password 时，访问密码字段（明文/封装）应被忽略。
+  // 这样可避免客户端误带空 passwordTransport 时触发无意义解密链路并报错。
+  if (hasExplicitNonPasswordVisibility) {
+    return { ok: true };
+  }
 
   if (misconfigured && (hasTransport || hasPlain)) {
     return {

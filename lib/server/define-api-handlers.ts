@@ -114,6 +114,27 @@ function wrapHandler(method: string, fn: AppRouteHandler, options?: DefineApiHan
       if (options?.onUnhandledErrorResponse) {
         const mapped = await options.onUnhandledErrorResponse({ method, path, ms, message, meta, error });
         if (mapped) {
+          // 开发环境下若是 5xx 未捕获异常，统一透传真实错误信息，避免被各路由固定文案掩盖。
+          // 生产环境继续使用各路由既有兜底文案，避免暴露内部实现细节。
+          const shouldExposeDebugMessage =
+            process.env.NODE_ENV !== "production" && mapped.status >= 500 && error instanceof Error && !!error.message;
+          if (shouldExposeDebugMessage) {
+            const debugResponse = NextResponse.json(
+              {
+                success: false,
+                message: error.message,
+                error: {
+                  message: error.message,
+                  code: "UNHANDLED_ERROR_DEBUG",
+                },
+                timestamp: new Date().toISOString(),
+              },
+              { status: mapped.status }
+            );
+            logger.httpAccess(method, path, debugResponse.status, ms);
+            return debugResponse;
+          }
+
           logger.httpAccess(method, path, mapped.status, ms);
           return mapped;
         }
