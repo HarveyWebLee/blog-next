@@ -3,6 +3,7 @@
 import React, { createContext, ReactNode, useCallback, useContext, useEffect, useState } from "react";
 
 import { sealPasswordInRequestBody } from "@/lib/crypto/password-transport/body";
+import { extractResponseErrorMessage, extractUnknownErrorMessage } from "@/lib/utils/client-error";
 import { LoginRequest, LoginResponse, User } from "@/types/blog";
 
 interface AuthContextType {
@@ -107,11 +108,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         return { success: true, message: data.message };
       } else {
-        return { success: false, message: data.message || "登录失败" };
+        const msg =
+          data?.message || (response.ok ? "登录失败" : await extractResponseErrorMessage(response, "登录失败"));
+        return { success: false, message: msg };
       }
     } catch (error) {
       console.error("登录错误:", error);
-      return { success: false, message: "网络错误，请稍后重试" };
+      return { success: false, message: extractUnknownErrorMessage(error, "登录请求失败") };
     } finally {
       setIsLoading(false);
     }
@@ -142,12 +145,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         return true;
       } else {
+        console.error("刷新令牌失败:", data?.message || `HTTP ${response.status}`);
         // 刷新失败，清除认证状态
         logout();
         return false;
       }
     } catch (error) {
-      console.error("刷新令牌失败:", error);
+      console.error("刷新令牌失败:", extractUnknownErrorMessage(error, "刷新令牌异常"));
       logout();
       return false;
     }

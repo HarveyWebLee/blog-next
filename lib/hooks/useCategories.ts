@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { clientBearerHeaders } from "@/lib/utils/client-bearer-auth";
+import { extractResponseErrorMessage, extractUnknownErrorMessage } from "@/lib/utils/client-error";
 import { ApiResponse, Category, CategoryQueryParams, PaginatedResponseData } from "@/types/blog";
 
 interface UseCategoriesOptions {
@@ -102,12 +103,12 @@ export function useCategories(options: UseCategoriesOptions = {}): UseCategories
           }
           setPagination(result.data.pagination);
         } else {
-          setError(result.message || "获取分类数据失败");
+          setError(result.message || (await extractResponseErrorMessage(response, "获取分类数据失败")));
         }
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") return;
         console.error("获取分类数据失败:", error);
-        setError("网络错误，请稍后重试");
+        setError(extractUnknownErrorMessage(error, "获取分类数据失败"));
       } finally {
         setLoading(false);
       }

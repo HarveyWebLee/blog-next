@@ -9,6 +9,7 @@ import { Input } from "@heroui/input";
 import { AlertCircle, ArrowLeft, CheckCircle, Eye, EyeOff, Lock } from "lucide-react";
 
 import { sealPasswordInRequestBody } from "@/lib/crypto/password-transport/body";
+import { extractResponseErrorMessage, extractUnknownErrorMessage } from "@/lib/utils/client-error";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -186,10 +187,10 @@ export default function ResetPasswordPage() {
       if (data.success) {
         setIsSuccess(true);
       } else {
-        setErrors({ general: data.message || t.errFailed });
+        setErrors({ general: data.message || (await extractResponseErrorMessage(response, t.errFailed)) });
       }
     } catch (error) {
-      setErrors({ general: t.errNetwork });
+      setErrors({ general: extractUnknownErrorMessage(error, t.errNetwork) });
     } finally {
       setIsSubmitting(false);
     }

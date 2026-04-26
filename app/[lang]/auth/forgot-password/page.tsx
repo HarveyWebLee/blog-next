@@ -8,6 +8,8 @@ import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Input } from "@heroui/input";
 import { ArrowLeft, ArrowLeftIcon, CheckCircle, Mail } from "lucide-react";
 
+import { extractResponseErrorMessage, extractUnknownErrorMessage } from "@/lib/utils/client-error";
+
 export default function ForgotPasswordPage() {
   const params = useParams<{ lang: string }>();
   const lang = params.lang || "zh-CN";
@@ -120,10 +122,10 @@ export default function ForgotPasswordPage() {
       if (data.success) {
         setIsSuccess(true);
       } else {
-        setError(data.message || t.sendFailed);
+        setError(data.message || (await extractResponseErrorMessage(response, t.sendFailed)));
       }
     } catch (error) {
-      setError(t.networkError);
+      setError(extractUnknownErrorMessage(error, t.networkError));
     } finally {
       setIsSubmitting(false);
     }

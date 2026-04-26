@@ -10,6 +10,7 @@ import { Form } from "@heroui/react";
 import { AlertCircle, ArrowLeftIcon, CheckCircle, Clock, Eye, EyeOff, Lock, Mail, Shield, User } from "lucide-react";
 
 import { sealPasswordInRequestBody } from "@/lib/crypto/password-transport/body";
+import { extractResponseErrorMessage, extractUnknownErrorMessage } from "@/lib/utils/client-error";
 import { isValidEmailFormat } from "@/lib/utils/email-format";
 
 export default function RegisterPage() {
@@ -256,10 +257,10 @@ export default function RegisterPage() {
         setSuccessMessage(t.codeSent);
         setTimeout(() => setSuccessMessage(""), 3000);
       } else {
-        setEmailError(data.message || t.sendCodeFailed);
+        setEmailError(data.message || (await extractResponseErrorMessage(response, t.sendCodeFailed)));
       }
     } catch (error) {
-      setEmailError(t.sendCodeRetry);
+      setEmailError(extractUnknownErrorMessage(error, t.sendCodeRetry));
     } finally {
       setIsSendingCode(false);
     }
@@ -312,7 +313,7 @@ export default function RegisterPage() {
         // 注册成功，跳转到登录页面
         router.push(`/${lang}/auth/login?message=${encodeURIComponent(t.loginMessage)}`);
       } else {
-        const msg: string = data.message || t.registerFailed;
+        const msg: string = data.message || (await extractResponseErrorMessage(response, t.registerFailed));
         // 含「验证码」的归验证码区；其余含「邮箱」的归邮箱区；其它归通用提交错误
         if (msg.includes("验证码")) {
           setCodeError(msg);
@@ -323,7 +324,7 @@ export default function RegisterPage() {
         }
       }
     } catch (error) {
-      setSubmitError(t.registerRetry);
+      setSubmitError(extractUnknownErrorMessage(error, t.registerRetry));
     } finally {
       setIsSubmitting(false);
     }
