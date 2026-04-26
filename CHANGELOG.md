@@ -1,3 +1,9 @@
+## [1.6.5](https://github.com/HarveyWebLee/blog-next/compare/v1.6.4...v1.6.5) (2026-04-26)
+
+### Bug Fixes
+
+- **api/posts:** 增加文章密码保护必填校验与管理查询支持 ([508e173](https://github.com/HarveyWebLee/blog-next/commit/508e173c8df643eafbfd0773f882f3654c5693cf))
+
 ## [1.6.4](https://github.com/HarveyWebLee/blog-next/compare/v1.6.3...v1.6.4) (2026-04-25)
 
 ### Performance Improvements
