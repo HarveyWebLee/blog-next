@@ -1,3 +1,9 @@
+## [1.6.6](https://github.com/HarveyWebLee/blog-next/compare/v1.6.5...v1.6.6) (2026-04-26)
+
+### Bug Fixes
+
+- **auth:** 增强错误处理机制以改善用户体验 ([4b1ffb5](https://github.com/HarveyWebLee/blog-next/commit/4b1ffb59ce84c8b2826e2ffc13a4c0e9eefeb81a))
+
 ## [1.6.5](https://github.com/HarveyWebLee/blog-next/compare/v1.6.4...v1.6.5) (2026-04-26)
 
 ### Bug Fixes
