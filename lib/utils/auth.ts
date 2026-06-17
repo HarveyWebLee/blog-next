@@ -4,8 +4,22 @@ import * as jwt from "jsonwebtoken";
 
 import { isValidEmailFormat } from "./email-format";
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "your-refresh-secret-key";
+const DEFAULT_JWT_SECRET = "your-secret-key";
+const DEFAULT_JWT_REFRESH_SECRET = "your-refresh-secret-key";
+
+function resolveJwtSecret(name: "JWT_SECRET" | "JWT_REFRESH_SECRET", fallback: string): string {
+  const value = process.env[name]?.trim();
+  const isProduction = process.env.NODE_ENV === "production";
+
+  if (isProduction && (!value || value === fallback)) {
+    throw new Error(`${name} must be configured with a strong non-default value in production`);
+  }
+
+  return value || fallback;
+}
+
+const JWT_SECRET = resolveJwtSecret("JWT_SECRET", DEFAULT_JWT_SECRET);
+const JWT_REFRESH_SECRET = resolveJwtSecret("JWT_REFRESH_SECRET", DEFAULT_JWT_REFRESH_SECRET);
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "1h";
 const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || "7d";
 

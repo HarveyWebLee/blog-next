@@ -1,7 +1,4 @@
-# 提交前校验：
-# 1) prettier . --check —— 全仓库格式一致（未保存的 prettier 问题会拦截提交）
-# 2) tsc --noEmit —— 全项目类型检查，避免与 next build 阶段才暴露的类型错误
-# 3) lint-staged —— 仅对「已暂存」文件执行 eslint --fix 与 prettier --write，减少无关文件干扰
-pnpm format:check
-pnpm typecheck
+# 提交前仅对「已暂存」文件执行 eslint --fix / prettier --write（约 3s）。
+# 全仓库 format:check、typecheck、api:handlers:check 放在 pre-push，
+# 避免 Cursor 内置 Git 提交因钩子过重（全量 prettier + tsc）触发 SIGKILL（signal 9）。
 pnpm exec lint-staged

@@ -35,6 +35,7 @@
 - `status`
 - `visibility`
 - `includePasswordProtected`
+- `includePrivate`
 - `authorId`
 - `tagId`
 - `sortBy`、`sortOrder`
@@ -114,6 +115,8 @@ export function ExampleList() {
 ## 注意事项
 
 - 写操作依赖 Bearer 登录态（`PostsAPI` 通过 `clientBearerHeaders()` 自动带 token）。
+- `includePrivate=true` 属于管理视角查询：服务端会要求登录；不带 `authorId` 查看全站 private 文章时仅超级管理员 root 会话可用。
+- 按 `authorId` 查询管理列表时，普通用户只能查本人，超级管理员可跨作者查询。
 - 密码文章阅读前置校验不在 `usePosts` 内，而在页面中调用 `PATCH /api/posts/slug/{slug}` 完成。
 - `getEngagementStates` 适合列表批量读取用户点赞/收藏状态，减少逐条请求。
 - `incrementLikeCount` 会触发“点赞/取消点赞切换”，并非单纯数值递增；业务层应优先使用 `toggleLike`。

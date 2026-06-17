@@ -9,7 +9,14 @@ import { db } from "@/lib/db/config";
 import { categories, comments, posts, postTags, tags, userFavorites, users } from "@/lib/db/schema";
 import { calculatePagination, generateSlug, truncateText } from "@/lib/utils";
 import { logDbError } from "@/lib/utils/mysql-error";
-import { CreatePostRequest, PaginatedResponseData, PostData, PostQueryParams, UpdatePostRequest } from "@/types/blog";
+import {
+  CreatePostRequest,
+  PaginatedResponseData,
+  PostData,
+  PostQueryParams,
+  Tag,
+  UpdatePostRequest,
+} from "@/types/blog";
 
 /** 列表接口允许的排序字段（防注入；未命中则走默认「最近优先」） */
 const POST_LIST_SORT_COLUMNS = {
@@ -47,6 +54,44 @@ export class PostService {
   private async getPostFavoriteCount(postId: number): Promise<number> {
     const rows = await db.select({ count: count() }).from(userFavorites).where(eq(userFavorites.postId, postId));
     return rows[0]?.count ?? 0;
+  }
+
+  private async getTagsByPostIds(
+    postIds: number[]
+  ): Promise<Map<number, Pick<Tag, "id" | "name" | "slug" | "color">[]>> {
+    const uniquePostIds = Array.from(new Set(postIds.filter((id) => Number.isInteger(id) && id > 0)));
+    const tagsByPostId = new Map<number, Pick<Tag, "id" | "name" | "slug" | "color">[]>();
+    if (uniquePostIds.length === 0) return tagsByPostId;
+
+    try {
+      const rows = await db
+        .select({
+          postId: postTags.postId,
+          id: tags.id,
+          name: tags.name,
+          slug: tags.slug,
+          color: tags.color,
+        })
+        .from(postTags)
+        .innerJoin(tags, eq(postTags.tagId, tags.id))
+        .where(inArray(postTags.postId, uniquePostIds));
+
+      for (const row of rows) {
+        const current = tagsByPostId.get(row.postId) || [];
+        current.push({
+          id: row.id,
+          name: row.name,
+          slug: row.slug,
+          // DB varchar 可为 null；Tag.color 为 string | undefined
+          color: row.color ?? undefined,
+        });
+        tagsByPostId.set(row.postId, current);
+      }
+    } catch (error) {
+      console.error("批量获取文章标签失败:", error);
+    }
+
+    return tagsByPostId;
   }
 
   /**
@@ -387,11 +432,9 @@ export class PostService {
           : undefined,
       }));
 
-      // 为每个文章获取标签数据
+      const tagsByPostId = await this.getTagsByPostIds(postsData.map((post) => post.id));
       for (let i = 0; i < postsData.length; i++) {
-        const post = postsData[i];
-        const postTags = await this.getPostTags(post.id);
-        postsData[i].tags = postTags || [];
+        postsData[i].tags = tagsByPostId.get(postsData[i].id) || [];
       }
       return {
         data: postsData,

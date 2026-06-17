@@ -1,0 +1,4 @@
+# 推送前全量质量门禁（与 pnpm precommit 一致，不含 lint-staged——已在 pre-commit 处理暂存文件）
+pnpm format:check
+pnpm typecheck
+pnpm api:handlers:check
