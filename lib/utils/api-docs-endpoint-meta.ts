@@ -88,6 +88,10 @@ export const API_DOCS_ENDPOINT_DESCRIPTIONS: Record<string, Partial<Record<strin
     POST: "添加收藏（Bearer）",
     DELETE: "取消收藏（Bearer）",
   },
+  "/api/profile/likes": {
+    GET: "点赞文章列表（Bearer；Query：page、limit）",
+    DELETE: "取消点赞（Bearer；Query：postId）",
+  },
   "/api/profile/notifications": {
     GET: "通知列表（Bearer）",
     PUT: "更新通知状态等（Bearer，以路由实现为准）",
@@ -261,6 +265,10 @@ export const API_DOCS_AUTH_HINTS: Record<string, Partial<Record<string, string>>
     GET: "必须：Authorization: Bearer",
     POST: "必须：Authorization: Bearer",
     DELETE: "必须：Authorization: Bearer",
+  },
+  "/api/profile/likes": {
+    GET: "必须：Authorization: Bearer。Query：page、limit。",
+    DELETE: "必须：Authorization: Bearer。Query：postId。",
   },
   "/api/profile/notifications": {
     GET: "必须：Authorization: Bearer",

@@ -19,7 +19,7 @@
 | **blog-edge**（**`--profile edge`**） | **80** / **443**（`EDGE_HTTP_PORT` / `EDGE_HTTPS_PORT`） | 80 / 443   | 与 `APP_PORT` 独立           |
 
 应用在容器内始终监听 **3000**；本地无网关时浏览器访问 **`http://localhost:13001`**（前台路由带语言前缀，如 `/zh-CN`）。  
-**`NEXT_PUBLIC_APP_URL`**、**`CORS_ORIGIN`** 在模板中默认与 **13001** 对齐；**生产启用 `edge` 且走域名 HTTPS 时**，须改为 **`https://你的域名`**（与浏览器地址栏一致，见 **§7.7**）。
+**`NEXT_PUBLIC_APP_URL`** 在模板中默认与 **13001** 对齐；**`CORS_ORIGIN`** 亦出现在部署模板中，但**当前 Next 应用代码尚未读取该变量**（预留/文档对齐用，见 [项目TODO.md](./项目TODO.md) §八）。**生产启用 `edge` 且走域名 HTTPS 时**，须将 **`NEXT_PUBLIC_APP_URL`**（及后续若接入 CORS 时的 **`CORS_ORIGIN`**）改为 **`https://你的域名`**（与浏览器地址栏一致，见 **§7.7**）。
 
 **生产建议**：公网仅暴露 **80 / 443**（**`blog-edge`**）；**`blog-web` 的 `APP_PORT`** 可不映射到公网，由 **`blog-edge`** 在 **`blog-net`** 内反代至 **`http://blog-next-app:3000`**（与 `blog-web` 的 **`container_name`** 一致，见 **`deploy/secrets/edge.example/app_upstream`**）。
 
