@@ -1,3 +1,9 @@
+# [1.7.0](https://github.com/HarveyWebLee/blog-next/compare/v1.6.7...v1.7.0) (2026-06-22)
+
+### Features
+
+- **lang:** 增强多语言错误处理与404页面支持 ([fbfeb86](https://github.com/HarveyWebLee/blog-next/commit/fbfeb86a5d9ef68758a9ea9cbe2f7990d96b9288))
+
 ## [1.6.7](https://github.com/HarveyWebLee/blog-next/compare/v1.6.6...v1.6.7) (2026-04-26)
 
 ### Performance Improvements
