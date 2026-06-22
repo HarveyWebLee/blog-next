@@ -1,3 +1,9 @@
+## [1.8.2](https://github.com/HarveyWebLee/blog-next/compare/v1.8.1...v1.8.2) (2026-06-22)
+
+### Bug Fixes
+
+- **auth:** 增强密码传输安全性与多语言支持 ([f491cb5](https://github.com/HarveyWebLee/blog-next/commit/f491cb552f1961abd945b39473fc939896ea7463))
+
 ## [1.8.1](https://github.com/HarveyWebLee/blog-next/compare/v1.8.0...v1.8.1) (2026-06-22)
 
 ### Bug Fixes
