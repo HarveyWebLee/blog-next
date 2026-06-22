@@ -439,6 +439,8 @@ export default function ProfileAccountsAdmin({ lang }: { lang: string }) {
                   <div className="grid gap-4 sm:grid-cols-2">
                     <Select
                       label={t.colRole}
+                      aria-label={t.colRole || "role"}
+                      labelPlacement="outside"
                       selectedKeys={[editRole]}
                       onChange={(e) => {
                         const v = e.target.value;
@@ -451,6 +453,8 @@ export default function ProfileAccountsAdmin({ lang }: { lang: string }) {
                     </Select>
                     <Select
                       label={t.colStatus}
+                      aria-label={t.colStatus || "status"}
+                      labelPlacement="outside"
                       selectedKeys={[editStatus]}
                       onChange={(e) => {
                         const v = e.target.value;

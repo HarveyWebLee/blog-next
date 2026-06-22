@@ -1373,6 +1373,10 @@
       "batchDelete": "批量删除",
       "moderationReasonPrompt": "审核理由（可选）:",
       "allAuthors": "全部作者",
+      "statusPlaceholder": "选择状态",
+      "authorPlaceholder": "选择作者",
+      "dateRangeLabel": "日期范围",
+      "clearDate": "清空日期",
       "batchModerationReasonPrompt": "批量审核理由（可选）:",
       "deleteConfirmOne": "确定删除该评论吗？",
       "deleteConfirmBatch": "确定删除已选中的 {count} 条评论吗？"

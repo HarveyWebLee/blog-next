@@ -62,6 +62,8 @@ function clampScale(v: number): number {
  * 表单中的 URL 仍可由上传结果写入；历史外链数据仅展示预览，不提供手输修改入口。
  */
 export function FeaturedImageUpload({ value, onChange, scope = "article", labels }: Props) {
+  // 词典切片加载前 title 可能为 undefined，统一兜底避免 .includes 等调用抛错
+  const labelTitle = labels.title ?? "";
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   /** 拖拽悬停时高亮虚线区 */
@@ -153,23 +155,25 @@ export function FeaturedImageUpload({ value, onChange, scope = "article", labels
     return () => el.removeEventListener("wheel", onWheelNative);
   }, [cropSource, scope]);
 
-  const cropTexts = useMemo(
-    () => ({
-      title:
-        labels.cropTitle || (scope === "profile" ? (labels.title.includes("Avatar") ? "Avatar Crop" : "头像裁剪") : ""),
+  const cropTexts = useMemo(() => {
+    // 文章配图不走裁剪弹层，无需计算文案
+    if (scope !== "profile") {
+      return { title: "", hint: "", zoom: "", cancel: "", confirm: "" };
+    }
+
+    const isEnglishAvatar = labelTitle.includes("Avatar");
+    return {
+      title: labels.cropTitle || (isEnglishAvatar ? "Avatar Crop" : "头像裁剪"),
       hint:
         labels.cropHint ||
-        (scope === "profile"
-          ? labels.title.includes("Avatar")
-            ? "Drag to move and use zoom to fit your square avatar."
-            : "拖拽调整位置，并通过缩放生成正方形头像。"
-          : ""),
-      zoom: labels.cropZoom || (labels.title.includes("Avatar") ? "Zoom" : "缩放"),
-      cancel: labels.cropCancel || (labels.title.includes("Avatar") ? "Cancel" : "取消"),
-      confirm: labels.cropConfirm || (labels.title.includes("Avatar") ? "Confirm Crop" : "确认裁剪"),
-    }),
-    [labels, scope]
-  );
+        (isEnglishAvatar
+          ? "Drag to move and use zoom to fit your square avatar."
+          : "拖拽调整位置，并通过缩放生成正方形头像。"),
+      zoom: labels.cropZoom || (isEnglishAvatar ? "Zoom" : "缩放"),
+      cancel: labels.cropCancel || (isEnglishAvatar ? "Cancel" : "取消"),
+      confirm: labels.cropConfirm || (isEnglishAvatar ? "Confirm Crop" : "确认裁剪"),
+    };
+  }, [labelTitle, labels, scope]);
 
   const cropFitScale = useMemo(() => {
     if (!cropImageMeta || cropViewportSize <= 0) return 1;
@@ -425,7 +429,7 @@ export function FeaturedImageUpload({ value, onChange, scope = "article", labels
             <ImageIcon className="h-5 w-5 text-primary" aria-hidden />
           </div>
           <div className="min-w-0 flex-1 pt-0.5">
-            <p className="text-sm font-semibold leading-tight text-foreground">{labels.title}</p>
+            <p className="text-sm font-semibold leading-tight text-foreground">{labelTitle}</p>
             <p className="mt-1 text-xs leading-relaxed text-default-500">{labels.hint}</p>
           </div>
         </div>
@@ -479,7 +483,7 @@ export function FeaturedImageUpload({ value, onChange, scope = "article", labels
                 <p className="mt-1 text-xs text-default-400">
                   {uploading ? "" : labels.emptyDropHint}
                   {scope === "profile"
-                    ? ` · ${labels.title.includes("Avatar") ? "Square image recommended" : "建议上传正方形图片"}`
+                    ? ` · ${labelTitle.includes("Avatar") ? "Square image recommended" : "建议上传正方形图片"}`
                     : ""}
                 </p>
               </div>

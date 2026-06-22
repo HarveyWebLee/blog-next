@@ -1035,6 +1035,10 @@
       "batchDelete": "Batch delete",
       "moderationReasonPrompt": "Optional moderation reason:",
       "allAuthors": "All authors",
+      "statusPlaceholder": "Select status",
+      "authorPlaceholder": "Select author",
+      "dateRangeLabel": "Date range",
+      "clearDate": "Clear dates",
       "batchModerationReasonPrompt": "Optional batch moderation reason:",
       "deleteConfirmOne": "Delete this comment?",
       "deleteConfirmBatch": "Delete {count} selected comments?"

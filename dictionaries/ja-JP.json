@@ -1035,6 +1035,10 @@
       "batchDelete": "一括削除",
       "moderationReasonPrompt": "審査理由（任意）:",
       "allAuthors": "すべての作者",
+      "statusPlaceholder": "ステータスを選択",
+      "authorPlaceholder": "作者を選択",
+      "dateRangeLabel": "日付範囲",
+      "clearDate": "日付をクリア",
       "batchModerationReasonPrompt": "一括審査理由（任意）:",
       "deleteConfirmOne": "このコメントを削除しますか？",
       "deleteConfirmBatch": "選択した {count} 件のコメントを削除しますか？"

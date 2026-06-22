@@ -150,7 +150,16 @@ export default function ProfileOverview({ lang }: ProfileOverviewProps) {
       <CardBody className="p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-center gap-4">
+            {/* 个人中心首屏头像常为 LCP：经 next/image 渲染并 priority 预加载，消除开发态警告 */}
             <Avatar
+              ImgComponent={Image}
+              imgProps={{
+                width: 64,
+                height: 64,
+                priority: true,
+                // MinIO 等外链与站内其它封面图一致，走 unoptimized 避免优化器域名限制
+                unoptimized: Boolean(user?.avatar?.startsWith("http")),
+              }}
               src={user?.avatar || "/images/avatar.jpeg"}
               name={`${profile.firstName ?? ""}${profile.lastName ?? ""}`.trim() || user?.username || "?"}
               size="lg"
@@ -230,10 +239,13 @@ export default function ProfileOverview({ lang }: ProfileOverviewProps) {
                     <div className="flex items-center justify-center">
                       <Image
                         src={val}
-                        alt=""
+                        alt={t.wechatQr}
                         width={176}
                         height={176}
+                        sizes="160px"
                         unoptimized
+                        // 微信二维码 160×160，常为 /profile 页最大图（与头像 URL 不同）；须 priority 避免 LCP 警告
+                        priority
                         className="mx-auto h-40 w-40 rounded-lg border border-default-200 object-cover dark:border-white/10"
                       />
                     </div>

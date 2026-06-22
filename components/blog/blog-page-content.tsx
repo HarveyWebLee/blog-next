@@ -126,6 +126,21 @@ export function BlogPageContent({ lang, initialTagId, initialAuthorId, initialPo
     return (t.authorHeading ?? "作者 #{id} 的文章").replace("{id}", String(activeAuthorId));
   }, [activeAuthorId, t.authorHeading]);
 
+  /**
+   * 双列网格前两行（最多 4 张）封面可能在首屏；若靠前卡片无封面，LCP 会落到更后的有图卡片。
+   * 仅第 1 页预加载，避免翻页后无谓抢占带宽。
+   */
+  const lcpPriorityPostIds = useMemo(() => {
+    const ids = new Set<number>();
+    if (pagination.page !== 1) return ids;
+    for (const post of posts ?? []) {
+      if (!post.featuredImage) continue;
+      ids.add(post.id);
+      if (ids.size >= 4) break;
+    }
+    return ids;
+  }, [posts, pagination.page]);
+
   const handleSearch = (value: string) => {
     setSearchValue(value);
     searchPosts(value);
@@ -416,6 +431,7 @@ export function BlogPageContent({ lang, initialTagId, initialAuthorId, initialPo
                 </div>
 
                 <Select
+                  aria-label={t.selectSort || "sort"}
                   placeholder={t.selectSort}
                   selectedKeys={new Set([sortBy])}
                   onSelectionChange={(keys) => {
@@ -430,11 +446,21 @@ export function BlogPageContent({ lang, initialTagId, initialAuthorId, initialPo
                     value: "text-foreground",
                   }}
                 >
-                  <SelectItem key="publishedAt">最新发布</SelectItem>
-                  <SelectItem key="createdAt">创建时间</SelectItem>
-                  <SelectItem key="viewCount">浏览次数</SelectItem>
-                  <SelectItem key="likeCount">点赞次数</SelectItem>
-                  <SelectItem key="title">标题排序</SelectItem>
+                  <SelectItem key="publishedAt" textValue="最新发布">
+                    最新发布
+                  </SelectItem>
+                  <SelectItem key="createdAt" textValue="创建时间">
+                    创建时间
+                  </SelectItem>
+                  <SelectItem key="viewCount" textValue="浏览次数">
+                    浏览次数
+                  </SelectItem>
+                  <SelectItem key="likeCount" textValue="点赞次数">
+                    点赞次数
+                  </SelectItem>
+                  <SelectItem key="title" textValue="标题排序">
+                    标题排序
+                  </SelectItem>
                 </Select>
               </div>
             </CardBody>
@@ -486,6 +512,7 @@ export function BlogPageContent({ lang, initialTagId, initialAuthorId, initialPo
                     <PostCard
                       post={post}
                       lang={lang}
+                      imagePriority={lcpPriorityPostIds.has(post.id)}
                       onView={() => handleViewPost(post)}
                       isLiked={likedPostIds.has(post.id)}
                       isFavorited={favoritedPostIds.has(post.id)}

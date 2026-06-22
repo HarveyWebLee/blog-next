@@ -523,24 +523,46 @@ export default function PublicUserProfile({ lang, userId }: PublicUserProfilePro
               variant="bordered"
             />
             <Select
+              label={t.allCategories}
+              aria-label={t.allCategories || "category filter"}
+              labelPlacement="outside"
+              placeholder={t.allCategories}
               selectedKeys={new Set([categoryId || "all"])}
-              onChange={(e) => setCategoryId(e.target.value === "all" ? "" : e.target.value)}
+              onSelectionChange={(keys) => {
+                const selected = Array.from(keys)[0] as string;
+                setCategoryId(selected === "all" ? "" : selected);
+              }}
               items={[
                 { id: "all", name: t.allCategories },
                 ...profile.filters.categories.map((c) => ({ id: String(c.id), name: c.name })),
               ]}
             >
-              {(item) => <SelectItem key={item.id}>{item.name}</SelectItem>}
+              {(item) => (
+                <SelectItem key={item.id} textValue={item.name}>
+                  {item.name}
+                </SelectItem>
+              )}
             </Select>
             <Select
+              label={t.allTags}
+              aria-label={t.allTags || "tag filter"}
+              labelPlacement="outside"
+              placeholder={t.allTags}
               selectedKeys={new Set([tagId || "all"])}
-              onChange={(e) => setTagId(e.target.value === "all" ? "" : e.target.value)}
+              onSelectionChange={(keys) => {
+                const selected = Array.from(keys)[0] as string;
+                setTagId(selected === "all" ? "" : selected);
+              }}
               items={[
                 { id: "all", name: t.allTags },
                 ...profile.filters.tags.map((tag) => ({ id: String(tag.id), name: tag.name })),
               ]}
             >
-              {(item) => <SelectItem key={item.id}>{item.name}</SelectItem>}
+              {(item) => (
+                <SelectItem key={item.id} textValue={item.name}>
+                  {item.name}
+                </SelectItem>
+              )}
             </Select>
           </div>
 
@@ -548,10 +570,11 @@ export default function PublicUserProfile({ lang, userId }: PublicUserProfilePro
             <div className="py-10 text-center text-default-500">{t.empty}</div>
           ) : (
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              {posts.map((post) => (
+              {posts.map((post, index) => (
                 <PostCard
                   key={post.id}
                   post={post}
+                  imagePriority={index === 0}
                   lang={lang}
                   isLiked={Boolean(likedMap[post.id])}
                   isFavorited={Boolean(favoritedMap[post.id])}

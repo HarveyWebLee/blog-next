@@ -363,6 +363,8 @@ export default function CreateBlogPage() {
               <div className="space-y-2">
                 <Select
                   label={t.publishStatus}
+                  aria-label={t.publishStatus || t.publishStatusPlaceholder || "publish status"}
+                  labelPlacement="outside"
                   placeholder={t.publishStatusPlaceholder}
                   selectedKeys={formData.status ? new Set([formData.status]) : new Set()}
                   onSelectionChange={(keys) => {
@@ -374,13 +376,25 @@ export default function CreateBlogPage() {
                   startContent={<Calendar className="w-4 h-4 text-default-400" />}
                   className="w-full"
                 >
-                  <SelectItem key="draft" startContent={<FileText className="w-4 h-4" />}>
+                  <SelectItem
+                    key="draft"
+                    textValue={t.statusDraft ?? "draft"}
+                    startContent={<FileText className="w-4 h-4" />}
+                  >
                     {t.statusDraft}
                   </SelectItem>
-                  <SelectItem key="published" startContent={<Sparkles className="w-4 h-4" />}>
+                  <SelectItem
+                    key="published"
+                    textValue={t.statusPublished ?? "published"}
+                    startContent={<Sparkles className="w-4 h-4" />}
+                  >
                     {t.statusPublished}
                   </SelectItem>
-                  <SelectItem key="archived" startContent={<FileText className="w-4 h-4" />}>
+                  <SelectItem
+                    key="archived"
+                    textValue={t.statusArchived ?? "archived"}
+                    startContent={<FileText className="w-4 h-4" />}
+                  >
                     {t.statusArchived}
                   </SelectItem>
                 </Select>
@@ -390,6 +404,8 @@ export default function CreateBlogPage() {
               <div className="space-y-2">
                 <Select
                   label={t.visibility}
+                  aria-label={t.visibility || t.visibilityPlaceholder || "visibility"}
+                  labelPlacement="outside"
                   placeholder={t.visibilityPlaceholder}
                   selectedKeys={formData.visibility ? new Set([formData.visibility]) : new Set()}
                   onSelectionChange={(keys) => {
@@ -401,13 +417,25 @@ export default function CreateBlogPage() {
                   startContent={<Lock className="w-4 h-4 text-default-400" />}
                   className="w-full"
                 >
-                  <SelectItem key="public" startContent={<Eye className="w-4 h-4" />}>
+                  <SelectItem
+                    key="public"
+                    textValue={t.visibilityPublic ?? "public"}
+                    startContent={<Eye className="w-4 h-4" />}
+                  >
                     {t.visibilityPublic}
                   </SelectItem>
-                  <SelectItem key="private" startContent={<EyeOff className="w-4 h-4" />}>
+                  <SelectItem
+                    key="private"
+                    textValue={t.visibilityPrivate ?? "private"}
+                    startContent={<EyeOff className="w-4 h-4" />}
+                  >
                     {t.visibilityPrivate}
                   </SelectItem>
-                  <SelectItem key="password" startContent={<Lock className="w-4 h-4" />}>
+                  <SelectItem
+                    key="password"
+                    textValue={t.visibilityPassword ?? "password"}
+                    startContent={<Lock className="w-4 h-4" />}
+                  >
                     {t.visibilityPassword}
                   </SelectItem>
                 </Select>

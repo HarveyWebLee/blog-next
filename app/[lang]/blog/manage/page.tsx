@@ -358,6 +358,9 @@ export default function BlogManagePage() {
               className="w-full"
             />
             <Select
+              label={t.statusPlaceholder}
+              aria-label={t.statusPlaceholder || "status filter"}
+              labelPlacement="outside"
               placeholder={t.statusPlaceholder}
               selectedKeys={[statusFilter]}
               onSelectionChange={(keys) => {
@@ -367,12 +370,23 @@ export default function BlogManagePage() {
               variant="bordered"
               size="lg"
             >
-              <SelectItem key="all">{t.statusAll}</SelectItem>
-              <SelectItem key="draft">{t.statusDraft}</SelectItem>
-              <SelectItem key="published">{t.statusPublished}</SelectItem>
-              <SelectItem key="archived">{t.statusArchived}</SelectItem>
+              <SelectItem key="all" textValue={t.statusAll ?? "all"}>
+                {t.statusAll}
+              </SelectItem>
+              <SelectItem key="draft" textValue={t.statusDraft ?? "draft"}>
+                {t.statusDraft}
+              </SelectItem>
+              <SelectItem key="published" textValue={t.statusPublished ?? "published"}>
+                {t.statusPublished}
+              </SelectItem>
+              <SelectItem key="archived" textValue={t.statusArchived ?? "archived"}>
+                {t.statusArchived}
+              </SelectItem>
             </Select>
             <Select
+              label={t.visibilityPlaceholder}
+              aria-label={t.visibilityPlaceholder || "visibility filter"}
+              labelPlacement="outside"
               placeholder={t.visibilityPlaceholder}
               selectedKeys={[visibilityFilter]}
               onSelectionChange={(keys) => {
@@ -382,12 +396,23 @@ export default function BlogManagePage() {
               variant="bordered"
               size="lg"
             >
-              <SelectItem key="all">{t.visibilityAll}</SelectItem>
-              <SelectItem key="public">{t.visibilityPublic}</SelectItem>
-              <SelectItem key="private">{t.visibilityPrivate}</SelectItem>
-              <SelectItem key="password">{t.visibilityPassword}</SelectItem>
+              <SelectItem key="all" textValue={t.visibilityAll ?? "all"}>
+                {t.visibilityAll}
+              </SelectItem>
+              <SelectItem key="public" textValue={t.visibilityPublic ?? "public"}>
+                {t.visibilityPublic}
+              </SelectItem>
+              <SelectItem key="private" textValue={t.visibilityPrivate ?? "private"}>
+                {t.visibilityPrivate}
+              </SelectItem>
+              <SelectItem key="password" textValue={t.visibilityPassword ?? "password"}>
+                {t.visibilityPassword}
+              </SelectItem>
             </Select>
             <Select
+              label={t.sortPlaceholder}
+              aria-label={t.sortPlaceholder || "sort"}
+              labelPlacement="outside"
               placeholder={t.sortPlaceholder}
               selectedKeys={[sortBy]}
               onSelectionChange={(keys) => {
@@ -398,10 +423,18 @@ export default function BlogManagePage() {
               size="lg"
               startContent={<SortAsc className="w-4 h-4" />}
             >
-              <SelectItem key="createdAt">{t.sortCreatedAt}</SelectItem>
-              <SelectItem key="updatedAt">{t.sortUpdatedAt}</SelectItem>
-              <SelectItem key="title">{t.sortTitle}</SelectItem>
-              <SelectItem key="viewCount">{t.sortViewCount}</SelectItem>
+              <SelectItem key="createdAt" textValue={t.sortCreatedAt ?? "createdAt"}>
+                {t.sortCreatedAt}
+              </SelectItem>
+              <SelectItem key="updatedAt" textValue={t.sortUpdatedAt ?? "updatedAt"}>
+                {t.sortUpdatedAt}
+              </SelectItem>
+              <SelectItem key="title" textValue={t.sortTitle ?? "title"}>
+                {t.sortTitle}
+              </SelectItem>
+              <SelectItem key="viewCount" textValue={t.sortViewCount ?? "viewCount"}>
+                {t.sortViewCount}
+              </SelectItem>
             </Select>
           </div>
 

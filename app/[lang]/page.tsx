@@ -91,6 +91,8 @@ function HomePostCard({
                 }
                 className="object-cover transition duration-500 group-hover:scale-[1.03]"
                 unoptimized
+                // 首条大卡封面常为 LCP，预加载以消除 Next/Image 开发态警告并改善首屏
+                priority={isHero}
               />
             ) : (
               <div
@@ -123,6 +125,7 @@ function HomePostCard({
                 }
                 className="object-cover transition duration-500 group-hover:scale-[1.03]"
                 unoptimized
+                priority={isHero}
               />
             ) : (
               <div

@@ -75,6 +75,8 @@ export function CategoryTreeSelect({
   return (
     <Select
       label={label}
+      aria-label={label || placeholder || "category"}
+      labelPlacement="outside"
       placeholder={placeholder}
       selectedKeys={new Set([value ? String(value) : "none"])}
       onSelectionChange={(keys) => {
@@ -84,11 +86,11 @@ export function CategoryTreeSelect({
     >
       {rows.map((row) =>
         row.rowKey === "none" ? (
-          <SelectItem key="none" textValue={noneLabel}>
+          <SelectItem key="none" textValue={noneLabel || "none"}>
             {noneLabel}
           </SelectItem>
         ) : (
-          <SelectItem key={String(row.option.id)} textValue={row.option.name}>
+          <SelectItem key={String(row.option.id)} textValue={row.option.name || String(row.option.id)}>
             <div
               className="flex w-full min-w-0 items-center gap-2"
               style={{ paddingInlineStart: `${row.option.depth * 14}px` }}

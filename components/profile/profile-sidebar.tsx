@@ -45,11 +45,13 @@ export default function ProfileSidebar({ items, isOpen = false, onClose, lang, v
     <Card className={cn(PROFILE_GLASS_CARD, "shadow-none")}>
       <CardBody className="gap-4 p-4">
         <div className="flex items-center gap-3 border-b border-white/10 pb-4 dark:border-white/10">
+          {/* 与主列 ProfileOverview 重复展示同一头像：侧栏用小图 + lazy，主列已 priority 预加载 */}
           <Avatar
             isBordered
             radius="sm"
             className="shrink-0"
             src={isAuthenticated && user?.avatar ? user.avatar : DEFAULT_AVATAR}
+            imgProps={{ loading: "lazy" }}
             fallback={<Image src={FALLBACK_AVATAR} alt="" width={40} height={40} />}
             showFallback
           />

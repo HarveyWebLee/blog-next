@@ -529,6 +529,9 @@ function SearchAndFilter({
             <div className="flex items-center gap-3 flex-1">
               <Select
                 size="sm"
+                label={t.selectSort}
+                aria-label={t.selectSort || "sort"}
+                labelPlacement="outside"
                 placeholder={t.selectSort}
                 selectedKeys={new Set([sortBy])}
                 onSelectionChange={(keys) => onSortChange(Array.from(keys)[0] as string)}
@@ -541,7 +544,11 @@ function SearchAndFilter({
                 }}
               >
                 {sortOptions.map((option) => (
-                  <SelectItem key={option.key} startContent={<option.icon className="w-4 h-4" />}>
+                  <SelectItem
+                    key={option.key}
+                    textValue={option.label || option.key}
+                    startContent={<option.icon className="w-4 h-4" />}
+                  >
                     {option.label}
                   </SelectItem>
                 ))}

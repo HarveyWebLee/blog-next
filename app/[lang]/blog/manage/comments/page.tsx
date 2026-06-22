@@ -52,6 +52,8 @@ export default function BlogCommentsReviewPage() {
   const dict = useClientDictionary(lang);
   const t = pickText((dict as { profile?: { commentReview?: Record<string, string> } })?.profile?.commentReview);
   const unknownLabel = t.unknown ?? "";
+  const dateRangeLabel = t.dateRangeLabel ?? "日期范围";
+  const clearDateLabel = t.clearDate ?? "清空日期";
 
   const [items, setItems] = useState<AdminCommentItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -323,6 +325,7 @@ export default function BlogCommentsReviewPage() {
                 value={qInput}
                 onValueChange={setQInput}
                 placeholder={t.searchPh}
+                aria-label={t.searchPh || "search comments"}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     setPage(1);
@@ -332,27 +335,33 @@ export default function BlogCommentsReviewPage() {
                 startContent={<Search className="h-4 w-4 text-default-400" />}
               />
               <Select
+                aria-label={t.authorPlaceholder || "author filter"}
                 selectedKeys={authorIdInput ? [authorIdInput] : []}
                 onSelectionChange={(keys) => {
                   const selected = Array.from(keys)[0] as string | undefined;
                   setAuthorIdInput(selected === "all" ? "" : (selected ?? ""));
                 }}
-                placeholder="选择用户"
+                placeholder={t.authorPlaceholder}
                 items={authorSelectItems}
               >
-                {(item) => <SelectItem key={item.key}>{item.label}</SelectItem>}
+                {(item) => (
+                  <SelectItem key={item.key} textValue={item.label || String(item.key)}>
+                    {item.label}
+                  </SelectItem>
+                )}
               </Select>
               <DateRangePicker
                 className="sm:col-span-2 min-w-0 w-full [&_[data-slot='input-wrapper']]:min-w-0 [&_[data-slot='input-wrapper']]:max-w-full [&_[data-slot='input-wrapper']]:overflow-x-auto [&_[data-slot='input-wrapper']]:overflow-y-hidden [&_[data-slot='input-wrapper']]:whitespace-nowrap"
                 value={dateRangeInput}
                 onChange={(range) => setDateRangeInput(range)}
-                label="日期范围"
-                labelPlacement="outside"
+                aria-label={dateRangeLabel}
                 granularity="second"
                 hourCycle={24}
                 showMonthAndYearPickers
               />
               <Select
+                aria-label={t.statusPlaceholder || "status filter"}
+                placeholder={t.statusPlaceholder}
                 selectedKeys={[status]}
                 onSelectionChange={(keys) => {
                   const selected = Array.from(keys)[0] as "all" | ReviewStatus;
@@ -361,10 +370,18 @@ export default function BlogCommentsReviewPage() {
                 }}
                 className="w-40"
               >
-                <SelectItem key="all">{t.statusAll}</SelectItem>
-                <SelectItem key="pending">{t.statusPending}</SelectItem>
-                <SelectItem key="approved">{t.statusApproved}</SelectItem>
-                <SelectItem key="spam">{t.statusSpam}</SelectItem>
+                <SelectItem key="all" textValue={t.statusAll ?? "all"}>
+                  {t.statusAll}
+                </SelectItem>
+                <SelectItem key="pending" textValue={t.statusPending ?? "pending"}>
+                  {t.statusPending}
+                </SelectItem>
+                <SelectItem key="approved" textValue={t.statusApproved ?? "approved"}>
+                  {t.statusApproved}
+                </SelectItem>
+                <SelectItem key="spam" textValue={t.statusSpam ?? "spam"}>
+                  {t.statusSpam}
+                </SelectItem>
               </Select>
               <Button
                 color="primary"
@@ -388,7 +405,7 @@ export default function BlogCommentsReviewPage() {
                 }}
                 isDisabled={!dateRangeInput}
               >
-                清空日期
+                {clearDateLabel}
               </Button>
             </div>
             <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">

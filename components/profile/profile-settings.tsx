@@ -634,101 +634,164 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
                 <h3 className="mb-6 text-lg font-semibold text-foreground">{t.privacy.title}</h3>
                 <div className="space-y-6">
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">
-                      {t.privacy.profileVisibility}
-                    </label>
                     <Select
+                      label={t.privacy.profileVisibility}
+                      aria-label={t.privacy.profileVisibility || "profile visibility"}
+                      labelPlacement="outside"
                       placeholder={t.privacy.visibilityPlaceholder}
                       selectedKeys={[formData.profileVisibility]}
-                      onChange={(e) => handleInputChange("profileVisibility", e.target.value)}
+                      onSelectionChange={(keys) => {
+                        const selected = Array.from(keys)[0] as string;
+                        handleInputChange("profileVisibility", selected);
+                      }}
                     >
-                      <SelectItem key="public">{t.privacy.public}</SelectItem>
-                      <SelectItem key="private">{t.privacy.private}</SelectItem>
-                      <SelectItem key="friends">{t.privacy.friends}</SelectItem>
+                      <SelectItem key="public" textValue={t.privacy.public}>
+                        {t.privacy.public}
+                      </SelectItem>
+                      <SelectItem key="private" textValue={t.privacy.private}>
+                        {t.privacy.private}
+                      </SelectItem>
+                      <SelectItem key="friends" textValue={t.privacy.friends}>
+                        {t.privacy.friends}
+                      </SelectItem>
                     </Select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">
-                      {t.privacy.emailVisibility}
-                    </label>
                     <Select
+                      label={t.privacy.emailVisibility}
+                      aria-label={t.privacy.emailVisibility || "email visibility"}
+                      labelPlacement="outside"
                       placeholder={t.privacy.visibilityPlaceholder}
                       selectedKeys={[formData.emailVisibility]}
-                      onChange={(e) => handleInputChange("emailVisibility", e.target.value)}
+                      onSelectionChange={(keys) => {
+                        const selected = Array.from(keys)[0] as string;
+                        handleInputChange("emailVisibility", selected);
+                      }}
                     >
-                      <SelectItem key="public">{t.privacy.public}</SelectItem>
-                      <SelectItem key="private">{t.privacy.private}</SelectItem>
-                      <SelectItem key="friends">{t.privacy.friends}</SelectItem>
+                      <SelectItem key="public" textValue={t.privacy.public}>
+                        {t.privacy.public}
+                      </SelectItem>
+                      <SelectItem key="private" textValue={t.privacy.private}>
+                        {t.privacy.private}
+                      </SelectItem>
+                      <SelectItem key="friends" textValue={t.privacy.friends}>
+                        {t.privacy.friends}
+                      </SelectItem>
                     </Select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">
-                      {t.privacy.activityVisibility}
-                    </label>
                     <Select
+                      label={t.privacy.activityVisibility}
+                      aria-label={t.privacy.activityVisibility || "activity visibility"}
+                      labelPlacement="outside"
                       placeholder={t.privacy.visibilityPlaceholder}
                       selectedKeys={[formData.activityVisibility]}
-                      onChange={(e) => handleInputChange("activityVisibility", e.target.value)}
+                      onSelectionChange={(keys) => {
+                        const selected = Array.from(keys)[0] as string;
+                        handleInputChange("activityVisibility", selected);
+                      }}
                     >
-                      <SelectItem key="public">{t.privacy.public}</SelectItem>
-                      <SelectItem key="private">{t.privacy.private}</SelectItem>
-                      <SelectItem key="friends">{t.privacy.friends}</SelectItem>
+                      <SelectItem key="public" textValue={t.privacy.public}>
+                        {t.privacy.public}
+                      </SelectItem>
+                      <SelectItem key="private" textValue={t.privacy.private}>
+                        {t.privacy.private}
+                      </SelectItem>
+                      <SelectItem key="friends" textValue={t.privacy.friends}>
+                        {t.privacy.friends}
+                      </SelectItem>
                     </Select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">
-                      {t.privacy.githubVisibility}
-                    </label>
                     <Select
+                      label={t.privacy.githubVisibility}
+                      aria-label={t.privacy.githubVisibility || "github visibility"}
+                      labelPlacement="outside"
                       placeholder={t.privacy.visibilityPlaceholder}
                       selectedKeys={[formData.githubVisibility]}
-                      onChange={(e) => handleInputChange("githubVisibility", e.target.value)}
+                      onSelectionChange={(keys) => {
+                        const selected = Array.from(keys)[0] as string;
+                        handleInputChange("githubVisibility", selected);
+                      }}
                     >
-                      <SelectItem key="public">{t.privacy.public}</SelectItem>
-                      <SelectItem key="private">{t.privacy.private}</SelectItem>
-                      <SelectItem key="friends">{t.privacy.friends}</SelectItem>
+                      <SelectItem key="public" textValue={t.privacy.public}>
+                        {t.privacy.public}
+                      </SelectItem>
+                      <SelectItem key="private" textValue={t.privacy.private}>
+                        {t.privacy.private}
+                      </SelectItem>
+                      <SelectItem key="friends" textValue={t.privacy.friends}>
+                        {t.privacy.friends}
+                      </SelectItem>
                     </Select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">
-                      {t.privacy.wechatQrVisibility}
-                    </label>
                     <Select
+                      label={t.privacy.wechatQrVisibility}
+                      aria-label={t.privacy.wechatQrVisibility || "wechat qr visibility"}
+                      labelPlacement="outside"
                       placeholder={t.privacy.visibilityPlaceholder}
                       selectedKeys={[formData.wechatQrVisibility]}
-                      onChange={(e) => handleInputChange("wechatQrVisibility", e.target.value)}
+                      onSelectionChange={(keys) => {
+                        const selected = Array.from(keys)[0] as string;
+                        handleInputChange("wechatQrVisibility", selected);
+                      }}
                     >
-                      <SelectItem key="public">{t.privacy.public}</SelectItem>
-                      <SelectItem key="private">{t.privacy.private}</SelectItem>
-                      <SelectItem key="friends">{t.privacy.friends}</SelectItem>
+                      <SelectItem key="public" textValue={t.privacy.public}>
+                        {t.privacy.public}
+                      </SelectItem>
+                      <SelectItem key="private" textValue={t.privacy.private}>
+                        {t.privacy.private}
+                      </SelectItem>
+                      <SelectItem key="friends" textValue={t.privacy.friends}>
+                        {t.privacy.friends}
+                      </SelectItem>
                     </Select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">
-                      {t.privacy.statsVisibility}
-                    </label>
                     <Select
+                      label={t.privacy.statsVisibility}
+                      aria-label={t.privacy.statsVisibility || "stats visibility"}
+                      labelPlacement="outside"
                       placeholder={t.privacy.visibilityPlaceholder}
                       selectedKeys={[formData.statsVisibility]}
-                      onChange={(e) => handleInputChange("statsVisibility", e.target.value)}
+                      onSelectionChange={(keys) => {
+                        const selected = Array.from(keys)[0] as string;
+                        handleInputChange("statsVisibility", selected);
+                      }}
                     >
-                      <SelectItem key="public">{t.privacy.public}</SelectItem>
-                      <SelectItem key="private">{t.privacy.private}</SelectItem>
-                      <SelectItem key="friends">{t.privacy.friends}</SelectItem>
+                      <SelectItem key="public" textValue={t.privacy.public}>
+                        {t.privacy.public}
+                      </SelectItem>
+                      <SelectItem key="private" textValue={t.privacy.private}>
+                        {t.privacy.private}
+                      </SelectItem>
+                      <SelectItem key="friends" textValue={t.privacy.friends}>
+                        {t.privacy.friends}
+                      </SelectItem>
                     </Select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">
-                      {t.privacy.recentActivityVisibility}
-                    </label>
                     <Select
+                      label={t.privacy.recentActivityVisibility}
+                      aria-label={t.privacy.recentActivityVisibility || "recent activity visibility"}
+                      labelPlacement="outside"
                       placeholder={t.privacy.visibilityPlaceholder}
                       selectedKeys={[formData.recentActivityVisibility]}
-                      onChange={(e) => handleInputChange("recentActivityVisibility", e.target.value)}
+                      onSelectionChange={(keys) => {
+                        const selected = Array.from(keys)[0] as string;
+                        handleInputChange("recentActivityVisibility", selected);
+                      }}
                     >
-                      <SelectItem key="public">{t.privacy.public}</SelectItem>
-                      <SelectItem key="private">{t.privacy.private}</SelectItem>
-                      <SelectItem key="friends">{t.privacy.friends}</SelectItem>
+                      <SelectItem key="public" textValue={t.privacy.public}>
+                        {t.privacy.public}
+                      </SelectItem>
+                      <SelectItem key="private" textValue={t.privacy.private}>
+                        {t.privacy.private}
+                      </SelectItem>
+                      <SelectItem key="friends" textValue={t.privacy.friends}>
+                        {t.privacy.friends}
+                      </SelectItem>
                     </Select>
                   </div>
                 </div>

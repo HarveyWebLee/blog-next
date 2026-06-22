@@ -16,6 +16,8 @@ import { PostData } from "@/types/blog";
 interface PostCardProps {
   post: PostData;
   lang?: string;
+  /** 首屏首卡封面可设为 true，配合 priority 改善 LCP */
+  imagePriority?: boolean;
   onView?: () => void;
   onToggleLike?: () => void;
   onToggleFavorite?: () => void;
@@ -28,6 +30,7 @@ interface PostCardProps {
 export function PostCard({
   post,
   lang = "zh-CN",
+  imagePriority = false,
   onView,
   onToggleLike,
   onToggleFavorite,
@@ -168,7 +171,9 @@ export function PostCard({
                   src={post.featuredImage}
                   alt={post.title}
                   fill
+                  sizes="(max-width: 768px) 100vw, 50vw"
                   className="object-cover group-hover:scale-110 transition-transform duration-500"
+                  priority={imagePriority}
                 />
                 {/* 图片底部轻遮罩（悬停）：仅氛围，不叠分类文案（分类仍在卡片头部展示） */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
