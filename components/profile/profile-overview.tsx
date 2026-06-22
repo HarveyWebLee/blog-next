@@ -1,5 +1,6 @@
 "use client";
 
+import type { ImgHTMLAttributes } from "react";
 import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -153,13 +154,16 @@ export default function ProfileOverview({ lang }: ProfileOverviewProps) {
             {/* 个人中心首屏头像常为 LCP：经 next/image 渲染并 priority 预加载，消除开发态警告 */}
             <Avatar
               ImgComponent={Image}
-              imgProps={{
-                width: 64,
-                height: 64,
-                priority: true,
-                // MinIO 等外链与站内其它封面图一致，走 unoptimized 避免优化器域名限制
-                unoptimized: Boolean(user?.avatar?.startsWith("http")),
-              }}
+              imgProps={
+                {
+                  width: 64,
+                  height: 64,
+                  priority: true,
+                  // MinIO 等外链与站内其它封面图一致，走 unoptimized 避免优化器域名限制
+                  unoptimized: Boolean(user?.avatar?.startsWith("http")),
+                  // HeroUI imgProps 类型为原生 img；经 ImgComponent=next/image 透传 priority 等扩展属性
+                } as ImgHTMLAttributes<HTMLImageElement>
+              }
               src={user?.avatar || "/images/avatar.jpeg"}
               name={`${profile.firstName ?? ""}${profile.lastName ?? ""}`.trim() || user?.username || "?"}
               size="lg"
