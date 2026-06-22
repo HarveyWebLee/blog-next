@@ -1,3 +1,9 @@
+## [1.8.1](https://github.com/HarveyWebLee/blog-next/compare/v1.8.0...v1.8.1) (2026-06-22)
+
+### Bug Fixes
+
+- **profile:** 优化个人中心头像组件的类型支持 ([6406b04](https://github.com/HarveyWebLee/blog-next/commit/6406b04d17386011985239271c0d5a3a4dac7a94))
+
 # [1.8.0](https://github.com/HarveyWebLee/blog-next/compare/v1.7.0...v1.8.0) (2026-06-22)
 
 ### Features
