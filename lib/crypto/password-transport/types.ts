@@ -31,4 +31,8 @@ export type PasswordTransportPublicParams = {
   publicKeySpkiB64: string;
   /** 允许客户端与服务端时钟差的毫秒上限 */
   maxClockSkewMs: number;
+  /** 服务端是否强制 passwordTransport（生产默认 true，可由 PASSWORD_TRANSPORT_REQUIRED 覆盖） */
+  transportRequired?: boolean;
+  /** 启用封装时浏览器须处于安全上下文（HTTPS / localhost），否则 crypto.subtle 不可用 */
+  requiresSecureContext?: boolean;
 };

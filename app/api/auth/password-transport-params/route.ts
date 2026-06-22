@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
+import { isPasswordTransportRequired } from "@/lib/crypto/password-transport/resolve-secret";
 import {
   getPasswordTransportKeyId,
   getPasswordTransportMaxSkewMs,
@@ -19,11 +20,14 @@ async function handlePasswordTransportParamsGET(_request: NextRequest) {
   const configured = isPasswordTransportConfigured();
   const spki = getPasswordTransportPublicSpkiB64();
 
+  const enabled = configured && Boolean(spki);
   const data: PasswordTransportPublicParams = {
-    enabled: configured && Boolean(spki),
+    enabled,
     keyId: getPasswordTransportKeyId(),
     publicKeySpkiB64: spki ?? "",
     maxClockSkewMs: getPasswordTransportMaxSkewMs(),
+    transportRequired: isPasswordTransportRequired(),
+    requiresSecureContext: enabled,
   };
 
   return NextResponse.json<ApiResponse<PasswordTransportPublicParams>>({

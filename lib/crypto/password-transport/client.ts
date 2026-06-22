@@ -6,10 +6,34 @@ import { buildCanonicalV1 } from "./canonical";
 import { PASSWORD_TRANSPORT_AES_KEY_LENGTH, PASSWORD_TRANSPORT_IV_LENGTH } from "./constants";
 import type { PasswordTransportEnvelopeV1, PasswordTransportPublicParams } from "./types";
 
+/** 与 auth-context / 注册页等共用的错误码，便于映射 i18n 提示 */
+export const PASSWORD_TRANSPORT_REQUIRES_HTTPS_CODE = "PASSWORD_TRANSPORT_REQUIRES_HTTPS";
+
+/** 浏览器是否具备 Web Crypto subtle（仅 HTTPS / localhost 等安全上下文可用） */
+export function isBrowserPasswordTransportSupported(): boolean {
+  return Boolean(globalThis.crypto?.subtle);
+}
+
+/**
+ * 服务端已启用且强制封装，但当前页面非安全上下文（常见于 HTTP 生产访问）时无法登录。
+ */
+export function isPasswordTransportBlockedInBrowser(params: PasswordTransportPublicParams): boolean {
+  if (!params.enabled || !params.publicKeySpkiB64) return false;
+  if (!params.transportRequired) return false;
+  return !isBrowserPasswordTransportSupported();
+}
+
+export class PasswordTransportSecureContextRequiredError extends Error {
+  constructor() {
+    super(PASSWORD_TRANSPORT_REQUIRES_HTTPS_CODE);
+    this.name = "PasswordTransportSecureContextRequiredError";
+  }
+}
+
 function assertBrowserCrypto(): SubtleCrypto {
   const subtle = globalThis.crypto?.subtle;
   if (!subtle) {
-    throw new Error("当前环境不支持 Web Crypto（password-transport）");
+    throw new PasswordTransportSecureContextRequiredError();
   }
   return subtle;
 }
@@ -113,5 +137,7 @@ export async function fetchPasswordTransportParams(baseUrl?: string): Promise<Pa
     keyId: "off",
     publicKeySpkiB64: "",
     maxClockSkewMs: 0,
+    transportRequired: false,
+    requiresSecureContext: false,
   };
 }

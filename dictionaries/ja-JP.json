@@ -286,7 +286,8 @@
       "errNetwork": "ネットワークエラーが発生しました"
     },
     "loginFailed": "ログインに失敗しました",
-    "loginRequestFailed": "ログインリクエストに失敗しました"
+    "loginRequestFailed": "ログインリクエストに失敗しました",
+    "loginRequiresHttps": "HTTPS でアクセスしていないため、ブラウザでパスワードを暗号化できません。https:// の URL でログインするか、管理者に HTTPS の有効化を依頼してください。"
   },
   "blog": {
     "title": "荒野",

@@ -286,7 +286,8 @@
       "errNetwork": "Network error, please try again"
     },
     "loginFailed": "Sign in failed",
-    "loginRequestFailed": "Sign-in request failed"
+    "loginRequestFailed": "Sign-in request failed",
+    "loginRequiresHttps": "You are not using HTTPS. The browser cannot encrypt your password. Please sign in via https:// or ask the administrator to enable HTTPS."
   },
   "blog": {
     "title": "Wilderness",

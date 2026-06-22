@@ -286,7 +286,8 @@
       "errNetwork": "网络错误，请稍后重试"
     },
     "loginFailed": "登录失败",
-    "loginRequestFailed": "登录请求失败"
+    "loginRequestFailed": "登录请求失败",
+    "loginRequiresHttps": "当前通过非 HTTPS 访问，浏览器无法启用密码加密。请改用 https:// 地址登录，或联系管理员启用 HTTPS。"
   },
   "blog": {
     "title": "荒野",

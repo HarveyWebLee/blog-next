@@ -43,7 +43,7 @@ function msg(locale: Locale, key: ApiMessageKey): string {
  * - 显式配置 PASSWORD_TRANSPORT_REQUIRED=true 时始终强制；
  * - 未显式配置时，生产环境默认强制，开发/测试默认非强制（便于灰度与联调）。
  */
-function isPasswordTransportRequired(): boolean {
+export function isPasswordTransportRequired(): boolean {
   const raw = process.env.PASSWORD_TRANSPORT_REQUIRED?.trim().toLowerCase();
   if (raw === "true") return true;
   if (raw === "false") return false;

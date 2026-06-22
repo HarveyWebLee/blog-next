@@ -3,6 +3,10 @@
 import React, { createContext, ReactNode, useCallback, useContext, useEffect, useState } from "react";
 
 import { sealPasswordInRequestBody } from "@/lib/crypto/password-transport/body";
+import {
+  PASSWORD_TRANSPORT_REQUIRES_HTTPS_CODE,
+  PasswordTransportSecureContextRequiredError,
+} from "@/lib/crypto/password-transport/client";
 import { getDictionaryForLang } from "@/lib/dictionaries";
 import { getClientPageLocale } from "@/lib/i18n/locale";
 import { extractResponseErrorMessage, extractUnknownErrorMessage } from "@/lib/utils/client-error";
@@ -124,8 +128,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
       console.error("登录错误:", error);
       const locale = getClientPageLocale();
       const dict = await getDictionaryForLang(locale);
-      const loginRequestFailed =
-        (dict as { auth?: { loginRequestFailed?: string } }).auth?.loginRequestFailed ?? "登录请求失败";
+      const authDict = dict as {
+        auth?: { loginRequestFailed?: string; loginRequiresHttps?: string };
+      };
+      const loginRequiresHttps =
+        authDict.auth?.loginRequiresHttps ??
+        "当前通过非 HTTPS 访问，浏览器无法启用密码加密。请改用 https:// 地址登录。";
+      if (
+        error instanceof PasswordTransportSecureContextRequiredError ||
+        (error instanceof Error && error.message === PASSWORD_TRANSPORT_REQUIRES_HTTPS_CODE)
+      ) {
+        return { success: false, message: loginRequiresHttps };
+      }
+      const loginRequestFailed = authDict.auth?.loginRequestFailed ?? "登录请求失败";
       return { success: false, message: extractUnknownErrorMessage(error, loginRequestFailed) };
     } finally {
       setIsLoading(false);
