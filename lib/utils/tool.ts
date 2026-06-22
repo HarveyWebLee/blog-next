@@ -37,11 +37,7 @@ const URL_ALIAS_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz
 export function generateRandomUrlAlias(length = 8): string {
   const n = Math.max(4, Math.min(32, Math.floor(length)));
   const bytes = new Uint8Array(n);
-  if (typeof globalThis.crypto !== "undefined" && globalThis.crypto.getRandomValues) {
-    globalThis.crypto.getRandomValues(bytes);
-  } else {
-    for (let i = 0; i < n; i++) bytes[i] = Math.floor(Math.random() * 256);
-  }
+  globalThis.crypto.getRandomValues(bytes);
   let out = "";
   for (let i = 0; i < n; i++) {
     out += URL_ALIAS_ALPHABET[bytes[i]! % URL_ALIAS_ALPHABET.length];

@@ -1,3 +1,5 @@
+import { NextRequest } from "next/server";
+
 type RateLimitBucket = {
   hits: number[];
 };
@@ -33,4 +35,24 @@ export function checkRateLimit(
   bucket.hits.push(now);
   BUCKETS.set(key, bucket);
   return { allowed: true, retryAfterSeconds: 0 };
+}
+
+/**
+ * 从 NextRequest 中提取客户端 IP 地址。
+ * 优先信任反向代理注入的头；无可用头时返回 `unknown`（与活动日志等模块一致）。
+ */
+export function getClientIp(request: NextRequest): string {
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) {
+    return forwarded.split(",")[0]?.trim() || "unknown";
+  }
+  const cfIp = request.headers.get("cf-connecting-ip");
+  if (cfIp) {
+    return cfIp.trim();
+  }
+  const realIp = request.headers.get("x-real-ip");
+  if (realIp) {
+    return realIp.trim();
+  }
+  return "unknown";
 }

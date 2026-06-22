@@ -8,6 +8,7 @@ import { and, asc, count, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db/config";
 import { categories, comments, posts, postTags, tags, userFavorites, users } from "@/lib/db/schema";
 import { calculatePagination, generateSlug, truncateText } from "@/lib/utils";
+import { escapeLikeWildcards } from "@/lib/utils/escape-like-wildcards";
 import { logDbError } from "@/lib/utils/mysql-error";
 import {
   CreatePostRequest,
@@ -331,10 +332,11 @@ export class PostService {
 
       // 搜索过滤
       if (params.search) {
+        const escapedSearch = escapeLikeWildcards(params.search);
         const searchCondition = or(
-          like(posts.title, `%${params.search}%`),
-          like(posts.content, `%${params.search}%`),
-          like(posts.excerpt, `%${params.search}%`)
+          like(posts.title, `%${escapedSearch}%`),
+          like(posts.content, `%${escapedSearch}%`),
+          like(posts.excerpt, `%${escapedSearch}%`)
         );
         conditions.push(searchCondition);
       }
@@ -708,18 +710,21 @@ export class PostService {
    */
   private async attachTagsToPost(postId: number, tagIds: number[]): Promise<boolean> {
     try {
-      // 先删除现有的标签关联
-      await db.delete(postTags).where(eq(postTags.postId, postId));
+      // 使用事务保证操作原子性：先删除后插入，防止中途失败导致不一致
+      await db.transaction(async (tx) => {
+        // 先删除现有的标签关联
+        await tx.delete(postTags).where(eq(postTags.postId, postId));
 
-      // 创建新的标签关联
-      if (tagIds.length > 0) {
-        const tagRelations = tagIds.map((tagId) => ({
-          postId,
-          tagId,
-        }));
+        // 创建新的标签关联
+        if (tagIds.length > 0) {
+          const tagRelations = tagIds.map((tagId) => ({
+            postId,
+            tagId,
+          }));
 
-        await db.insert(postTags).values(tagRelations);
-      }
+          await tx.insert(postTags).values(tagRelations);
+        }
+      });
 
       return true;
     } catch (error) {

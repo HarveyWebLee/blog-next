@@ -15,10 +15,18 @@ import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { logger } from "@/lib/server/logger";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
 import { hashPassword, validatePasswordStrength } from "@/lib/utils";
+import { checkRateLimit, getClientIp } from "@/lib/utils/request-rate-limit";
 import { ApiResponse } from "@/types/blog";
 
 async function handleAuthResetPasswordPOST(request: NextRequest) {
   try {
+    // 速率限制：5 次/15 分钟（按客户端 IP）
+    const clientIp = getClientIp(request);
+    const limiter = checkRateLimit(`reset-password:ip:${clientIp}`, 5, 15 * 60 * 1000);
+    if (!limiter.allowed) {
+      return jsonRateLimitError(request, limiter.retryAfterSeconds);
+    }
+
     const body = (await request.json()) as Record<string, unknown>;
     const locale = getRequestLocale(request);
     const secret = await resolveSecretFromBody({ body, plainField: "newPassword", locale });

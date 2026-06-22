@@ -43,9 +43,15 @@ function createTransporter() {
 
 /**
  * 生成6位数字验证码
+ * 使用 crypto.getRandomValues() 确保安全的随机性
  */
 export function generateVerificationCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  const bytes = new Uint8Array(3);
+  globalThis.crypto.getRandomValues(bytes);
+  // 转换为 100000-999999 的 6 位数
+  const num = (bytes[0]! << 16) | (bytes[1]! << 8) | bytes[2]!;
+  const code = 100000 + (num % 900000);
+  return code.toString();
 }
 
 /**

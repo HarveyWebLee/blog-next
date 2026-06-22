@@ -19,10 +19,18 @@ import { getRequestLocale } from "@/lib/i18n/locale";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { notifyRouteUnhandledError } from "@/lib/server/route-alert";
 import { generateAccessToken, generateRefreshToken, verifyPassword } from "@/lib/utils";
+import { checkRateLimit, getClientIp } from "@/lib/utils/request-rate-limit";
 import { ApiResponse, LoginResponse } from "@/types/blog";
 
 async function handleAuthLoginPOST(request: NextRequest) {
   try {
+    // 速率限制：5 次/15 分钟
+    const clientIp = getClientIp(request);
+    const limiter = checkRateLimit(`login:ip:${clientIp}`, 5, 15 * 60 * 1000);
+    if (!limiter.allowed) {
+      return jsonRateLimitError(request, limiter.retryAfterSeconds);
+    }
+
     const body = (await request.json()) as Record<string, unknown>;
     const locale = getRequestLocale(request);
     const secret = await resolveSecretFromBody({ body, plainField: "password", locale });

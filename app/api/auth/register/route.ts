@@ -1,24 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
-import { and, eq, gt } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 import { getSuperAdminProfileUserId } from "@/lib/config/super-admin";
 import { resolveSecretFromBody } from "@/lib/crypto/password-transport/resolve-secret";
 import { db } from "@/lib/db/config";
-import { emailVerifications, userProfiles, users } from "@/lib/db/schema";
-import {
-  apiMessage,
-  jsonRateLimitError,
-  localizedErrorResponse,
-  localizedSuccessResponse,
-} from "@/lib/i18n/api-response";
+import { userProfiles, users } from "@/lib/db/schema";
+import { apiMessage, jsonRateLimitError } from "@/lib/i18n/api-response";
 import { getRequestLocale } from "@/lib/i18n/locale";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { logger } from "@/lib/server/logger";
+import { consumeEmailVerificationCode } from "@/lib/services/email-verification-consume";
 import { hashPassword, isValidEmail, validatePasswordStrength } from "@/lib/utils";
+import { checkRateLimit, getClientIp } from "@/lib/utils/request-rate-limit";
 import { ApiResponse } from "@/types/blog";
 
 async function handleAuthRegisterPOST(request: NextRequest) {
   try {
+    // 速率限制：3 次/小时
+    const clientIp = getClientIp(request);
+    const limiter = checkRateLimit(`register:ip:${clientIp}`, 3, 60 * 60 * 1000);
+    if (!limiter.allowed) {
+      return jsonRateLimitError(request, limiter.retryAfterSeconds);
+    }
+
     const body = (await request.json()) as Record<string, unknown>;
     const locale = getRequestLocale(request);
     const resolved = await resolveSecretFromBody({ body, plainField: "password", locale });
@@ -97,47 +101,15 @@ async function handleAuthRegisterPOST(request: NextRequest) {
       );
     }
 
-    // 如果使用邮箱验证，检查验证码
-    if (useEmailVerification) {
-      if (!verificationCode) {
-        return NextResponse.json<ApiResponse>(
-          {
-            success: false,
-            message: apiMessage(request, "auth.verificationCodeRequired"),
-            timestamp: new Date().toISOString(),
-          },
-          { status: 400 }
-        );
-      }
-
-      // 验证邮箱验证码
-      const verification = await db
-        .select()
-        .from(emailVerifications)
-        .where(
-          and(
-            eq(emailVerifications.email, email),
-            eq(emailVerifications.code, verificationCode),
-            eq(emailVerifications.type, "register"),
-            eq(emailVerifications.isUsed, false),
-            gt(emailVerifications.expiresAt, new Date())
-          )
-        )
-        .limit(1);
-
-      if (verification.length === 0) {
-        return NextResponse.json<ApiResponse>(
-          {
-            success: false,
-            message: apiMessage(request, "auth.verificationCodeInvalid"),
-            timestamp: new Date().toISOString(),
-          },
-          { status: 400 }
-        );
-      }
-
-      // 标记验证码为已使用
-      await db.update(emailVerifications).set({ isUsed: true }).where(eq(emailVerifications.id, verification[0].id));
+    if (useEmailVerification && !verificationCode) {
+      return NextResponse.json<ApiResponse>(
+        {
+          success: false,
+          message: apiMessage(request, "auth.verificationCodeRequired"),
+          timestamp: new Date().toISOString(),
+        },
+        { status: 400 }
+      );
     }
 
     // 验证密码强度
@@ -203,6 +175,22 @@ async function handleAuthRegisterPOST(request: NextRequest) {
         },
         { status: 409 }
       );
+    }
+
+    // 业务校验通过后再消费验证码，避免弱密码/重复账号等场景误消耗验证码
+    if (useEmailVerification) {
+      const verificationResult = await consumeEmailVerificationCode(email, verificationCode, "register");
+      if (!verificationResult.ok) {
+        logger.warn("auth/register", "验证码校验未通过", { email });
+        return NextResponse.json<ApiResponse>(
+          {
+            success: false,
+            message: apiMessage(request, "auth.verificationCodeInvalid"),
+            timestamp: new Date().toISOString(),
+          },
+          { status: 400 }
+        );
+      }
     }
 
     // 加密密码

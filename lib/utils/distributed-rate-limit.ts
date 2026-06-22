@@ -1,39 +1,4 @@
-import Redis from "ioredis";
-
-let redisClient: Redis | null | undefined;
-let redisInitLogged = false;
-
-function getRedisClient(): Redis | null {
-  if (redisClient !== undefined) {
-    return redisClient;
-  }
-
-  const redisUrl = process.env.REDIS_URL?.trim();
-  if (!redisUrl) {
-    redisClient = null;
-    return redisClient;
-  }
-
-  try {
-    redisClient = new Redis(redisUrl, {
-      lazyConnect: true,
-      maxRetriesPerRequest: 1,
-      enableOfflineQueue: false,
-    });
-
-    redisClient.on("error", (error) => {
-      if (!redisInitLogged) {
-        console.error("[distributed-rate-limit] Redis 不可用，将自动回退本地/数据库限流:", error);
-        redisInitLogged = true;
-      }
-    });
-  } catch (error) {
-    console.error("[distributed-rate-limit] Redis 客户端初始化失败:", error);
-    redisClient = null;
-  }
-
-  return redisClient;
-}
+import { getRedisClient } from "@/lib/redis/client";
 
 /**
  * Redis 分布式限流（固定窗口）：
