@@ -1,3 +1,9 @@
+# [1.8.0](https://github.com/HarveyWebLee/blog-next/compare/v1.7.0...v1.8.0) (2026-06-22)
+
+### Features
+
+- **auth:** 添加请求速率限制功能 ([c7007e9](https://github.com/HarveyWebLee/blog-next/commit/c7007e9ad0777a67a1e6c5aa0e0572081d6e5cbe))
+
 # [1.7.0](https://github.com/HarveyWebLee/blog-next/compare/v1.6.7...v1.7.0) (2026-06-22)
 
 ### Features
