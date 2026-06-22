@@ -3,6 +3,12 @@ import { and, eq, gt } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { emailVerifications } from "@/lib/db/schema";
+import {
+  apiMessage,
+  jsonRateLimitError,
+  localizedErrorResponse,
+  localizedSuccessResponse,
+} from "@/lib/i18n/api-response";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { logger } from "@/lib/server/logger";
 import { ApiResponse } from "@/types/blog";
@@ -21,7 +27,7 @@ async function handleAuthVerifyCodePOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "邮箱和验证码不能为空",
+          message: apiMessage(request, "auth.verifyEmailCodeRequired"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -47,7 +53,7 @@ async function handleAuthVerifyCodePOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "验证码无效或已过期",
+          message: apiMessage(request, "auth.verifyCodeInvalid"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -59,7 +65,7 @@ async function handleAuthVerifyCodePOST(request: NextRequest) {
 
     return NextResponse.json<ApiResponse>({
       success: true,
-      message: "验证码验证成功",
+      message: apiMessage(request, "auth.verifyCodeSuccess"),
       timestamp: new Date().toISOString(),
     });
   } catch (error) {

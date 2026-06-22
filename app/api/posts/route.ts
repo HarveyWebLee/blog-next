@@ -5,10 +5,16 @@
  * GET /api/posts - 获取文章列表（支持分页、搜索、过滤）
  * POST /api/posts - 创建新文章
  */
-
 import { NextRequest, NextResponse } from "next/server";
 
 import { resolveOptionalPasswordForPostBody } from "@/lib/crypto/password-transport/resolve-secret";
+import {
+  apiMessage,
+  localizedErrorFromRaw,
+  localizedErrorResponse,
+  localizedSuccessResponse,
+} from "@/lib/i18n/api-response";
+import { getRequestLocale } from "@/lib/i18n/locale";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { logger } from "@/lib/server/logger";
 import { notifyRouteUnhandledError } from "@/lib/server/route-alert";
@@ -56,13 +62,13 @@ async function handlePostsGET(request: NextRequest) {
 
     // 验证分页参数
     if ((queryParams.page || 1) < 1) {
-      return NextResponse.json(createErrorResponse("页码必须大于0"), {
+      return NextResponse.json(localizedErrorResponse(request, "post.pageMustBePositive"), {
         status: 400,
       });
     }
 
     if ((queryParams.limit || 10) < 1 || (queryParams.limit || 10) > 100) {
-      return NextResponse.json(createErrorResponse("每页数量必须在1-100之间"), {
+      return NextResponse.json(localizedErrorResponse(request, "post.limitRange"), {
         status: 400,
       });
     }
@@ -72,11 +78,11 @@ async function handlePostsGET(request: NextRequest) {
     if (queryParams.authorId != null && !Number.isNaN(queryParams.authorId)) {
       const viewer = getAuthUserFromRequest(request);
       if (!viewer) {
-        return NextResponse.json(createErrorResponse("按作者筛选文章需先登录"), { status: 401 });
+        return NextResponse.json(localizedErrorResponse(request, "post.authorFilterNeedLogin"), { status: 401 });
       }
       const canViewAnyAuthor = isJwtInMemorySuperRoot(viewer);
       if (!canViewAnyAuthor && viewer.userId !== queryParams.authorId) {
-        return NextResponse.json(createErrorResponse("无权查看其他作者的管理列表"), { status: 403 });
+        return NextResponse.json(localizedErrorResponse(request, "post.noPermissionOtherAuthor"), { status: 403 });
       }
     }
 
@@ -86,11 +92,11 @@ async function handlePostsGET(request: NextRequest) {
     if (queryParams.includePrivate) {
       const viewer = getAuthUserFromRequest(request);
       if (!viewer) {
-        return NextResponse.json(createErrorResponse("查看 private 文章需先登录"), { status: 401 });
+        return NextResponse.json(localizedErrorResponse(request, "post.privateNeedLogin"), { status: 401 });
       }
       const canViewAnyAuthor = isJwtInMemorySuperRoot(viewer);
       if ((queryParams.authorId == null || Number.isNaN(queryParams.authorId)) && !canViewAnyAuthor) {
-        return NextResponse.json(createErrorResponse("仅超级管理员可查看全站 private 文章"), { status: 403 });
+        return NextResponse.json(localizedErrorResponse(request, "post.privateSuperAdminOnly"), { status: 403 });
       }
     }
 
@@ -98,7 +104,7 @@ async function handlePostsGET(request: NextRequest) {
     const result = await postService.getPosts(queryParams);
 
     // 返回成功响应
-    return NextResponse.json(createSuccessResponse(result, "获取文章列表成功"), { status: 200 });
+    return NextResponse.json(localizedSuccessResponse(request, result, "post.listSuccess"), { status: 200 });
   } catch (error) {
     throw error;
   }
@@ -113,9 +119,10 @@ async function handlePostsPOST(request: NextRequest) {
   try {
     // 获取请求体数据（密码字段支持 passwordTransport）
     const raw = (await request.json()) as Record<string, unknown>;
-    const pwdPart = await resolveOptionalPasswordForPostBody(raw);
+    const locale = getRequestLocale(request);
+    const pwdPart = await resolveOptionalPasswordForPostBody(raw, locale);
     if (!pwdPart.ok) {
-      return NextResponse.json(createErrorResponse(pwdPart.message), { status: pwdPart.status });
+      return NextResponse.json(localizedErrorFromRaw(request, pwdPart.message), { status: pwdPart.status });
     }
     const { passwordTransport: _pt, password: _pp, ...rest } = raw;
     const body: CreatePostRequest = {
@@ -125,28 +132,28 @@ async function handlePostsPOST(request: NextRequest) {
 
     // 验证必需字段
     if (!body.title || !body.content) {
-      return NextResponse.json(createErrorResponse("文章标题和内容不能为空"), {
+      return NextResponse.json(localizedErrorResponse(request, "post.titleContentRequired"), {
         status: 400,
       });
     }
 
     // 验证标题长度
     if (body.title.length > 200) {
-      return NextResponse.json(createErrorResponse("文章标题不能超过200个字符"), { status: 400 });
+      return NextResponse.json(localizedErrorResponse(request, "post.titleTooLong"), { status: 400 });
     }
 
     // 验证内容长度
     if (body.content.length < 10) {
-      return NextResponse.json(createErrorResponse("文章内容不能少于10个字符"), { status: 400 });
+      return NextResponse.json(localizedErrorResponse(request, "post.contentTooShort"), { status: 400 });
     }
     // 当可见性为密码保护时，访问密码为必填（接口兜底，防止绕过前端校验）。
     if (body.visibility === "password" && !body.password?.trim()) {
-      return NextResponse.json(createErrorResponse("可见性为密码保护时，访问密码不能为空"), { status: 400 });
+      return NextResponse.json(localizedErrorResponse(request, "post.passwordVisibilityRequired"), { status: 400 });
     }
 
     const viewer = getAuthUserFromRequest(request);
     if (!viewer) {
-      return NextResponse.json(createErrorResponse("请先登录后再创建文章"), { status: 401 });
+      return NextResponse.json(localizedErrorResponse(request, "post.createNeedLogin"), { status: 401 });
     }
 
     // 调用服务层创建文章（作者固定为当前登录用户）
@@ -174,14 +181,14 @@ async function handlePostsPOST(request: NextRequest) {
     }
 
     // 返回成功响应
-    return NextResponse.json(createSuccessResponse(newPost, "文章创建成功"), {
+    return NextResponse.json(localizedSuccessResponse(request, newPost, "post.createSuccess"), {
       status: 201,
     });
   } catch (error) {
     // 处理特定错误类型
     if (error instanceof Error) {
       if (error.message.includes("文章别名已存在")) {
-        return NextResponse.json(createErrorResponse("文章别名已存在，请使用不同的标题或别名"), { status: 409 });
+        return NextResponse.json(localizedErrorResponse(request, "post.slugExists"), { status: 409 });
       }
     }
 
@@ -199,13 +206,12 @@ export const { GET, POST } = defineApiHandlers(
     onError: (payload) => {
       notifyRouteUnhandledError(payload);
     },
-    onUnhandledErrorResponse: ({ method, error }) => {
-      const fallbackMessage = method === "GET" ? "获取文章列表失败" : "创建文章失败";
-      // 开发环境透传真实异常，便于联调定位；生产环境保持通用提示，避免内部实现细节泄露。
+    onUnhandledErrorResponse: ({ request, method, error }) => {
+      const key = method === "GET" ? "post.listFetchFailed" : "post.createFailed";
       const message =
         process.env.NODE_ENV !== "production" && error instanceof Error && error.message
           ? error.message
-          : fallbackMessage;
+          : apiMessage(request, key);
       return NextResponse.json(createErrorResponse(message), { status: 500 });
     },
   }

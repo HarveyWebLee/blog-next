@@ -48,12 +48,14 @@ function HomePostCard({
   isHero,
   readMore,
   viewsLabel,
+  passwordTag,
 }: {
   post: HomePost;
   lang: Locale;
   isHero: boolean;
   readMore: string;
   viewsLabel: string;
+  passwordTag: string;
 }) {
   const excerpt = stripMarkdownForExcerpt((post.excerpt ?? "").trim());
   const authorLabel = post.author?.displayName || post.author?.username || "";
@@ -144,7 +146,7 @@ function HomePostCard({
             {isPasswordProtected ? (
               <span className="inline-flex items-center gap-1 rounded-md bg-warning/20 px-2 py-1 text-xs text-warning-700 dark:text-warning-300">
                 <Lock className="h-3 w-3" />
-                {lang === "en-US" ? "Password" : lang === "ja-JP" ? "パスワード保護" : "密码保护"}
+                {passwordTag}
               </span>
             ) : null}
             <time dateTime={post.publishedAt ? String(post.publishedAt) : undefined}>
@@ -202,6 +204,7 @@ export default async function HomePage({ params }: { params: Promise<{ lang: Loc
   const h = dict.home;
   const readMore = dict.common.readMore;
   const viewsLabel = dict.common.views;
+  const passwordTag = (dict.blog as { postCard?: { passwordTag?: string } }).postCard?.passwordTag ?? "密码保护";
 
   let latest: HomePost[] = [];
   try {
@@ -289,6 +292,7 @@ export default async function HomePage({ params }: { params: Promise<{ lang: Loc
                       isHero={index === 0}
                       readMore={readMore}
                       viewsLabel={viewsLabel}
+                      passwordTag={passwordTag}
                     />
                   </div>
                 ))}

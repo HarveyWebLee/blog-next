@@ -7,6 +7,12 @@ import { and, eq } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { posts, userFavorites } from "@/lib/db/schema";
+import {
+  apiMessage,
+  jsonRateLimitError,
+  localizedErrorResponse,
+  localizedSuccessResponse,
+} from "@/lib/i18n/api-response";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
 import { createErrorResponse, createSuccessResponse } from "@/lib/utils";
@@ -34,7 +40,7 @@ async function handlePostFavoriteGET(request: NextRequest, { params }: { params:
     const { id } = await params;
     const postId = Number(id);
     if (!Number.isFinite(postId) || postId <= 0) {
-      return NextResponse.json(createErrorResponse("无效的文章ID"), { status: 400 });
+      return NextResponse.json(localizedErrorResponse(request, "post.invalidId"), { status: 400 });
     }
 
     const postRows = await db
@@ -43,19 +49,20 @@ async function handlePostFavoriteGET(request: NextRequest, { params }: { params:
       .where(eq(posts.id, postId))
       .limit(1);
     if (postRows.length === 0) {
-      return NextResponse.json(createErrorResponse("文章不存在"), { status: 404 });
+      return NextResponse.json(localizedErrorResponse(request, "post.notFound"), { status: 404 });
     }
 
     const auth = requireAuthUser(request);
     if (!auth.ok) {
       if (!canInteractPost(postRows[0])) {
-        return NextResponse.json(createErrorResponse("该文章当前不可互动"), { status: 403 });
+        return NextResponse.json(localizedErrorResponse(request, "post.notInteractive"), { status: 403 });
       }
       const favoriteCount = await getFavoriteCount(postId);
 
-      return NextResponse.json(createSuccessResponse({ favorited: false, favoriteCount }, "获取收藏状态成功"), {
-        status: 200,
-      });
+      return NextResponse.json(
+        localizedSuccessResponse(request, { favorited: false, favoriteCount }, "post.favoriteStatusSuccess"),
+        { status: 200 }
+      );
     }
 
     const favoritedRows = await db
@@ -65,9 +72,10 @@ async function handlePostFavoriteGET(request: NextRequest, { params }: { params:
       .limit(1);
 
     return NextResponse.json(
-      createSuccessResponse(
+      localizedSuccessResponse(
+        request,
         { favorited: favoritedRows.length > 0, favoriteCount: await getFavoriteCount(postId) },
-        "获取收藏状态成功"
+        "post.favoriteStatusSuccess"
       ),
       { status: 200 }
     );
@@ -80,13 +88,13 @@ async function handlePostFavoritePOST(request: NextRequest, { params }: { params
   try {
     const auth = requireAuthUser(request);
     if (!auth.ok) {
-      return NextResponse.json(createErrorResponse("请先登录"), { status: 401 });
+      return NextResponse.json(localizedErrorResponse(request, "common.pleaseLogin"), { status: 401 });
     }
 
     const { id } = await params;
     const postId = Number(id);
     if (!Number.isFinite(postId) || postId <= 0) {
-      return NextResponse.json(createErrorResponse("无效的文章ID"), { status: 400 });
+      return NextResponse.json(localizedErrorResponse(request, "post.invalidId"), { status: 400 });
     }
 
     const postRows = await db
@@ -95,10 +103,10 @@ async function handlePostFavoritePOST(request: NextRequest, { params }: { params
       .where(eq(posts.id, postId))
       .limit(1);
     if (postRows.length === 0) {
-      return NextResponse.json(createErrorResponse("文章不存在"), { status: 404 });
+      return NextResponse.json(localizedErrorResponse(request, "post.notFound"), { status: 404 });
     }
     if (!canInteractPost(postRows[0], auth.user)) {
-      return NextResponse.json(createErrorResponse("该文章当前不可互动"), { status: 403 });
+      return NextResponse.json(localizedErrorResponse(request, "post.notInteractive"), { status: 403 });
     }
 
     const favoritedRows = await db
@@ -130,10 +138,12 @@ async function handlePostFavoritePOST(request: NextRequest, { params }: { params
       request,
     });
     return NextResponse.json(
-      createSuccessResponse({ favorited, favoriteCount }, favorited ? "收藏成功" : "取消收藏成功"),
-      {
-        status: 200,
-      }
+      localizedSuccessResponse(
+        request,
+        { favorited, favoriteCount },
+        favorited ? "post.favoriteSuccess" : "post.unfavoriteSuccess"
+      ),
+      { status: 200 }
     );
   } catch (error) {
     throw error;
@@ -146,7 +156,10 @@ export const { GET, POST } = defineApiHandlers(
     POST: handlePostFavoritePOST,
   },
   {
-    onUnhandledErrorResponse: ({ method }) =>
-      NextResponse.json(createErrorResponse(method === "GET" ? "获取收藏状态失败" : "收藏操作失败"), { status: 500 }),
+    onUnhandledErrorResponse: ({ request, method }) =>
+      NextResponse.json(
+        localizedErrorResponse(request, method === "GET" ? "post.favoriteStatusFailed" : "post.favoriteFailed"),
+        { status: 500 }
+      ),
   }
 );

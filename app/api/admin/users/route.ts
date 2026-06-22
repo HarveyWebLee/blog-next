@@ -3,6 +3,12 @@ import { count, desc, eq, like, or } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { users } from "@/lib/db/schema";
+import {
+  apiMessage,
+  jsonRateLimitError,
+  localizedErrorResponse,
+  localizedSuccessResponse,
+} from "@/lib/i18n/api-response";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { notifyRouteUnhandledError } from "@/lib/server/route-alert";
 import { requireInMemorySuperRoot } from "@/lib/utils/authz";
@@ -88,7 +94,7 @@ async function handleAdminUsersGET(request: NextRequest) {
     return NextResponse.json<ApiResponse<PaginatedResponseData<AdminManagedUserRow>>>({
       success: true,
       data: payload,
-      message: "ok",
+      message: apiMessage(request, "common.ok"),
       timestamp: new Date().toISOString(),
     });
   } catch (e) {
@@ -100,11 +106,11 @@ export const { GET } = defineApiHandlers(
   { GET: handleAdminUsersGET },
   {
     onError: (payload) => notifyRouteUnhandledError(payload),
-    onUnhandledErrorResponse: () =>
+    onUnhandledErrorResponse: ({ request }) =>
       NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "获取用户列表失败",
+          message: apiMessage(request, "admin.usersListFailed"),
           timestamp: new Date().toISOString(),
         },
         { status: 500 }

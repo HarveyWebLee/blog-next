@@ -28,6 +28,8 @@ import {
   PROFILE_NATIVE_CONTROL,
 } from "@/components/profile/profile-ui-presets";
 import { useAuth } from "@/lib/contexts/auth-context";
+import { useProfileDict } from "@/lib/contexts/profile-dict-context";
+import { isTextReady, pickText } from "@/lib/i18n/pick-text";
 import { message } from "@/lib/utils";
 import { clientBearerHeaders } from "@/lib/utils/client-bearer-auth";
 import { stripMarkdownForExcerpt } from "@/lib/utils/markdown-plain";
@@ -52,74 +54,10 @@ const visibilityColors = {
 export default function ProfilePosts({ lang }: ProfilePostsProps) {
   const params = useParams();
   const routeLang = typeof params?.lang === "string" ? params.lang : "zh-CN";
+  const t = pickText(useProfileDict("posts")) as Record<string, string> & { labels?: Record<string, string> };
+
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
 
-  const t =
-    lang === "en-US"
-      ? {
-          pageTitle: "My Posts",
-          pageDesc: "Manage your posts",
-          loadFailed: "Failed to load posts",
-          write: "Write",
-          search: "Search posts...",
-          allStatus: "All Status",
-          published: "Published",
-          draft: "Draft",
-          archived: "Archived",
-          visibilityPublic: "Public",
-          visibilityPrivate: "Private",
-          visibilityPassword: "Password",
-          edit: "Edit",
-          del: "Delete",
-          more: "More",
-          noMatch: "No matching posts found",
-          noPosts: "No posts yet",
-          noMatchDesc: "Try adjusting search or filters",
-          noPostsDesc: "Create your first post",
-        }
-      : lang === "ja-JP"
-        ? {
-            pageTitle: "自分の記事",
-            pageDesc: "記事コンテンツを管理",
-            loadFailed: "記事一覧の取得に失敗しました",
-            write: "記事を書く",
-            search: "記事を検索...",
-            allStatus: "すべての状態",
-            published: "公開済み",
-            draft: "下書き",
-            archived: "アーカイブ",
-            visibilityPublic: "公開",
-            visibilityPrivate: "非公開",
-            visibilityPassword: "パスワード保護",
-            edit: "編集",
-            del: "削除",
-            more: "その他",
-            noMatch: "一致する記事がありません",
-            noPosts: "まだ記事がありません",
-            noMatchDesc: "検索条件を調整してください",
-            noPostsDesc: "最初の記事を作成しましょう",
-          }
-        : {
-            pageTitle: "我的文章",
-            pageDesc: "管理您的文章内容",
-            loadFailed: "获取文章列表失败",
-            write: "写文章",
-            search: "搜索文章...",
-            allStatus: "全部状态",
-            published: "已发布",
-            draft: "草稿",
-            archived: "已归档",
-            visibilityPublic: "公开",
-            visibilityPrivate: "私有",
-            visibilityPassword: "密码保护",
-            edit: "编辑",
-            del: "删除",
-            more: "更多",
-            noMatch: "没有找到匹配的文章",
-            noPosts: "还没有文章",
-            noMatchDesc: "尝试调整搜索条件或筛选器",
-            noPostsDesc: "开始创建您的第一篇文章吧",
-          };
   const [posts, setPosts] = useState<PostData[]>([]);
   const [loading, setLoading] = useState(true);
   /** 输入框即时展示的关键词 */

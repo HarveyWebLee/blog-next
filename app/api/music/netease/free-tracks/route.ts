@@ -1,6 +1,12 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
+import {
+  apiMessage,
+  jsonRateLimitError,
+  localizedErrorResponse,
+  localizedSuccessResponse,
+} from "@/lib/i18n/api-response";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { logger } from "@/lib/server/logger";
 
@@ -40,7 +46,7 @@ function withTimeout(ms: number) {
   };
 }
 
-async function handleNeteaseFreeTracksGET(_request: NextRequest) {
+async function handleNeteaseFreeTracksGET(request: NextRequest) {
   const baseUrl = (process.env.NETEASE_OPEN_API_BASE_URL || DEFAULT_BASE_URL).replace(/\/+$/, "");
   const playlistId = process.env.NETEASE_PLAYLIST_ID || DEFAULT_PLAYLIST_ID;
   const limit = Number(process.env.NETEASE_PLAYLIST_LIMIT || "12");
@@ -56,7 +62,7 @@ async function handleNeteaseFreeTracksGET(_request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: "网易云歌单拉取失败",
+          message: apiMessage(request, "music.playlistFetchFailed"),
           tracks: [] as NeteaseTrackDto[],
         },
         { status: 502 }
@@ -68,7 +74,7 @@ async function handleNeteaseFreeTracksGET(_request: NextRequest) {
     if (songs.length === 0) {
       return NextResponse.json({
         success: true,
-        message: "歌单为空",
+        message: apiMessage(request, "music.playlistEmpty"),
         tracks: [] as NeteaseTrackDto[],
       });
     }
@@ -80,7 +86,7 @@ async function handleNeteaseFreeTracksGET(_request: NextRequest) {
     if (songIds.length === 0) {
       return NextResponse.json({
         success: true,
-        message: "未找到可免费播放曲目",
+        message: apiMessage(request, "music.noFreeTracks"),
         tracks: [] as NeteaseTrackDto[],
       });
     }
@@ -95,7 +101,7 @@ async function handleNeteaseFreeTracksGET(_request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: "网易云歌曲地址拉取失败",
+          message: apiMessage(request, "music.trackUrlFailed"),
           tracks: [] as NeteaseTrackDto[],
         },
         { status: 502 }
@@ -129,7 +135,7 @@ async function handleNeteaseFreeTracksGET(_request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "网易云可播放曲目获取成功",
+      message: apiMessage(request, "music.tracksSuccess"),
       tracks,
     });
   } catch (error) {

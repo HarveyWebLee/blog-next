@@ -10,77 +10,16 @@ import { Input } from "@heroui/input";
 import { ArrowRight, Eye, Mail, TrendingUp } from "lucide-react";
 
 import { useAuth } from "@/lib/contexts/auth-context";
+import { useClientDictionary } from "@/lib/hooks/use-client-dictionary";
 import { useNewsletterGuestSubscription } from "@/lib/hooks/useNewsletterGuestSubscription";
 import { usePosts } from "@/lib/hooks/usePosts";
+import { isTextReady, pickText } from "@/lib/i18n/pick-text";
 import { message } from "@/lib/utils";
 
 export function BlogSidebar({ lang = "zh-CN" }: { lang?: string }) {
-  const t =
-    lang === "en-US"
-      ? {
-          popularTitle: "Popular Posts",
-          popularDesc: "Most popular content",
-          views: "views",
-          subscribeTitle: "Subscribe",
-          subscribeDesc: "Get updates on latest posts",
-          emailPlaceholder: "Enter email address",
-          subscribe: "Subscribe",
-          unsubscribe: "Unsubscribe",
-          subscribeSuccess: "Subscription successful",
-          subscribeFail: "Subscription failed",
-          unsubscribeSuccess: "Unsubscribed",
-          unsubscribeFail: "Unsubscribe failed",
-          invalidEmail: "Please enter a valid email",
-          codePlaceholder: "Email code",
-          sendCode: "Send code",
-          needSubscribeCode: "Enter the code from your email to finish subscribing",
-          needUnsubscribeCode: "Enter the code from your email to unsubscribe",
-          sendCodeOk: "Verification code sent. Check your inbox.",
-          sendCodeFail: "Failed to send verification code",
-        }
-      : lang === "ja-JP"
-        ? {
-            popularTitle: "人気記事",
-            popularDesc: "最も人気のあるコンテンツ",
-            views: "閲覧",
-            subscribeTitle: "更新を購読",
-            subscribeDesc: "最新記事の通知を受け取る",
-            emailPlaceholder: "メールアドレスを入力",
-            subscribe: "購読する",
-            unsubscribe: "購読解除",
-            subscribeSuccess: "購読しました",
-            subscribeFail: "購読に失敗しました",
-            unsubscribeSuccess: "購読を解除しました",
-            unsubscribeFail: "購読解除に失敗しました",
-            invalidEmail: "有効なメールアドレスを入力してください",
-            codePlaceholder: "確認コード",
-            sendCode: "コードを送信",
-            needSubscribeCode: "メールの確認コードを入力してから購読を完了してください",
-            needUnsubscribeCode: "メールの確認コードを入力してから購読解除してください",
-            sendCodeOk: "確認コードを送信しました。メールをご確認ください",
-            sendCodeFail: "確認コードの送信に失敗しました",
-          }
-        : {
-            popularTitle: "热门文章",
-            popularDesc: "最受欢迎的内容",
-            views: "阅读",
-            subscribeTitle: "订阅更新",
-            subscribeDesc: "获取最新文章通知",
-            emailPlaceholder: "输入邮箱地址",
-            subscribe: "订阅",
-            unsubscribe: "取消订阅",
-            subscribeSuccess: "订阅成功",
-            subscribeFail: "订阅失败",
-            unsubscribeSuccess: "已取消订阅",
-            unsubscribeFail: "取消订阅失败",
-            invalidEmail: "请输入有效的邮箱地址",
-            codePlaceholder: "邮箱验证码",
-            sendCode: "发送验证码",
-            needSubscribeCode: "请填写邮件中的验证码后再完成订阅",
-            needUnsubscribeCode: "请填写邮件中的验证码后再取消订阅",
-            sendCodeOk: "验证码已发送，请查收邮件",
-            sendCodeFail: "验证码发送失败",
-          };
+  const dict = useClientDictionary(lang);
+  const t = pickText((dict as { blog?: { sidebar?: Record<string, string> } })?.blog?.sidebar);
+
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [submitting, setSubmitting] = useState(false);

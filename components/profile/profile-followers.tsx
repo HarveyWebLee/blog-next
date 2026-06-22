@@ -7,6 +7,8 @@ import { CheckCheck, Search, UserPlus, Users } from "lucide-react";
 
 import { PROFILE_GLASS_CARD } from "@/components/profile/profile-ui-presets";
 import ProfileRelationsAPI from "@/lib/api/profile-relations";
+import { useProfileDict } from "@/lib/contexts/profile-dict-context";
+import { isTextReady, pickText } from "@/lib/i18n/pick-text";
 import { message } from "@/lib/utils";
 import type { ProfileRelationItem } from "@/types/blog";
 
@@ -21,63 +23,7 @@ interface ProfileFollowersProps {
  * 3) 操作按钮保留“回关/查看主页”产品语义，方便后续接真实关注关系接口。
  */
 export default function ProfileFollowers({ lang }: ProfileFollowersProps) {
-  const t =
-    lang === "en-US"
-      ? {
-          title: "Followers",
-          subtitle: "People who follow you",
-          searchPh: "Search followers...",
-          mutual: "Mutual follow",
-          mutualDone: "Mutual following",
-          newFollower: "New",
-          followBack: "Follow back",
-          viewProfile: "View profile",
-          mutualOnly: "Mutual only",
-          allRelations: "All",
-          empty: "No followers yet",
-          emptyDesc: "Once someone follows you, they will appear here.",
-          loadFailed: "Unable to load followers, showing fallback data.",
-          overview: "Back to profile",
-          neverActive: "No activity yet",
-          followedSuffix: "followed you",
-        }
-      : lang === "ja-JP"
-        ? {
-            title: "フォロワー",
-            subtitle: "あなたをフォローしているユーザー",
-            searchPh: "フォロワーを検索...",
-            mutual: "相互フォロー",
-            mutualDone: "相互フォロー中",
-            newFollower: "新着",
-            followBack: "フォローバック",
-            viewProfile: "プロフィールを見る",
-            mutualOnly: "相互のみ",
-            allRelations: "すべて",
-            empty: "フォロワーがいません",
-            emptyDesc: "フォローされるとここに表示されます。",
-            loadFailed: "フォロワーの取得に失敗したため、代替データを表示しています。",
-            overview: "プロフィールへ戻る",
-            neverActive: "活動履歴なし",
-            followedSuffix: "フォローしました",
-          }
-        : {
-            title: "我的粉丝",
-            subtitle: "关注你的用户",
-            searchPh: "搜索粉丝昵称/用户名...",
-            mutual: "互相关注",
-            mutualDone: "已互关",
-            newFollower: "新粉丝",
-            followBack: "回关",
-            viewProfile: "查看主页",
-            mutualOnly: "仅互关",
-            allRelations: "全部",
-            empty: "暂时还没有粉丝",
-            emptyDesc: "当有人关注你后，会展示在这里。",
-            loadFailed: "加载粉丝列表失败，已展示占位数据。",
-            overview: "返回个人中心",
-            neverActive: "暂无活跃记录",
-            followedSuffix: "关注了你",
-          };
+  const t = pickText(useProfileDict("followers")) as Record<string, string> & { labels?: Record<string, string> };
 
   /**
    * 占位数据仅用于打通 UI 和交互流程。
@@ -179,10 +125,10 @@ export default function ProfileFollowers({ lang }: ProfileFollowersProps) {
     try {
       await ProfileRelationsAPI.followUser(targetUserId);
       setFollowers((prev) => prev.map((item) => (item.userId === targetUserId ? { ...item, isMutual: true } : item)));
-      message.success(lang === "en-US" ? "Followed" : lang === "ja-JP" ? "フォローしました" : "已回关");
+      message.success(t.followBackOk ?? "");
     } catch (error) {
       console.error("回关失败:", error);
-      message.error(error instanceof Error ? error.message : "回关失败");
+      message.error(error instanceof Error ? error.message : (t.followBackFail ?? ""));
     } finally {
       setActionUserId(null);
     }

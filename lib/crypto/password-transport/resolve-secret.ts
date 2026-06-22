@@ -1,3 +1,6 @@
+import { DEFAULT_LOCALE } from "@/lib/i18n/locale";
+import { tApi, type ApiMessageKey } from "@/lib/i18n/messages";
+import type { Locale } from "@/types/common";
 import { decryptPasswordTransportV1, isPasswordTransportConfigured } from "./server";
 import type { PasswordTransportEnvelopeV1 } from "./types";
 
@@ -27,7 +30,13 @@ export type ResolveSecretOptions = {
    * 为 true 时：无 passwordTransport 且无明文字段则返回空串（用于文章 body 中可选的访问密码）。
    */
   treatMissingAsEmpty?: boolean;
+  /** 响应文案语言（来自 X-Locale / Accept-Language 等） */
+  locale?: Locale;
 };
+
+function msg(locale: Locale, key: ApiMessageKey): string {
+  return tApi(locale ?? DEFAULT_LOCALE, key);
+}
 
 /**
  * 强制策略：
@@ -65,7 +74,7 @@ function checkRequiredButMissingKey(required: boolean, configured: boolean): boo
 export async function resolveSecretFromBody(
   options: ResolveSecretOptions
 ): Promise<{ ok: true; plaintext: string } | { ok: false; message: string; status: number }> {
-  const { body, plainField, allowPlaintext = true, treatMissingAsEmpty = false } = options;
+  const { body, plainField, allowPlaintext = true, treatMissingAsEmpty = false, locale = DEFAULT_LOCALE } = options;
   const transportRaw = body.passwordTransport;
   const plainRaw = body[plainField];
 
@@ -76,14 +85,14 @@ export async function resolveSecretFromBody(
   if (misconfigured) {
     return {
       ok: false,
-      message: "服务端密码传输配置缺失，请联系管理员",
+      message: msg(locale, "post.passwordTransportMisconfigured"),
       status: 503,
     };
   }
 
   if (isEnvelopeV1(transportRaw)) {
     if (!configured) {
-      return { ok: false, message: "服务端未配置密码传输密钥，无法接受加密包", status: 503 };
+      return { ok: false, message: msg(locale, "post.passwordTransportNotConfigured"), status: 503 };
     }
     const dec = await decryptPasswordTransportV1(transportRaw);
     return dec;
@@ -92,14 +101,14 @@ export async function resolveSecretFromBody(
   if (requireTransport) {
     return {
       ok: false,
-      message: "必须使用加密方式提交密码字段",
+      message: msg(locale, "auth.passwordFieldTransportRequired"),
       status: 400,
     };
   }
 
   if (typeof plainRaw === "string") {
     if (!allowPlaintext && configured) {
-      return { ok: false, message: "此接口不接受明文密码，请升级客户端", status: 400 };
+      return { ok: false, message: msg(locale, "post.plainPasswordRejected"), status: 400 };
     }
     return { ok: true, plaintext: plainRaw };
   }
@@ -108,14 +117,15 @@ export async function resolveSecretFromBody(
     return { ok: true, plaintext: "" };
   }
 
-  return { ok: false, message: "缺少密钥或密码字段", status: 400 };
+  return { ok: false, message: msg(locale, "post.secretFieldMissing"), status: 400 };
 }
 
 /**
  * 文章创建/更新：仅在 body 含 passwordTransport 或 password 时解析；两者皆无则不返回 password 字段（避免误清空 DB）。
  */
 export async function resolveOptionalPasswordForPostBody(
-  raw: Record<string, unknown>
+  raw: Record<string, unknown>,
+  locale: Locale = DEFAULT_LOCALE
 ): Promise<{ ok: true; password?: string } | { ok: false; message: string; status: number }> {
   const requireTransport = isPasswordTransportRequired();
   const configured = isPasswordTransportConfigured();
@@ -133,7 +143,7 @@ export async function resolveOptionalPasswordForPostBody(
   if (misconfigured && (hasTransport || hasPlain)) {
     return {
       ok: false,
-      message: "服务端密码传输配置缺失，请联系管理员",
+      message: msg(locale, "post.passwordTransportMisconfigured"),
       status: 503,
     };
   }
@@ -144,7 +154,7 @@ export async function resolveOptionalPasswordForPostBody(
 
   if (hasTransport) {
     if (!configured) {
-      return { ok: false, message: "服务端未配置密码传输密钥，无法接受加密包", status: 503 };
+      return { ok: false, message: msg(locale, "post.passwordTransportNotConfigured"), status: 503 };
     }
     const dec = await decryptPasswordTransportV1(raw.passwordTransport as PasswordTransportEnvelopeV1);
     if (!dec.ok) {
@@ -156,7 +166,7 @@ export async function resolveOptionalPasswordForPostBody(
   if (requireTransport) {
     return {
       ok: false,
-      message: "必须使用加密方式提交访问密码",
+      message: msg(locale, "post.passwordTransportRequired"),
       status: 400,
     };
   }

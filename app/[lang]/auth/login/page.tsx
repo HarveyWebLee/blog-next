@@ -8,6 +8,8 @@ import { Button, Form, Input } from "@heroui/react";
 import { ArrowLeftIcon, Eye, EyeOff, Lock, Mail } from "lucide-react";
 
 import { useAuth } from "@/lib/contexts/auth-context";
+import { useClientDictionary } from "@/lib/hooks/use-client-dictionary";
+import { isTextReady, pickText } from "@/lib/i18n/pick-text";
 import message from "@/lib/utils/message";
 import { LoginRequest } from "@/types/blog";
 
@@ -16,81 +18,8 @@ export default function LoginPage() {
   const params = useParams<{ lang: string }>();
   const pathname = usePathname();
   const lang = params.lang || "zh-CN";
-  const t =
-    lang === "en-US"
-      ? {
-          backHome: "Back Home",
-          welcome: "Welcome to Wilderness",
-          subtitle: "Please sign in to your account",
-          usernameLabel: "Username or Email",
-          usernamePlaceholder: "Enter username or email",
-          usernameRequired: "Username or email is required",
-          passwordLabel: "Password",
-          passwordPlaceholder: "Enter password",
-          passwordRequired: "Password is required",
-          passwordMin: "Password must be at least 6 characters",
-          hidePassword: "Hide password",
-          showPassword: "Show password",
-          forgot: "Forgot password?",
-          loggingIn: "Signing in...",
-          login: "Sign In",
-          noAccount: "No account yet?",
-          registerNow: "Register now",
-          agreementPrefix: "By signing in, you agree to our ",
-          terms: "Terms",
-          and: " and ",
-          privacy: "Privacy Policy",
-          networkError: "Network error, please try again later",
-        }
-      : lang === "ja-JP"
-        ? {
-            backHome: "ホームへ戻る",
-            welcome: "荒野へようこそ",
-            subtitle: "アカウントにログインしてください",
-            usernameLabel: "ユーザー名またはメール",
-            usernamePlaceholder: "ユーザー名またはメールを入力",
-            usernameRequired: "ユーザー名またはメールは必須です",
-            passwordLabel: "パスワード",
-            passwordPlaceholder: "パスワードを入力",
-            passwordRequired: "パスワードは必須です",
-            passwordMin: "パスワードは6文字以上必要です",
-            hidePassword: "パスワードを隠す",
-            showPassword: "パスワードを表示",
-            forgot: "パスワードを忘れた？",
-            loggingIn: "ログイン中...",
-            login: "ログイン",
-            noAccount: "アカウントをお持ちでないですか？",
-            registerNow: "今すぐ登録",
-            agreementPrefix: "ログインすることで、",
-            terms: "利用規約",
-            and: "と",
-            privacy: "プライバシーポリシー",
-            networkError: "通信エラーです。しばらくしてからお試しください",
-          }
-        : {
-            backHome: "返回首页",
-            welcome: "欢迎来到荒野",
-            subtitle: "请登录您的账户",
-            usernameLabel: "用户名或邮箱",
-            usernamePlaceholder: "请输入用户名或邮箱",
-            usernameRequired: "用户名或邮箱不能为空",
-            passwordLabel: "密码",
-            passwordPlaceholder: "请输入密码",
-            passwordRequired: "密码不能为空",
-            passwordMin: "密码长度至少6位",
-            hidePassword: "隐藏密码",
-            showPassword: "显示密码",
-            forgot: "忘记密码？",
-            loggingIn: "登录中...",
-            login: "登录",
-            noAccount: "还没有账户？",
-            registerNow: "立即注册",
-            agreementPrefix: "登录即表示您同意我们的",
-            terms: "服务条款",
-            and: "和",
-            privacy: "隐私政策",
-            networkError: "网络异常，请稍后重试",
-          };
+  const dict = useClientDictionary(lang);
+  const t = pickText((dict as { auth?: { loginPage?: Record<string, string> } })?.auth?.loginPage);
   const { login, isLoading } = useAuth();
 
   const [showPassword, setShowPassword] = useState(false);
@@ -119,6 +48,8 @@ export default function LoginPage() {
       setIsSubmitting(false);
     }
   };
+
+  if (!isTextReady(t)) return null;
 
   return (
     <div className="h-screen flex overflow-y-auto pt-24 justify-center">

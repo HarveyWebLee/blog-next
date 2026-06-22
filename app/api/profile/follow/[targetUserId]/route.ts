@@ -3,16 +3,21 @@
  *
  * DELETE /api/profile/follow/{targetUserId} - 当前用户取消关注目标用户
  */
-
 import { NextRequest, NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { userFollows } from "@/lib/db/schema";
+import {
+  apiMessage,
+  jsonRateLimitError,
+  localizedErrorResponse,
+  localizedSuccessResponse,
+} from "@/lib/i18n/api-response";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { logger } from "@/lib/server/logger";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
-import { requireAuthUser } from "@/lib/utils/request-auth";
+import { authErrorMessage, requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse } from "@/types/blog";
 
 async function handleProfileFollowByTargetDELETE(
@@ -25,7 +30,7 @@ async function handleProfileFollowByTargetDELETE(
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: auth.reason === "missing" ? "未提供认证令牌" : "无效的认证令牌",
+          message: authErrorMessage(request, auth.reason),
           timestamp: new Date().toISOString(),
         },
         { status: 401 }
@@ -40,7 +45,7 @@ async function handleProfileFollowByTargetDELETE(
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "targetUserId 无效",
+          message: apiMessage(request, "profile.unfollowInvalidId"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -57,7 +62,7 @@ async function handleProfileFollowByTargetDELETE(
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "尚未关注该用户",
+          message: apiMessage(request, "profile.notFollowing"),
           timestamp: new Date().toISOString(),
         },
         { status: 404 }
@@ -78,7 +83,7 @@ async function handleProfileFollowByTargetDELETE(
     return NextResponse.json<ApiResponse>({
       success: true,
       data: null,
-      message: "已取消关注",
+      message: apiMessage(request, "profile.unfollowSuccess"),
       timestamp: new Date().toISOString(),
     });
   } catch (error) {

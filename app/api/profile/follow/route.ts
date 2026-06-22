@@ -3,16 +3,21 @@
  *
  * POST /api/profile/follow - 当前用户关注指定目标用户
  */
-
 import { NextRequest, NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { userFollows, userNotifications, users } from "@/lib/db/schema";
+import {
+  apiMessage,
+  jsonRateLimitError,
+  localizedErrorResponse,
+  localizedSuccessResponse,
+} from "@/lib/i18n/api-response";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { logger } from "@/lib/server/logger";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
-import { requireAuthUser } from "@/lib/utils/request-auth";
+import { authErrorMessage, requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, FollowUserRequest } from "@/types/blog";
 
 async function handleProfileFollowPOST(request: NextRequest) {
@@ -22,7 +27,7 @@ async function handleProfileFollowPOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: auth.reason === "missing" ? "未提供认证令牌" : "无效的认证令牌",
+          message: authErrorMessage(request, auth.reason),
           timestamp: new Date().toISOString(),
         },
         { status: 401 }
@@ -37,7 +42,7 @@ async function handleProfileFollowPOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "followingId 无效",
+          message: apiMessage(request, "profile.followInvalidId"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -48,7 +53,7 @@ async function handleProfileFollowPOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "不能关注自己",
+          message: apiMessage(request, "profile.followSelf"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -68,7 +73,7 @@ async function handleProfileFollowPOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "目标用户不存在",
+          message: apiMessage(request, "profile.followTargetNotFound"),
           timestamp: new Date().toISOString(),
         },
         { status: 404 }
@@ -79,7 +84,7 @@ async function handleProfileFollowPOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "已关注该用户",
+          message: apiMessage(request, "profile.alreadyFollowing"),
           timestamp: new Date().toISOString(),
         },
         { status: 409 }
@@ -116,7 +121,7 @@ async function handleProfileFollowPOST(request: NextRequest) {
       {
         success: true,
         data: { id: insertResult.insertId, followerId: currentUserId, followingId: targetUserId },
-        message: "关注成功",
+        message: apiMessage(request, "profile.followSuccess"),
         timestamp: new Date().toISOString(),
       },
       { status: 201 }

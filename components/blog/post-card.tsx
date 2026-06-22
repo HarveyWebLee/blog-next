@@ -8,6 +8,8 @@ import { Chip } from "@heroui/chip";
 import dayjs from "dayjs";
 import { ArrowRight, BookOpen, Calendar, Clock, Eye, Folder, Heart, Lock, MessageCircle, Star } from "lucide-react";
 
+import { useClientDictionary } from "@/lib/hooks/use-client-dictionary";
+import { isTextReady, pickText } from "@/lib/i18n/pick-text";
 import { stripMarkdownForExcerpt } from "@/lib/utils/markdown-plain";
 import { PostData } from "@/types/blog";
 
@@ -34,61 +36,21 @@ export function PostCard({
   likeLoading = false,
   favoriteLoading = false,
 }: PostCardProps) {
+  const dict = useClientDictionary(lang);
+  const t = pickText(
+    (dict as { blog?: { postCard?: Record<string, string> & { roles?: Record<string, string> } } })?.blog?.postCard
+  );
+  const roles = (t as { roles?: Record<string, string> }).roles ?? {};
+
   const [isHovered, setIsHovered] = useState(false);
   const resolveRoleName = (role?: string): string => {
     if (!role) return "";
-    if (lang === "en-US") {
-      if (role === "super_admin") return "Super Admin";
-      if (role === "admin") return "Admin";
-      if (role === "author") return "Author";
-      return "User";
-    }
-    if (lang === "ja-JP") {
-      if (role === "super_admin") return "スーパー管理者";
-      if (role === "admin") return "管理者";
-      if (role === "author") return "著者";
-      return "ユーザー";
-    }
-    if (role === "super_admin") return "超级管理员";
-    if (role === "admin") return "管理员";
-    if (role === "author") return "作者";
-    return "用户";
+    return roles[role] ?? role;
   };
   const authorLabel =
     post.author?.displayName?.trim() || resolveRoleName(post.author?.role) || post.author?.username?.trim() || "—";
   /** 统一头部元信息行高度：无分类/标签时也保留占位，避免不同卡片标题起始位置错位 */
   const hasMetaRowContent = post.visibility === "password" || Boolean(post.category) || Boolean(post.tags?.length);
-  const t =
-    lang === "en-US"
-      ? {
-          emptyExcerpt: "No excerpt",
-          minutes: "min",
-          liked: "Liked",
-          like: "Like",
-          favorite: "Favorite",
-          favorited: "Favorited",
-          readMore: "Read More",
-        }
-      : lang === "ja-JP"
-        ? {
-            emptyExcerpt: "概要なし",
-            minutes: "分",
-            liked: "いいね済み",
-            like: "いいね",
-            favorite: "お気に入り",
-            favorited: "お気に入り済み",
-            readMore: "続きを読む",
-          }
-        : {
-            emptyExcerpt: "暂无摘要",
-            minutes: "分钟",
-            liked: "已点赞",
-            like: "点赞",
-            favorite: "收藏",
-            favorited: "已收藏",
-            readMore: "阅读更多",
-          };
-
   return (
     <div className="group relative animate-fade-in-up blog-card-container">
       {/* 背景光效 */}
@@ -122,7 +84,7 @@ export function PostCard({
                   startContent={<Lock className="h-3.5 w-3.5" />}
                   className="bg-warning/20 text-warning-700 dark:text-warning-300"
                 >
-                  {lang === "en-US" ? "Password" : lang === "ja-JP" ? "パスワード保護" : "密码保护"}
+                  {t.passwordTag ?? "密码保护"}
                 </Chip>
               )}
               {/* 分类标签 - 更突出的设计 */}

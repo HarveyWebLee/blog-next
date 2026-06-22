@@ -9,11 +9,10 @@ import { Dropdown, DropdownItem, DropdownMenu, DropdownSection, DropdownTrigger 
 import { FileIcon, FilesIcon, LibraryBig, LogInIcon, LogOutIcon, TagIcon, UserCircleIcon } from "lucide-react";
 
 import { useAuth } from "@/lib/contexts/auth-context";
-import { Locale } from "@/types";
+import { useClientDictionary } from "@/lib/hooks/use-client-dictionary";
 
 const iconClasses = "text-base text-default-500 shrink-0";
 
-// 默认头像图片 - 使用更可靠的图片源
 const DEFAULT_AVATAR = "/images/avatar.jpeg";
 const FALLBACK_AVATAR = "/images/fallback.svg";
 
@@ -21,67 +20,19 @@ export function UserNav() {
   const { isAuthenticated, user, logout, isLoading } = useAuth();
   const params = useParams();
   const lang = typeof params?.lang === "string" ? params.lang : "zh-CN";
-  const locale: Locale = lang === "en-US" || lang === "ja-JP" ? lang : "zh-CN";
-  const t =
-    locale === "en-US"
-      ? {
-          dropdown: "User menu",
-          section: "Profile & Actions",
-          profile: "Profile",
-          profileDesc: "Open profile center",
-          manage: "Blog Management",
-          manageDesc: "Manage your blogs",
-          write: "Write Post",
-          writeDesc: "Open editor",
-          categories: "Category Management",
-          categoriesDesc: "Manage categories",
-          tags: "Tag Management",
-          tagsDesc: "Manage tags",
-          logout: "Logout",
-          logoutDesc: "You cannot edit after logout",
-          avatarError: "Avatar load failed, fallback applied",
-        }
-      : locale === "ja-JP"
-        ? {
-            dropdown: "ユーザーメニュー",
-            section: "情報と操作",
-            profile: "プロフィール",
-            profileDesc: "プロフィールセンターへ",
-            manage: "ブログ管理",
-            manageDesc: "ブログを管理",
-            write: "記事を書く",
-            writeDesc: "エディターを開く",
-            categories: "カテゴリー管理",
-            categoriesDesc: "カテゴリーを管理",
-            tags: "タグ管理",
-            tagsDesc: "タグを管理",
-            logout: "ログアウト",
-            logoutDesc: "ログアウト後は編集できません",
-            avatarError: "アバター読み込み失敗、代替画像を使用",
-          }
-        : {
-            dropdown: "登录下拉框",
-            section: "信息及操作",
-            profile: "个人中心",
-            profileDesc: "个人信息操作入口",
-            manage: "博客管理",
-            manageDesc: "管理已创建博客",
-            write: "写文章",
-            writeDesc: "文章编辑入口",
-            categories: "分类管理",
-            categoriesDesc: "管理分类",
-            tags: "标签管理",
-            tagsDesc: "管理标签",
-            logout: "退出登录",
-            logoutDesc: "退出登录后，将无法编辑文章和信息",
-            avatarError: "头像加载失败，使用默认头像",
-          };
+  const dict = useClientDictionary(lang);
+  const t = (dict as { layout?: { userNav?: Record<string, string> } })?.layout?.userNav;
+
   if (isLoading) {
     return (
       <div className="flex items-center space-x-2">
-        <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse" />
+        <div className="h-8 w-8 animate-pulse rounded-full bg-gray-200" />
       </div>
     );
+  }
+
+  if (!t) {
+    return null;
   }
 
   if (!isAuthenticated || !user) {
@@ -89,12 +40,12 @@ export function UserNav() {
       <div className="flex items-center space-x-2">
         <Button
           isIconOnly
-          aria-label="login"
+          aria-label={t.loginAria}
           color="primary"
           size="sm"
           variant="shadow"
           as={Link}
-          href="/auth/login"
+          href={`/${lang}/auth/login`}
           className="font-semibold"
         >
           <LogInIcon width="1em" height="1em" className="text-base" />
@@ -103,7 +54,6 @@ export function UserNav() {
     );
   }
 
-  // 获取用户头像，优先使用用户数据中的头像
   const avatarSrc = user.avatar || DEFAULT_AVATAR;
 
   return (

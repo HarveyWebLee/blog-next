@@ -5,6 +5,7 @@ import { Link } from "@heroui/link";
 import clsx from "clsx";
 import { useTheme } from "next-themes";
 
+import { useClientDictionary } from "@/lib/hooks/use-client-dictionary";
 import styles from "./index.module.scss";
 
 const darkThemeColors = {
@@ -19,9 +20,11 @@ const lightThemeColors = {
   "--not-found-noise-text-shadow-color-2": "rgba(167, 232, 230, 0.8)",
 };
 
-export default function NotFoundNoise() {
+export default function NotFoundNoise({ lang = "zh-CN" }: { lang?: string }) {
   const { theme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const dict = useClientDictionary(lang);
+  const t = (dict as { notFound?: Record<string, string> })?.notFound;
 
   // 确保组件在客户端挂载后再应用主题样式
   useEffect(() => {
@@ -41,26 +44,30 @@ export default function NotFoundNoise() {
 
   const textClasses = clsx(styles.output, "text-2xl", "transition-all");
 
+  if (!t) {
+    return null;
+  }
+
   return (
     <div className={clsx(styles.container, "absolute inset-0")}>
       <div className={styles.noise}></div>
       <div className={styles.overlay}></div>
       <div className={styles.terminal}>
-        <h1 className="text-4xl font-bold mb-[24px]">
-          Page Not Found <span className={styles.errorcode}>404</span>
+        <h1 className="mb-[24px] text-4xl font-bold">
+          {t.heading} <span className={styles.errorcode}>{t.code}</span>
         </h1>
         <p style={textThemeStyles} className={textClasses}>
-          The page you are looking for might have been removed, had its name changed or is temporarily unavailable.
+          {t.description}
         </p>
         <p style={textThemeStyles} className={textClasses}>
-          Please try to{" "}
-          <Link href="/" underline="hover" color="primary" className="text-2xl">
-            return to the homepage
+          {t.homePromptBefore}{" "}
+          <Link href={`/${lang}`} underline="hover" color="primary" className="text-2xl">
+            {t.homeLink}
           </Link>
-          .
+          {t.homePromptAfter}
         </p>
         <p style={textThemeStyles} className={textClasses}>
-          Good luck.
+          {t.footer}
         </p>
       </div>
     </div>

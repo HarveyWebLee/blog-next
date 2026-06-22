@@ -14,6 +14,8 @@
 
 import { NextResponse, type NextRequest } from "next/server";
 
+import { defaultServiceUnavailableMessage } from "@/lib/i18n/api-response";
+import { getRequestLocale } from "@/lib/i18n/locale";
 import { sanitizeLogMessage, sanitizeLogMeta } from "@/lib/server/log-redaction";
 import { logger } from "@/lib/server/logger";
 
@@ -58,6 +60,7 @@ export type DefineApiHandlersOptions = {
    * - 返回 void：沿用默认行为（继续 throw，由 Next 处理）
    */
   onUnhandledErrorResponse?: (payload: {
+    request: NextRequest;
     method: string;
     path: string;
     ms: number;
@@ -112,7 +115,15 @@ function wrapHandler(method: string, fn: AppRouteHandler, options?: DefineApiHan
       }
 
       if (options?.onUnhandledErrorResponse) {
-        const mapped = await options.onUnhandledErrorResponse({ method, path, ms, message, meta, error });
+        const mapped = await options.onUnhandledErrorResponse({
+          request,
+          method,
+          path,
+          ms,
+          message,
+          meta,
+          error,
+        });
         if (mapped) {
           // 开发环境下若是 5xx 未捕获异常，统一透传真实错误信息，避免被各路由固定文案掩盖。
           // 生产环境继续使用各路由既有兜底文案，避免暴露内部实现细节。
@@ -144,7 +155,7 @@ function wrapHandler(method: string, fn: AppRouteHandler, options?: DefineApiHan
       const fallback = NextResponse.json(
         {
           success: false,
-          message: "服务暂时不可用，请稍后再试",
+          message: defaultServiceUnavailableMessage(getRequestLocale(request)),
           timestamp: new Date().toISOString(),
         },
         { status: 500 }

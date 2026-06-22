@@ -4,15 +4,20 @@
  *
  * GET /api/profile/stats - 获取用户统计信息
  */
-
 import { NextRequest, NextResponse } from "next/server";
 import { and, count, eq, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { comments, posts, userActivities, userFavorites, userFollows, userNotifications } from "@/lib/db/schema";
+import {
+  apiMessage,
+  jsonRateLimitError,
+  localizedErrorResponse,
+  localizedSuccessResponse,
+} from "@/lib/i18n/api-response";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { logger } from "@/lib/server/logger";
-import { requireAuthUser } from "@/lib/utils/request-auth";
+import { authErrorMessage, requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, ProfileStats } from "@/types/blog";
 
 async function handleProfileStatsGET(request: NextRequest) {
@@ -22,7 +27,7 @@ async function handleProfileStatsGET(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: auth.reason === "missing" ? "未提供认证令牌" : "无效的认证令牌",
+          message: authErrorMessage(request, auth.reason),
           timestamp: new Date().toISOString(),
         },
         { status: 401 }
@@ -107,7 +112,7 @@ async function handleProfileStatsGET(request: NextRequest) {
     return NextResponse.json<ApiResponse<ProfileStats>>({
       success: true,
       data: stats,
-      message: "统计信息获取成功",
+      message: apiMessage(request, "profile.statsSuccess"),
       timestamp: new Date().toISOString(),
     });
   } catch (error) {

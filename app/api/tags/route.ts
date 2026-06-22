@@ -8,12 +8,17 @@
  * GET /api/tags - 获取标签列表（支持分页、搜索、状态过滤；返回每个标签的 postCount）
  * POST /api/tags - 创建新标签（ownerId 由服务端按登录态写入）
  */
-
 import { NextRequest, NextResponse } from "next/server";
 import { and, asc, count, desc, eq, like, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { postTags, tags } from "@/lib/db/schema";
+import {
+  apiMessage,
+  jsonRateLimitError,
+  localizedErrorResponse,
+  localizedSuccessResponse,
+} from "@/lib/i18n/api-response";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { logger } from "@/lib/server/logger";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
@@ -138,7 +143,7 @@ async function handleTagsGET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: responseData,
-      message: "标签列表获取成功",
+      message: apiMessage(request, "taxonomy.tagListSuccess"),
       timestamp: new Date().toISOString(),
     } as ApiResponse<PaginatedResponseData<Tag>>);
   } catch (error) {
@@ -174,7 +179,7 @@ async function handleTagsPOST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: "标签名称和slug不能为空",
+          message: apiMessage(request, "taxonomy.tagNameSlugRequired"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -192,7 +197,7 @@ async function handleTagsPOST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: "标签名称已存在",
+          message: apiMessage(request, "taxonomy.tagNameExists"),
           timestamp: new Date().toISOString(),
         },
         { status: 409 }
@@ -210,7 +215,7 @@ async function handleTagsPOST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: "标签slug已存在",
+          message: apiMessage(request, "taxonomy.tagSlugExists"),
           timestamp: new Date().toISOString(),
         },
         { status: 409 }
@@ -252,7 +257,7 @@ async function handleTagsPOST(request: NextRequest) {
         color: newTag.color || undefined,
         isActive: newTag.isActive ?? true,
       },
-      message: "标签创建成功",
+      message: apiMessage(request, "taxonomy.tagCreateSuccess"),
       timestamp: new Date().toISOString(),
     } as ApiResponse<Tag>);
   } catch (error) {

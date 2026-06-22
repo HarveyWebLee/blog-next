@@ -3,6 +3,8 @@
 import React, { createContext, ReactNode, useCallback, useContext, useEffect, useState } from "react";
 
 import { sealPasswordInRequestBody } from "@/lib/crypto/password-transport/body";
+import { getDictionaryForLang } from "@/lib/dictionaries";
+import { getClientPageLocale } from "@/lib/i18n/locale";
 import { extractResponseErrorMessage, extractUnknownErrorMessage } from "@/lib/utils/client-error";
 import { LoginRequest, LoginResponse, User } from "@/types/blog";
 
@@ -85,6 +87,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
         "password"
       );
 
+      const locale = getClientPageLocale();
+      const dict = await getDictionaryForLang(locale);
+      const loginFailed = (dict as { auth?: { loginFailed?: string } }).auth?.loginFailed ?? "登录失败";
+      const loginRequestFailed =
+        (dict as { auth?: { loginRequestFailed?: string } }).auth?.loginRequestFailed ?? "登录请求失败";
+
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
@@ -109,12 +117,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return { success: true, message: data.message };
       } else {
         const msg =
-          data?.message || (response.ok ? "登录失败" : await extractResponseErrorMessage(response, "登录失败"));
+          data?.message || (response.ok ? loginFailed : await extractResponseErrorMessage(response, loginFailed));
         return { success: false, message: msg };
       }
     } catch (error) {
       console.error("登录错误:", error);
-      return { success: false, message: extractUnknownErrorMessage(error, "登录请求失败") };
+      const locale = getClientPageLocale();
+      const dict = await getDictionaryForLang(locale);
+      const loginRequestFailed =
+        (dict as { auth?: { loginRequestFailed?: string } }).auth?.loginRequestFailed ?? "登录请求失败";
+      return { success: false, message: extractUnknownErrorMessage(error, loginRequestFailed) };
     } finally {
       setIsLoading(false);
     }

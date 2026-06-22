@@ -7,9 +7,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button, Card, CardBody, CardHeader, Chip, Divider, Input, Spinner, Switch, Textarea } from "@heroui/react";
-import { ArrowLeft, Calendar, Edit, Eye, FileText, Hash, Palette, Save, Tag as TagIcon } from "lucide-react";
+import { ArrowLeft, Calendar, Eye, FileText, Hash, Palette, Save, Tag as TagIcon } from "lucide-react";
 
 import { useAuth } from "@/lib/contexts/auth-context";
+import { useClientDictionary } from "@/lib/hooks/use-client-dictionary";
 import { message } from "@/lib/utils";
 import { Locale } from "@/types";
 import { ApiResponse, Tag, UpdateTagRequest } from "@/types/blog";
@@ -23,6 +24,11 @@ export default function EditTagPage() {
   const router = useRouter();
   const params = useParams<{ id: string; lang: string }>();
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const [pageLang, setPageLang] = useState<Locale>("zh-CN");
+  const dict = useClientDictionary(pageLang);
+  const t = dict?.tag as Record<string, string> | undefined;
+  const te = (dict?.tag as { edit?: Record<string, string> } | undefined)?.edit;
+  const c = dict?.common as Record<string, string> | undefined;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [tag, setTag] = useState<Tag | null>(null);
@@ -33,49 +39,6 @@ export default function EditTagPage() {
     color: "#667eea",
     isActive: true,
   });
-  const [lang, setLang] = useState<Locale>("zh-CN");
-  const txt =
-    lang === "en-US"
-      ? {
-          failedLoad: "Failed to load tag",
-          required: "Tag name is required",
-          failedSave: "Failed to update tag",
-          title: "Edit Tag",
-          save: "Save Changes",
-          saving: "Saving...",
-          cancel: "Cancel",
-          back: "Back",
-          notFound: "Tag not found",
-          active: "Active",
-          inactive: "Inactive",
-        }
-      : lang === "ja-JP"
-        ? {
-            failedLoad: "タグ情報の取得に失敗しました",
-            required: "タグ名は必須です",
-            failedSave: "タグ更新に失敗しました",
-            title: "タグ編集",
-            save: "変更を保存",
-            saving: "保存中...",
-            cancel: "キャンセル",
-            back: "戻る",
-            notFound: "タグが存在しません",
-            active: "有効",
-            inactive: "無効",
-          }
-        : {
-            failedLoad: "获取标签信息失败",
-            required: "标签名称是必填项",
-            failedSave: "更新标签失败",
-            title: "编辑标签",
-            save: "保存更改",
-            saving: "保存中...",
-            cancel: "取消",
-            back: "返回",
-            notFound: "标签不存在",
-            active: "激活",
-            inactive: "停用",
-          };
 
   const fetchTag = useCallback(
     async (tagId: string) => {
@@ -93,26 +56,25 @@ export default function EditTagPage() {
             isActive: result.data.isActive,
           });
         } else {
-          message.error(result.message || txt.failedLoad);
+          message.error(result.message || te!.fetchFailed);
           router.back();
         }
       } catch (error) {
         console.error("获取标签信息失败:", error);
-        message.error(txt.failedLoad);
+        message.error(te!.fetchFailed);
         router.back();
       } finally {
         setLoading(false);
       }
     },
-    [router, txt.failedLoad]
+    [router, te?.fetchFailed]
   );
 
-  // 更新标签
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.name?.trim()) {
-      message.warning(txt.required);
+      message.warning(t!.nameRequired);
       return;
     }
 
@@ -132,14 +94,15 @@ export default function EditTagPage() {
       const result: ApiResponse = await response.json();
 
       if (result.success) {
-        router.push(`/${lang}/tags/manage`);
+        message.success(t!.tagUpdated);
+        router.push(`/${pageLang}/tags/manage`);
         router.refresh();
       } else {
-        message.error(result.message || txt.failedSave);
+        message.error(result.message || te!.updateFailed);
       }
     } catch (error) {
       console.error("更新标签失败:", error);
-      message.error(txt.failedSave);
+      message.error(te!.updateFailed);
     } finally {
       setSaving(false);
     }
@@ -151,11 +114,10 @@ export default function EditTagPage() {
       router.replace(`/${params.lang}/auth/login`);
       return;
     }
-    setLang(resolveLocale(params.lang));
+    setPageLang(resolveLocale(params.lang));
     fetchTag(params.id);
   }, [isAuthLoading, isAuthenticated, params.lang, params.id, fetchTag, router]);
 
-  // 预设颜色
   const presetColors = [
     "#667eea",
     "#764ba2",
@@ -171,7 +133,7 @@ export default function EditTagPage() {
     "#fed6e3",
   ];
 
-  if (loading) {
+  if (loading || !t || !te || !c) {
     return (
       <div className="flex justify-center items-center py-12">
         <Spinner size="lg" />
@@ -183,10 +145,10 @@ export default function EditTagPage() {
     return (
       <div className="text-center py-12">
         <TagIcon className="w-16 h-16 text-default-300 mx-auto mb-4" />
-        <h3 className="text-lg font-semibold text-default-600 mb-2">{txt.notFound}</h3>
-        <p className="text-default-500 mb-4">请检查标签ID是否正确</p>
+        <h3 className="text-lg font-semibold text-default-600 mb-2">{te.notFound}</h3>
+        <p className="text-default-500 mb-4">{te.notFoundDesc}</p>
         <Button color="primary" onPress={() => router.back()}>
-          {txt.back}
+          {te.back}
         </Button>
       </div>
     );
@@ -194,66 +156,67 @@ export default function EditTagPage() {
 
   return (
     <div className="space-y-6">
-      {/* 页面标题 */}
       <div className="flex items-center gap-4">
         <Button variant="light" isIconOnly onPress={() => router.back()} className="hover:bg-default-100">
           <ArrowLeft className="w-4 h-4" />
         </Button>
         <div className="flex-1">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-            {txt.title}
+            {te.title}
           </h1>
-          <p className="text-default-600 mt-2 text-lg">编辑标签：{tag.name}</p>
+          <p className="text-default-600 mt-2 text-lg">
+            {te.editingPrefix}
+            {tag.name}
+          </p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* 编辑表单 */}
         <div className="lg:col-span-2">
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
                 <TagIcon className="w-5 h-5" />
-                <span className="text-lg font-semibold">标签信息</span>
+                <span className="text-lg font-semibold">{te.info}</span>
               </div>
             </CardHeader>
             <CardBody>
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <Input
-                    label="标签名称"
-                    placeholder="请输入标签名称"
+                    label={t.name}
+                    placeholder={te.namePlaceholder}
                     value={formData.name}
                     onValueChange={(value) => setFormData({ ...formData, name: value })}
                     isRequired
-                    description="标签的显示名称"
+                    description={te.nameDesc}
                     startContent={<Hash className="w-4 h-4 text-default-400" />}
                     className="w-full"
                   />
                   <Input
-                    label="标签标识 (Slug)"
-                    placeholder="URL友好的标识符"
+                    label={te.slugLabel}
+                    placeholder={te.slugPlaceholder}
                     value={formData.slug}
                     onValueChange={(value) => setFormData({ ...formData, slug: value })}
-                    description="URL中使用的标识符"
+                    description={te.slugDesc}
                     startContent={<TagIcon className="w-4 h-4 text-default-400" />}
                     className="w-full"
                   />
                 </div>
 
                 <Textarea
-                  label="标签描述"
-                  placeholder="请输入标签描述"
+                  label={t.description}
+                  placeholder={te.descriptionPlaceholder}
                   value={formData.description}
                   onValueChange={(value) => setFormData({ ...formData, description: value })}
-                  description="可选的标签描述信息"
+                  description={te.descriptionDesc}
                   minRows={3}
                   startContent={<FileText className="w-4 h-4 text-default-400" />}
                 />
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-3">
-                    <label className="text-sm font-medium text-foreground">标签颜色</label>
+                    <label className="text-sm font-medium text-foreground">{t.color}</label>
                     <div className="space-y-3">
                       <div className="flex gap-3">
                         <Input
@@ -271,7 +234,7 @@ export default function EditTagPage() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <p className="text-sm text-default-600">预设颜色</p>
+                        <p className="text-sm text-default-600">{te.presetColors}</p>
                         <div className="flex flex-wrap gap-2">
                           {presetColors.map((color) => (
                             <button
@@ -288,7 +251,7 @@ export default function EditTagPage() {
                   </div>
 
                   <div className="space-y-3">
-                    <label className="text-sm font-medium text-foreground">状态</label>
+                    <label className="text-sm font-medium text-foreground">{t.status}</label>
                     <div className="flex items-center gap-3 p-4 bg-default-50 rounded-lg">
                       <Switch
                         isSelected={formData.isActive}
@@ -297,9 +260,9 @@ export default function EditTagPage() {
                         size="lg"
                       />
                       <div>
-                        <p className="font-medium text-foreground">{formData.isActive ? txt.active : txt.inactive}</p>
+                        <p className="font-medium text-foreground">{formData.isActive ? t.active : t.inactive}</p>
                         <p className="text-sm text-default-500">
-                          {formData.isActive ? "标签将显示在网站上" : "标签将隐藏"}
+                          {formData.isActive ? te.activeDesc : te.inactiveDesc}
                         </p>
                       </div>
                     </div>
@@ -310,7 +273,7 @@ export default function EditTagPage() {
 
                 <div className="flex gap-4 pt-4">
                   <Button variant="light" onPress={() => router.back()} className="flex-1">
-                    {txt.cancel}
+                    {c.cancel}
                   </Button>
                   <Button
                     type="submit"
@@ -319,7 +282,7 @@ export default function EditTagPage() {
                     isLoading={saving}
                     className="flex-1"
                   >
-                    {saving ? txt.saving : txt.save}
+                    {saving ? t.saving : te.save}
                   </Button>
                 </div>
               </form>
@@ -327,14 +290,12 @@ export default function EditTagPage() {
           </Card>
         </div>
 
-        {/* 预览和详情卡片 */}
         <div className="lg:col-span-1 space-y-6">
-          {/* 预览卡片 */}
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Eye className="w-5 h-5" />
-                <span className="text-lg font-semibold">预览</span>
+                <span className="text-lg font-semibold">{te.preview}</span>
               </div>
             </CardHeader>
             <CardBody>
@@ -348,8 +309,8 @@ export default function EditTagPage() {
                       <Hash className="w-4 h-4 text-white" />
                     </div>
                     <div className="text-left">
-                      <div className="font-semibold text-foreground">{formData.name || "标签名称"}</div>
-                      <div className="text-sm text-default-500">#{formData.slug || "标签标识"}</div>
+                      <div className="font-semibold text-foreground">{formData.name || t.name}</div>
+                      <div className="text-sm text-default-500">#{formData.slug || t.slug}</div>
                     </div>
                   </div>
 
@@ -357,7 +318,7 @@ export default function EditTagPage() {
 
                   <div className="flex items-center justify-center gap-2">
                     <Chip size="sm" color={formData.isActive ? "success" : "warning"} variant="flat">
-                      {formData.isActive ? txt.active : txt.inactive}
+                      {formData.isActive ? t.active : t.inactive}
                     </Chip>
                   </div>
                 </div>
@@ -365,36 +326,37 @@ export default function EditTagPage() {
             </CardBody>
           </Card>
 
-          {/* 标签详情卡片 */}
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Calendar className="w-5 h-5" />
-                <span className="text-lg font-semibold">标签详情</span>
+                <span className="text-lg font-semibold">{te.details}</span>
               </div>
             </CardHeader>
             <CardBody>
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-default-500">标签ID</span>
+                  <span className="text-default-500">{te.tagId}</span>
                   <span className="font-medium">#{tag.id}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-default-500">创建时间</span>
-                  <span className="font-medium">{new Date(tag.createdAt).toLocaleDateString(lang)}</span>
+                  <span className="text-default-500">{te.createdAt}</span>
+                  <span className="font-medium">{new Date(tag.createdAt).toLocaleDateString(pageLang)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-default-500">更新时间</span>
-                  <span className="font-medium">{new Date(tag.updatedAt).toLocaleDateString(lang)}</span>
+                  <span className="text-default-500">{te.updatedAt}</span>
+                  <span className="font-medium">{new Date(tag.updatedAt).toLocaleDateString(pageLang)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-default-500">文章数量</span>
-                  <span className="font-medium">{(tag as any).postCount || 0} 篇</span>
+                  <span className="text-default-500">{t.postCount}</span>
+                  <span className="font-medium">
+                    {(tag as Tag & { postCount?: number }).postCount || 0} {te.postUnit}
+                  </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-default-500">当前状态</span>
+                  <span className="text-default-500">{te.currentStatus}</span>
                   <Chip size="sm" color={tag.isActive ? "success" : "warning"} variant="flat">
-                    {tag.isActive ? txt.active : txt.inactive}
+                    {tag.isActive ? t.active : t.inactive}
                   </Chip>
                 </div>
               </div>

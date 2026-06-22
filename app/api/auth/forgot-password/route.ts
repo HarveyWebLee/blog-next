@@ -3,6 +3,12 @@ import { and, count, eq, gt } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { emailVerifications, userProfiles, users } from "@/lib/db/schema";
+import {
+  apiMessage,
+  jsonRateLimitError,
+  localizedErrorResponse,
+  localizedSuccessResponse,
+} from "@/lib/i18n/api-response";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { logger } from "@/lib/server/logger";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
@@ -27,7 +33,7 @@ async function handleAuthForgotPasswordPOST(request: NextRequest) {
         return NextResponse.json<ApiResponse>(
           {
             success: false,
-            message: "请求体 JSON 格式不正确",
+            message: apiMessage(request, "auth.forgotPasswordInvalidJson"),
             timestamp: new Date().toISOString(),
           },
           { status: 400 }
@@ -45,7 +51,7 @@ async function handleAuthForgotPasswordPOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "邮箱地址不能为空",
+          message: apiMessage(request, "auth.forgotPasswordEmailRequired"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -57,7 +63,7 @@ async function handleAuthForgotPasswordPOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "邮箱格式不正确",
+          message: apiMessage(request, "auth.forgotPasswordEmailInvalid"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -70,7 +76,7 @@ async function handleAuthForgotPasswordPOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "请求过于频繁，请稍后重试",
+          message: apiMessage(request, "common.rateLimit"),
           timestamp: new Date().toISOString(),
         },
         { status: 429, headers: { "Retry-After": String(distributedLimiter.retryAfterSeconds || 600) } }
@@ -93,7 +99,7 @@ async function handleAuthForgotPasswordPOST(request: NextRequest) {
         return NextResponse.json<ApiResponse>(
           {
             success: false,
-            message: "请求过于频繁，请稍后重试",
+            message: apiMessage(request, "common.rateLimit"),
             timestamp: new Date().toISOString(),
           },
           { status: 429, headers: { "Retry-After": "600" } }
@@ -108,7 +114,7 @@ async function handleAuthForgotPasswordPOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "该邮箱地址未注册",
+          message: apiMessage(request, "auth.forgotPasswordEmailNotRegistered"),
           timestamp: new Date().toISOString(),
         },
         { status: 404 }
@@ -153,7 +159,7 @@ async function handleAuthForgotPasswordPOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "邮件发送失败，请稍后重试",
+          message: apiMessage(request, "auth.forgotPasswordEmailSendFailed"),
           timestamp: new Date().toISOString(),
         },
         { status: 500 }
@@ -171,7 +177,7 @@ async function handleAuthForgotPasswordPOST(request: NextRequest) {
     return NextResponse.json<ApiResponse>(
       {
         success: true,
-        message: "密码重置邮件已发送，请检查您的邮箱",
+        message: apiMessage(request, "auth.forgotPasswordEmailSent"),
         timestamp: new Date().toISOString(),
       },
       { status: 200 }

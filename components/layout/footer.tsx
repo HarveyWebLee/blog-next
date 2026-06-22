@@ -10,134 +10,67 @@ import { BookOpen, ClipboardList, Home, Mail, Scale, Shield } from "lucide-react
 
 import { FooterFishSwim } from "@/components/layout/footer-fish-swim";
 import { useAuth } from "@/lib/contexts/auth-context";
+import { useClientDictionary } from "@/lib/hooks/use-client-dictionary";
 import { useNewsletterGuestSubscription } from "@/lib/hooks/useNewsletterGuestSubscription";
 import { message } from "@/lib/utils";
-import { Locale } from "@/types";
 
 /** 与 middleware 默认语言保持一致，避免在非 [lang] 段误用 Footer 时链接无效 */
 const FALLBACK_LANG = "zh-CN";
 
-const resolveLocale = (lang: string): Locale => {
-  if (lang === "en-US" || lang === "ja-JP") return lang;
-  return "zh-CN";
-};
-
-/** 底部文案：与 Header 导航对齐，并补充隐私条款、关于页联系区块 */
-const copy = {
-  "zh-CN": {
-    explore: "浏览",
-    home: "首页",
-    blog: "博客",
-    about: "关于",
-    legal: "条款与说明",
-    privacy: "隐私政策",
-    terms: "服务条款",
-    contact: "联系与反馈",
-    contactDesc: "合作、建议或问题，欢迎到关于页查看联系方式。",
-    contactCta: "前往联系",
-    subscribe: "邮件订阅",
-    subscribeDesc: "新文章发布时我们会发送邮件通知。",
-    emailPlaceholder: "输入邮箱地址",
-    subscribeBtn: "订阅",
-    unsubscribeBtn: "取消订阅",
-    subscribeSuccess: "订阅成功",
-    subscribeFail: "订阅失败",
-    unsubscribeSuccess: "已取消订阅",
-    unsubscribeFail: "取消订阅失败",
-    invalidEmail: "请输入有效的邮箱地址",
-    codePlaceholder: "邮箱验证码",
-    sendCode: "发送验证码",
-    needSubscribeCode: "请填写邮件中的验证码后再完成订阅",
-    needUnsubscribeCode: "请填写邮件中的验证码后再取消订阅",
-    sendCodeOk: "验证码已发送，请查收邮件",
-    sendCodeFail: "验证码发送失败",
-    loggedInHint: "将使用当前账号邮箱接收通知。",
-    rights: "保留所有权利。",
-  },
-  "en-US": {
-    explore: "Explore",
-    home: "Home",
-    blog: "Blog",
-    about: "About",
-    legal: "Legal & docs",
-    privacy: "Privacy",
-    terms: "Terms",
-    contact: "Contact",
-    contactDesc: "For collaboration or feedback, see contact options on the About page.",
-    contactCta: "View contact",
-    subscribe: "Newsletter",
-    subscribeDesc: "Get an email when new posts are published.",
-    emailPlaceholder: "Enter your email",
-    subscribeBtn: "Subscribe",
-    unsubscribeBtn: "Unsubscribe",
-    subscribeSuccess: "Subscription successful",
-    subscribeFail: "Subscription failed",
-    unsubscribeSuccess: "Unsubscribed",
-    unsubscribeFail: "Unsubscribe failed",
-    invalidEmail: "Please enter a valid email",
-    codePlaceholder: "Email code",
-    sendCode: "Send code",
-    needSubscribeCode: "Enter the code from your email to finish subscribing",
-    needUnsubscribeCode: "Enter the code from your email to unsubscribe",
-    sendCodeOk: "Verification code sent. Check your inbox.",
-    sendCodeFail: "Failed to send verification code",
-    loggedInHint: "Notifications will use your account email.",
-    rights: "All rights reserved.",
-  },
-  "ja-JP": {
-    explore: "ナビ",
-    home: "ホーム",
-    blog: "ブログ",
-    about: "について",
-    legal: "規約・資料",
-    privacy: "プライバシー",
-    terms: "利用規約",
-    contact: "お問い合わせ",
-    contactDesc: "連携やご意見は、についてページの連絡先をご覧ください。",
-    contactCta: "連絡先へ",
-    subscribe: "メール購読",
-    subscribeDesc: "新着記事をメールでお知らせします。",
-    emailPlaceholder: "メールアドレスを入力",
-    subscribeBtn: "購読する",
-    unsubscribeBtn: "購読解除",
-    subscribeSuccess: "購読しました",
-    subscribeFail: "購読に失敗しました",
-    unsubscribeSuccess: "購読を解除しました",
-    unsubscribeFail: "購読解除に失敗しました",
-    invalidEmail: "有効なメールアドレスを入力してください",
-    codePlaceholder: "確認コード",
-    sendCode: "コードを送信",
-    needSubscribeCode: "メールの確認コードを入力してから購読を完了してください",
-    needUnsubscribeCode: "メールの確認コードを入力してから購読解除してください",
-    sendCodeOk: "確認コードを送信しました。メールをご確認ください",
-    sendCodeFail: "確認コードの送信に失敗しました",
-    loggedInHint: "アカウントのメールアドレスで通知を受け取ります。",
-    rights: "All rights reserved.",
-  },
-} as const;
+type FooterCopy = Record<
+  | "explore"
+  | "home"
+  | "blog"
+  | "about"
+  | "legal"
+  | "privacy"
+  | "terms"
+  | "contact"
+  | "contactDesc"
+  | "contactCta"
+  | "subscribe"
+  | "subscribeDesc"
+  | "emailPlaceholder"
+  | "subscribeBtn"
+  | "unsubscribeBtn"
+  | "subscribeSuccess"
+  | "subscribeFail"
+  | "unsubscribeSuccess"
+  | "unsubscribeFail"
+  | "invalidEmail"
+  | "codePlaceholder"
+  | "sendCode"
+  | "needSubscribeCode"
+  | "needUnsubscribeCode"
+  | "sendCodeOk"
+  | "sendCodeFail"
+  | "loggedInHint"
+  | "rights",
+  string
+>;
 
 export function Footer() {
   const params = useParams();
   const pathname = usePathname() || "/";
   const lang = typeof params?.lang === "string" ? params.lang : FALLBACK_LANG;
-  const locale = resolveLocale(lang);
   const prefix = `/${lang}`;
-  const t = copy[locale];
+  const dict = useClientDictionary(lang);
+  const t = ((dict as { footer?: FooterCopy })?.footer ?? {}) as FooterCopy;
 
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const guestNl = useNewsletterGuestSubscription(isAuthenticated, {
-    invalidEmail: t.invalidEmail,
-    needSubscribeCode: t.needSubscribeCode,
-    needUnsubscribeCode: t.needUnsubscribeCode,
-    sendCodeOk: t.sendCodeOk,
-    sendCodeFail: t.sendCodeFail,
-    subscribeSuccess: t.subscribeSuccess,
-    subscribeFail: t.subscribeFail,
-    unsubscribeSuccess: t.unsubscribeSuccess,
-    unsubscribeFail: t.unsubscribeFail,
+    invalidEmail: t.invalidEmail ?? "",
+    needSubscribeCode: t.needSubscribeCode ?? "",
+    needUnsubscribeCode: t.needUnsubscribeCode ?? "",
+    sendCodeOk: t.sendCodeOk ?? "",
+    sendCodeFail: t.sendCodeFail ?? "",
+    subscribeSuccess: t.subscribeSuccess ?? "",
+    subscribeFail: t.subscribeFail ?? "",
+    unsubscribeSuccess: t.unsubscribeSuccess ?? "",
+    unsubscribeFail: t.unsubscribeFail ?? "",
   });
 
   const loginEmail = useMemo(() => {
@@ -233,6 +166,10 @@ export function Footer() {
   /** 与博客卡片、侧栏一致的链接行：图标 + 文案 + hover 主色 */
   const navLinkClass =
     "group flex items-center gap-2.5 rounded-lg py-1.5 text-sm text-default-600 transition-colors hover:text-primary dark:text-default-400 dark:hover:text-primary";
+
+  if (!dict?.footer) {
+    return null;
+  }
 
   return (
     <footer className="blog-border-x-box-shadow relative mt-auto bg-background">

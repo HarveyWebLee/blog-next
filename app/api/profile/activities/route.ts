@@ -5,15 +5,20 @@
  * GET /api/profile/activities - 获取用户活动日志
  * POST /api/profile/activities - 记录用户活动
  */
-
 import { NextRequest, NextResponse } from "next/server";
 import { and, count, desc, eq } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { userActivities } from "@/lib/db/schema";
+import {
+  apiMessage,
+  jsonRateLimitError,
+  localizedErrorResponse,
+  localizedSuccessResponse,
+} from "@/lib/i18n/api-response";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { logger } from "@/lib/server/logger";
-import { requireAuthUser } from "@/lib/utils/request-auth";
+import { authErrorMessage, requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, PaginatedResponseData, UserActivity } from "@/types/blog";
 
 async function handleProfileActivitiesGET(request: NextRequest) {
@@ -23,7 +28,7 @@ async function handleProfileActivitiesGET(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: auth.reason === "missing" ? "未提供认证令牌" : "无效的认证令牌",
+          message: authErrorMessage(request, auth.reason),
           timestamp: new Date().toISOString(),
         },
         { status: 401 }
@@ -82,7 +87,7 @@ async function handleProfileActivitiesGET(request: NextRequest) {
     return NextResponse.json<ApiResponse<PaginatedResponseData<UserActivity>>>({
       success: true,
       data: responseData,
-      message: "活动日志获取成功",
+      message: apiMessage(request, "profile.activitiesListSuccess"),
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
@@ -97,7 +102,7 @@ async function handleProfileActivitiesPOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: auth.reason === "missing" ? "未提供认证令牌" : "无效的认证令牌",
+          message: authErrorMessage(request, auth.reason),
           timestamp: new Date().toISOString(),
         },
         { status: 401 }
@@ -112,7 +117,7 @@ async function handleProfileActivitiesPOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "活动类型不能为空",
+          message: apiMessage(request, "profile.activityTypeRequired"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -137,7 +142,7 @@ async function handleProfileActivitiesPOST(request: NextRequest) {
       {
         success: true,
         data: { id: insertResult.insertId },
-        message: "活动记录成功",
+        message: apiMessage(request, "profile.activityLogSuccess"),
         timestamp: new Date().toISOString(),
       },
       { status: 201 }

@@ -1,13 +1,18 @@
 /**
  * 刷新访问令牌：支持数据库用户与超级管理员 root 会话。
  */
-
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 
 import { ensureSuperAdminDbIdentity, isSuperAdminEnabled } from "@/lib/config/super-admin";
 import { db } from "@/lib/db/config";
 import { users } from "@/lib/db/schema";
+import {
+  apiMessage,
+  jsonRateLimitError,
+  localizedErrorResponse,
+  localizedSuccessResponse,
+} from "@/lib/i18n/api-response";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { logger } from "@/lib/server/logger";
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from "@/lib/utils/auth";
@@ -25,7 +30,7 @@ async function handleAuthRefreshPOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "未提供刷新令牌",
+          message: apiMessage(request, "auth.refreshTokenMissing"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -44,7 +49,7 @@ async function handleAuthRefreshPOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "无效的刷新令牌",
+          message: apiMessage(request, "auth.invalidRefreshToken"),
           timestamp: new Date().toISOString(),
         },
         { status: 401 }
@@ -55,7 +60,7 @@ async function handleAuthRefreshPOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "无效的刷新令牌",
+          message: apiMessage(request, "auth.invalidRefreshToken"),
           timestamp: new Date().toISOString(),
         },
         { status: 401 }
@@ -68,7 +73,7 @@ async function handleAuthRefreshPOST(request: NextRequest) {
         return NextResponse.json<ApiResponse>(
           {
             success: false,
-            message: "超级管理员登录已禁用",
+            message: apiMessage(request, "auth.superAdminDisabled"),
             timestamp: new Date().toISOString(),
           },
           { status: 403 }
@@ -79,7 +84,7 @@ async function handleAuthRefreshPOST(request: NextRequest) {
         return NextResponse.json<ApiResponse>(
           {
             success: false,
-            message: "超级管理员身份不可用",
+            message: apiMessage(request, "auth.superAdminUnavailable"),
             timestamp: new Date().toISOString(),
           },
           { status: 403 }
@@ -100,7 +105,7 @@ async function handleAuthRefreshPOST(request: NextRequest) {
       });
       return NextResponse.json({
         success: true,
-        message: "刷新成功",
+        message: apiMessage(request, "auth.refreshSuccess"),
         data: { token, refreshToken: newRefresh },
         timestamp: new Date().toISOString(),
       });
@@ -111,7 +116,7 @@ async function handleAuthRefreshPOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "用户不存在",
+          message: apiMessage(request, "common.userNotFound"),
           timestamp: new Date().toISOString(),
         },
         { status: 404 }
@@ -123,7 +128,7 @@ async function handleAuthRefreshPOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "账户不可用",
+          message: apiMessage(request, "auth.accountUnavailable"),
           timestamp: new Date().toISOString(),
         },
         { status: 403 }
@@ -142,7 +147,7 @@ async function handleAuthRefreshPOST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "刷新成功",
+      message: apiMessage(request, "auth.refreshSuccess"),
       data: { token: accessToken, refreshToken: newRefresh },
       timestamp: new Date().toISOString(),
     });

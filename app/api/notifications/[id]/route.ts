@@ -6,16 +6,21 @@
  * PUT /api/notifications/[id] - 更新通知（本人；超级管理员可跨用户）
  * DELETE /api/notifications/[id] - 删除通知（本人；超级管理员可跨用户）
  */
-
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { userNotifications } from "@/lib/db/schema";
+import {
+  apiMessage,
+  jsonRateLimitError,
+  localizedErrorResponse,
+  localizedSuccessResponse,
+} from "@/lib/i18n/api-response";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { notifyRouteUnhandledError } from "@/lib/server/route-alert";
 import { isJwtInMemorySuperRoot } from "@/lib/utils/authz";
-import { requireAuthUser } from "@/lib/utils/request-auth";
+import { authErrorMessage, requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, UserNotification } from "@/types/blog";
 
 const NOTIFICATION_TYPES = new Set(["comment", "like", "follow", "mention", "system"]);
@@ -28,7 +33,7 @@ async function getScopedNotification(notificationId: number, request: NextReques
       response: NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: auth.reason === "missing" ? "未提供认证令牌" : "无效的认证令牌",
+          message: authErrorMessage(request, auth.reason),
           timestamp: new Date().toISOString(),
         },
         { status: 401 }
@@ -42,7 +47,7 @@ async function getScopedNotification(notificationId: number, request: NextReques
       response: NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "通知不存在",
+          message: apiMessage(request, "notification.notFound"),
           timestamp: new Date().toISOString(),
         },
         { status: 404 }
@@ -56,7 +61,7 @@ async function getScopedNotification(notificationId: number, request: NextReques
       response: NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "无权访问该通知",
+          message: apiMessage(request, "notification.forbidden"),
           timestamp: new Date().toISOString(),
         },
         { status: 403 }
@@ -81,7 +86,7 @@ async function handleNotificationByIdGET(request: NextRequest, { params }: { par
       return NextResponse.json(
         {
           success: false,
-          message: "无效的通知ID",
+          message: apiMessage(request, "notification.invalidId"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -109,7 +114,7 @@ async function handleNotificationByIdGET(request: NextRequest, { params }: { par
     return NextResponse.json<ApiResponse<UserNotification>>({
       success: true,
       data: notification,
-      message: "获取通知详情成功",
+      message: apiMessage(request, "notification.detailSuccess"),
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
@@ -144,7 +149,7 @@ async function handleNotificationByIdPUT(request: NextRequest, { params }: { par
       return NextResponse.json(
         {
           success: false,
-          message: "无效的通知ID",
+          message: apiMessage(request, "notification.invalidId"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -163,7 +168,7 @@ async function handleNotificationByIdPUT(request: NextRequest, { params }: { par
         return NextResponse.json<ApiResponse>(
           {
             success: false,
-            message: "无效的通知类型",
+            message: apiMessage(request, "notification.invalidType"),
             timestamp: new Date().toISOString(),
           },
           { status: 400 }
@@ -182,7 +187,7 @@ async function handleNotificationByIdPUT(request: NextRequest, { params }: { par
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "未提供可更新字段",
+          message: apiMessage(request, "notification.updateNoFields"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -206,7 +211,7 @@ async function handleNotificationByIdPUT(request: NextRequest, { params }: { par
         createdAt: updated.createdAt,
         updatedAt: updated.createdAt,
       },
-      message: "通知更新成功",
+      message: apiMessage(request, "notification.updateSuccess"),
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
@@ -229,7 +234,7 @@ async function handleNotificationByIdDELETE(request: NextRequest, { params }: { 
       return NextResponse.json(
         {
           success: false,
-          message: "无效的通知ID",
+          message: apiMessage(request, "notification.invalidId"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -245,7 +250,7 @@ async function handleNotificationByIdDELETE(request: NextRequest, { params }: { 
     return NextResponse.json<ApiResponse>({
       success: true,
       data: null,
-      message: "通知删除成功",
+      message: apiMessage(request, "notification.deleteSuccess"),
       timestamp: new Date().toISOString(),
     });
   } catch (error) {

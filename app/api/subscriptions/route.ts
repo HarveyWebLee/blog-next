@@ -3,6 +3,12 @@ import { and, eq } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { emailSubscriptions, users } from "@/lib/db/schema";
+import {
+  apiMessage,
+  jsonRateLimitError,
+  localizedErrorResponse,
+  localizedSuccessResponse,
+} from "@/lib/i18n/api-response";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { consumeEmailVerificationCode } from "@/lib/services/email-verification-consume";
 import { logUserActivity, maskEmailForActivityLog, UserActivityAction } from "@/lib/services/user-activity-log.service";
@@ -14,7 +20,7 @@ import { ApiResponse, CreateSubscriptionRequest, EmailSubscription } from "@/typ
 /**
  * 订阅相关接口共用的 DB 异常响应：先结构化落日志，再返回不把 SQL/堆栈暴露给前端的 JSON。
  */
-function subscriptionDbErrorResponse(scope: string, error: unknown, http500UserMessage: string): NextResponse {
+function subscriptionDbErrorResponse(request: NextRequest, scope: string, error: unknown): NextResponse {
   logDbError(scope, error);
   const timestamp = new Date().toISOString();
 
@@ -22,7 +28,7 @@ function subscriptionDbErrorResponse(scope: string, error: unknown, http500UserM
     return NextResponse.json(
       {
         success: false,
-        message: "订阅服务暂时不可用，请稍后再试",
+        message: apiMessage(request, "subscription.unavailable"),
         code: "DB_SCHEMA_OUTDATED",
         timestamp,
       } as ApiResponse<null>,
@@ -34,7 +40,7 @@ function subscriptionDbErrorResponse(scope: string, error: unknown, http500UserM
     return NextResponse.json(
       {
         success: false,
-        message: "服务暂时不可用，请稍后再试",
+        message: apiMessage(request, "common.serviceUnavailable"),
         code: "DB_UNAVAILABLE",
         timestamp,
       } as ApiResponse<null>,
@@ -45,7 +51,7 @@ function subscriptionDbErrorResponse(scope: string, error: unknown, http500UserM
   return NextResponse.json(
     {
       success: false,
-      message: http500UserMessage,
+      message: apiMessage(request, "common.serviceUnavailable"),
       code: "INTERNAL_ERROR",
       ...(process.env.NODE_ENV === "development" && error instanceof Error
         ? { debug: error.message.slice(0, 500) }
@@ -69,7 +75,7 @@ async function handleSubscriptionsGET(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: "邮箱不能为空",
+          message: apiMessage(request, "subscription.emailRequired"),
           timestamp: new Date().toISOString(),
         } as ApiResponse<null>,
         { status: 400 }
@@ -88,11 +94,11 @@ async function handleSubscriptionsGET(request: NextRequest) {
         email,
         isSubscribed: Boolean(subscription?.isActive),
       },
-      message: "订阅状态获取成功",
+      message: apiMessage(request, "subscription.statusSuccess"),
       timestamp: new Date().toISOString(),
     } as ApiResponse<{ email: string; isSubscribed: boolean }>);
   } catch (error) {
-    return subscriptionDbErrorResponse("GET /api/subscriptions", error, "查询订阅状态失败");
+    return subscriptionDbErrorResponse(request, "GET /api/subscriptions", error);
   }
 }
 
@@ -108,7 +114,7 @@ async function handleSubscriptionsPOST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: "登录已失效，请重新登录后再试",
+          message: apiMessage(request, "common.loginExpired"),
           code: "AUTH_TOKEN_INVALID",
           timestamp: new Date().toISOString(),
         } as ApiResponse<null>,
@@ -124,7 +130,7 @@ async function handleSubscriptionsPOST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: "请输入有效的邮箱地址",
+          message: apiMessage(request, "subscription.emailInvalid"),
           timestamp: new Date().toISOString(),
         } as ApiResponse<null>,
         { status: 400 }
@@ -139,7 +145,7 @@ async function handleSubscriptionsPOST(request: NextRequest) {
         return NextResponse.json(
           {
             success: false,
-            message: "用户不存在",
+            message: apiMessage(request, "common.userNotFound"),
             timestamp: new Date().toISOString(),
           } as ApiResponse<null>,
           { status: 401 }
@@ -150,7 +156,7 @@ async function handleSubscriptionsPOST(request: NextRequest) {
         return NextResponse.json(
           {
             success: false,
-            message: "仅可为当前登录账号的邮箱办理订阅",
+            message: apiMessage(request, "subscription.emailMismatch"),
             timestamp: new Date().toISOString(),
           } as ApiResponse<null>,
           { status: 403 }
@@ -162,7 +168,7 @@ async function handleSubscriptionsPOST(request: NextRequest) {
         return NextResponse.json(
           {
             success: false,
-            message: "请先获取邮箱验证码，验证通过后方可订阅",
+            message: apiMessage(request, "subscription.codeRequired"),
             code: "SUBSCRIPTION_VERIFICATION_REQUIRED",
             timestamp: new Date().toISOString(),
           } as ApiResponse<null>,
@@ -194,7 +200,7 @@ async function handleSubscriptionsPOST(request: NextRequest) {
             ...existing,
             isActive: true,
           },
-          message: "该邮箱已订阅，无需重复订阅",
+          message: apiMessage(request, "subscription.alreadySubscribed"),
           timestamp: new Date().toISOString(),
         } as ApiResponse<EmailSubscription>);
       }
@@ -230,13 +236,13 @@ async function handleSubscriptionsPOST(request: NextRequest) {
       {
         success: true,
         data: saved,
-        message: "订阅成功",
+        message: apiMessage(request, "subscription.success"),
         timestamp: new Date().toISOString(),
       } as ApiResponse<EmailSubscription>,
       { status: 201 }
     );
   } catch (error) {
-    return subscriptionDbErrorResponse("POST /api/subscriptions", error, "订阅失败");
+    return subscriptionDbErrorResponse(request, "POST /api/subscriptions", error);
   }
 }
 
@@ -257,7 +263,7 @@ async function handleSubscriptionsDELETE(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: "登录已失效，请重新登录后再试",
+          message: apiMessage(request, "common.loginExpired"),
           code: "AUTH_TOKEN_INVALID",
           timestamp: new Date().toISOString(),
         } as ApiResponse<null>,
@@ -273,7 +279,7 @@ async function handleSubscriptionsDELETE(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: "请输入有效的邮箱地址",
+          message: apiMessage(request, "subscription.emailInvalid"),
           timestamp: new Date().toISOString(),
         } as ApiResponse<null>,
         { status: 400 }
@@ -286,7 +292,7 @@ async function handleSubscriptionsDELETE(request: NextRequest) {
         return NextResponse.json(
           {
             success: false,
-            message: "用户不存在",
+            message: apiMessage(request, "common.userNotFound"),
             timestamp: new Date().toISOString(),
           } as ApiResponse<null>,
           { status: 401 }
@@ -297,7 +303,7 @@ async function handleSubscriptionsDELETE(request: NextRequest) {
         return NextResponse.json(
           {
             success: false,
-            message: "仅可为当前登录账号的邮箱办理退订",
+            message: apiMessage(request, "subscription.unsubscribeEmailMismatch"),
             timestamp: new Date().toISOString(),
           } as ApiResponse<null>,
           { status: 403 }
@@ -308,7 +314,7 @@ async function handleSubscriptionsDELETE(request: NextRequest) {
         return NextResponse.json(
           {
             success: false,
-            message: "请先获取邮箱验证码，验证通过后方可取消订阅",
+            message: apiMessage(request, "subscription.unsubscribeCodeRequired"),
             code: "SUBSCRIPTION_VERIFICATION_REQUIRED",
             timestamp: new Date().toISOString(),
           } as ApiResponse<null>,
@@ -337,7 +343,7 @@ async function handleSubscriptionsDELETE(request: NextRequest) {
     if (!existing) {
       return NextResponse.json({
         success: true,
-        message: "该邮箱当前未订阅",
+        message: apiMessage(request, "subscription.notSubscribed"),
         timestamp: new Date().toISOString(),
       } as ApiResponse<null>);
     }
@@ -361,11 +367,11 @@ async function handleSubscriptionsDELETE(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "取消订阅成功",
+      message: apiMessage(request, "subscription.unsubscribeSuccess"),
       timestamp: new Date().toISOString(),
     } as ApiResponse<null>);
   } catch (error) {
-    return subscriptionDbErrorResponse("DELETE /api/subscriptions", error, "取消订阅失败");
+    return subscriptionDbErrorResponse(request, "DELETE /api/subscriptions", error);
   }
 }
 

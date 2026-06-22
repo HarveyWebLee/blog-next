@@ -3,6 +3,12 @@ import { eq } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { userProfiles, users } from "@/lib/db/schema";
+import {
+  apiMessage,
+  jsonRateLimitError,
+  localizedErrorResponse,
+  localizedSuccessResponse,
+} from "@/lib/i18n/api-response";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { notifyRouteUnhandledError } from "@/lib/server/route-alert";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
@@ -39,7 +45,7 @@ async function handleAdminUserByIdGET(request: NextRequest, context: RouteContex
   const id = parseId((await context.params).id);
   if (id == null) {
     return NextResponse.json<ApiResponse>(
-      { success: false, message: "无效的用户 ID", timestamp: new Date().toISOString() },
+      { success: false, message: apiMessage(request, "common.invalidUserId"), timestamp: new Date().toISOString() },
       { status: 400 }
     );
   }
@@ -48,7 +54,7 @@ async function handleAdminUserByIdGET(request: NextRequest, context: RouteContex
     const urows = await db.select().from(users).where(eq(users.id, id)).limit(1);
     if (urows.length === 0) {
       return NextResponse.json<ApiResponse>(
-        { success: false, message: "用户不存在", timestamp: new Date().toISOString() },
+        { success: false, message: apiMessage(request, "common.userNotFound"), timestamp: new Date().toISOString() },
         { status: 404 }
       );
     }
@@ -77,7 +83,7 @@ async function handleAdminUserByIdGET(request: NextRequest, context: RouteContex
     return NextResponse.json<ApiResponse<AdminUserDetail>>({
       success: true,
       data: detail,
-      message: "ok",
+      message: apiMessage(request, "common.ok"),
       timestamp: new Date().toISOString(),
     });
   } catch (e) {
@@ -102,7 +108,7 @@ async function handleAdminUserByIdPATCH(request: NextRequest, context: RouteCont
   const id = parseId((await context.params).id);
   if (id == null) {
     return NextResponse.json<ApiResponse>(
-      { success: false, message: "无效的用户 ID", timestamp: new Date().toISOString() },
+      { success: false, message: apiMessage(request, "common.invalidUserId"), timestamp: new Date().toISOString() },
       { status: 400 }
     );
   }
@@ -112,7 +118,11 @@ async function handleAdminUserByIdPATCH(request: NextRequest, context: RouteCont
     body = (await request.json()) as AdminUserPatchBody;
   } catch {
     return NextResponse.json<ApiResponse>(
-      { success: false, message: "请求体无效", timestamp: new Date().toISOString() },
+      {
+        success: false,
+        message: apiMessage(request, "common.invalidRequestBody"),
+        timestamp: new Date().toISOString(),
+      },
       { status: 400 }
     );
   }
@@ -121,19 +131,19 @@ async function handleAdminUserByIdPATCH(request: NextRequest, context: RouteCont
   const statuses = new Set(["active", "inactive", "banned"]);
   if (body.role !== undefined && !roles.has(body.role)) {
     return NextResponse.json<ApiResponse>(
-      { success: false, message: "无效的角色", timestamp: new Date().toISOString() },
+      { success: false, message: apiMessage(request, "admin.invalidRole"), timestamp: new Date().toISOString() },
       { status: 400 }
     );
   }
   if (body.status !== undefined && !statuses.has(body.status)) {
     return NextResponse.json<ApiResponse>(
-      { success: false, message: "无效的状态", timestamp: new Date().toISOString() },
+      { success: false, message: apiMessage(request, "admin.invalidStatus"), timestamp: new Date().toISOString() },
       { status: 400 }
     );
   }
   if (body.role === undefined && body.status === undefined) {
     return NextResponse.json<ApiResponse>(
-      { success: false, message: "请至少提供 role 或 status", timestamp: new Date().toISOString() },
+      { success: false, message: apiMessage(request, "admin.roleStatusRequired"), timestamp: new Date().toISOString() },
       { status: 400 }
     );
   }
@@ -142,7 +152,7 @@ async function handleAdminUserByIdPATCH(request: NextRequest, context: RouteCont
     const exists = await db.select({ id: users.id }).from(users).where(eq(users.id, id)).limit(1);
     if (exists.length === 0) {
       return NextResponse.json<ApiResponse>(
-        { success: false, message: "用户不存在", timestamp: new Date().toISOString() },
+        { success: false, message: apiMessage(request, "common.userNotFound"), timestamp: new Date().toISOString() },
         { status: 404 }
       );
     }
@@ -152,7 +162,7 @@ async function handleAdminUserByIdPATCH(request: NextRequest, context: RouteCont
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "不可修改根账户（超级管理员本人）的角色与状态",
+          message: apiMessage(request, "admin.cannotModifyRoot"),
           timestamp: new Date().toISOString(),
         },
         { status: 403 }
@@ -206,7 +216,7 @@ async function handleAdminUserByIdPATCH(request: NextRequest, context: RouteCont
     return NextResponse.json<ApiResponse<AdminUserDetail>>({
       success: true,
       data: detail,
-      message: "已更新",
+      message: apiMessage(request, "admin.updated"),
       timestamp: new Date().toISOString(),
     });
   } catch (e) {

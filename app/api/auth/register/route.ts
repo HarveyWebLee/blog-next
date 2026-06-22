@@ -5,6 +5,13 @@ import { getSuperAdminProfileUserId } from "@/lib/config/super-admin";
 import { resolveSecretFromBody } from "@/lib/crypto/password-transport/resolve-secret";
 import { db } from "@/lib/db/config";
 import { emailVerifications, userProfiles, users } from "@/lib/db/schema";
+import {
+  apiMessage,
+  jsonRateLimitError,
+  localizedErrorResponse,
+  localizedSuccessResponse,
+} from "@/lib/i18n/api-response";
+import { getRequestLocale } from "@/lib/i18n/locale";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { logger } from "@/lib/server/logger";
 import { hashPassword, isValidEmail, validatePasswordStrength } from "@/lib/utils";
@@ -13,7 +20,8 @@ import { ApiResponse } from "@/types/blog";
 async function handleAuthRegisterPOST(request: NextRequest) {
   try {
     const body = (await request.json()) as Record<string, unknown>;
-    const resolved = await resolveSecretFromBody({ body, plainField: "password" });
+    const locale = getRequestLocale(request);
+    const resolved = await resolveSecretFromBody({ body, plainField: "password", locale });
     if (!resolved.ok) {
       return NextResponse.json<ApiResponse>(
         {
@@ -38,7 +46,7 @@ async function handleAuthRegisterPOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "用户名为必填项",
+          message: apiMessage(request, "auth.usernameRequired"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -49,7 +57,7 @@ async function handleAuthRegisterPOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "显示名称为必填项",
+          message: apiMessage(request, "auth.displayNameRequired"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -60,7 +68,7 @@ async function handleAuthRegisterPOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "邮箱为必填项",
+          message: apiMessage(request, "auth.emailRequired"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -71,7 +79,7 @@ async function handleAuthRegisterPOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "邮箱格式不符合规范，请填写有效的邮箱地址",
+          message: apiMessage(request, "auth.emailInvalid"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -82,7 +90,7 @@ async function handleAuthRegisterPOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "密码为必填项",
+          message: apiMessage(request, "auth.passwordRequired"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -95,7 +103,7 @@ async function handleAuthRegisterPOST(request: NextRequest) {
         return NextResponse.json<ApiResponse>(
           {
             success: false,
-            message: "请输入邮箱验证码",
+            message: apiMessage(request, "auth.verificationCodeRequired"),
             timestamp: new Date().toISOString(),
           },
           { status: 400 }
@@ -121,7 +129,7 @@ async function handleAuthRegisterPOST(request: NextRequest) {
         return NextResponse.json<ApiResponse>(
           {
             success: false,
-            message: "邮箱验证码无效或已过期",
+            message: apiMessage(request, "auth.verificationCodeInvalid"),
             timestamp: new Date().toISOString(),
           },
           { status: 400 }
@@ -138,7 +146,7 @@ async function handleAuthRegisterPOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "密码强度不符合要求",
+          message: apiMessage(request, "auth.passwordWeak"),
           error: passwordValidation.errors.join("; "),
           timestamp: new Date().toISOString(),
         },
@@ -153,7 +161,7 @@ async function handleAuthRegisterPOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "用户名已存在",
+          message: apiMessage(request, "auth.usernameExists"),
           timestamp: new Date().toISOString(),
         },
         { status: 409 }
@@ -167,7 +175,7 @@ async function handleAuthRegisterPOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "邮箱已被注册",
+          message: apiMessage(request, "auth.emailRegistered"),
           timestamp: new Date().toISOString(),
         },
         { status: 409 }
@@ -190,7 +198,7 @@ async function handleAuthRegisterPOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "邮箱已被注册",
+          message: apiMessage(request, "auth.emailRegistered"),
           timestamp: new Date().toISOString(),
         },
         { status: 409 }
@@ -219,7 +227,7 @@ async function handleAuthRegisterPOST(request: NextRequest) {
 
     return NextResponse.json<ApiResponse>({
       success: true,
-      message: "注册成功",
+      message: apiMessage(request, "auth.registerSuccess"),
       data: userWithoutPassword,
       timestamp: new Date().toISOString(),
     });

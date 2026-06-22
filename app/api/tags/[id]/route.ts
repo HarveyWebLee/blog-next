@@ -9,12 +9,17 @@
  * PUT /api/tags/[id] - 更新标签（校验名称/slug 在 owner 范围内唯一）
  * DELETE /api/tags/[id] - 删除标签（若存在关联文章则拒绝）
  */
-
 import { NextRequest, NextResponse } from "next/server";
 import { and, count, eq, ne } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { postTags, tags } from "@/lib/db/schema";
+import {
+  apiMessage,
+  jsonRateLimitError,
+  localizedErrorResponse,
+  localizedSuccessResponse,
+} from "@/lib/i18n/api-response";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { logger } from "@/lib/server/logger";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
@@ -47,7 +52,7 @@ async function handleTagByIdGET(request: NextRequest, { params }: { params: Prom
       return NextResponse.json(
         {
           success: false,
-          message: "无效的标签ID",
+          message: apiMessage(request, "taxonomy.invalidTagId"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -65,7 +70,7 @@ async function handleTagByIdGET(request: NextRequest, { params }: { params: Prom
       return NextResponse.json(
         {
           success: false,
-          message: "标签不存在",
+          message: apiMessage(request, "taxonomy.tagNotFound"),
           timestamp: new Date().toISOString(),
         },
         { status: 404 }
@@ -83,7 +88,7 @@ async function handleTagByIdGET(request: NextRequest, { params }: { params: Prom
     return NextResponse.json({
       success: true,
       data: tagWithCount,
-      message: "标签获取成功",
+      message: apiMessage(request, "taxonomy.tagFetchSuccess"),
       timestamp: new Date().toISOString(),
     } as ApiResponse<Tag & { postCount: number }>);
   } catch (error) {
@@ -116,7 +121,7 @@ async function handleTagByIdPUT(request: NextRequest, { params }: { params: Prom
       return NextResponse.json(
         {
           success: false,
-          message: "无效的标签ID",
+          message: apiMessage(request, "taxonomy.invalidTagId"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -136,7 +141,7 @@ async function handleTagByIdPUT(request: NextRequest, { params }: { params: Prom
       return NextResponse.json(
         {
           success: false,
-          message: "标签不存在",
+          message: apiMessage(request, "taxonomy.tagNotFound"),
           timestamp: new Date().toISOString(),
         },
         { status: 404 }
@@ -155,7 +160,7 @@ async function handleTagByIdPUT(request: NextRequest, { params }: { params: Prom
         return NextResponse.json(
           {
             success: false,
-            message: "标签名称已存在",
+            message: apiMessage(request, "taxonomy.tagNameExists"),
             timestamp: new Date().toISOString(),
           },
           { status: 409 }
@@ -175,7 +180,7 @@ async function handleTagByIdPUT(request: NextRequest, { params }: { params: Prom
         return NextResponse.json(
           {
             success: false,
-            message: "标签slug已存在",
+            message: apiMessage(request, "taxonomy.tagSlugExists"),
             timestamp: new Date().toISOString(),
           },
           { status: 409 }
@@ -210,7 +215,7 @@ async function handleTagByIdPUT(request: NextRequest, { params }: { params: Prom
     return NextResponse.json({
       success: true,
       data: updatedTag,
-      message: "标签更新成功",
+      message: apiMessage(request, "taxonomy.tagUpdateSuccess"),
       timestamp: new Date().toISOString(),
     } as ApiResponse<Tag>);
   } catch (error) {
@@ -243,7 +248,7 @@ async function handleTagByIdDELETE(request: NextRequest, context: { params: Prom
       return NextResponse.json(
         {
           success: false,
-          message: "无效的标签ID",
+          message: apiMessage(request, "taxonomy.invalidTagId"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -261,7 +266,7 @@ async function handleTagByIdDELETE(request: NextRequest, context: { params: Prom
       return NextResponse.json(
         {
           success: false,
-          message: "标签不存在",
+          message: apiMessage(request, "taxonomy.tagNotFound"),
           timestamp: new Date().toISOString(),
         },
         { status: 404 }
@@ -295,7 +300,7 @@ async function handleTagByIdDELETE(request: NextRequest, context: { params: Prom
 
     return NextResponse.json({
       success: true,
-      message: "标签删除成功",
+      message: apiMessage(request, "taxonomy.tagDeleteSuccess"),
       timestamp: new Date().toISOString(),
     } as ApiResponse<null>);
   } catch (error) {

@@ -3,9 +3,14 @@
  * POST multipart: file, scope=article|profile, previousKey（可选，替换时删旧对象）
  * DELETE JSON: { key } — 仅允许删除本人命名空间下的对象键
  */
-
 import { NextRequest, NextResponse } from "next/server";
 
+import {
+  apiMessage,
+  jsonRateLimitError,
+  localizedErrorResponse,
+  localizedSuccessResponse,
+} from "@/lib/i18n/api-response";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { logger } from "@/lib/server/logger";
 import {
@@ -28,11 +33,11 @@ async function handleUploadsImagePOST(request: NextRequest) {
   try {
     const user = getAuthUserFromRequest(request);
     if (!user) {
-      return NextResponse.json(createErrorResponse("请先登录"), { status: 401 });
+      return NextResponse.json(localizedErrorResponse(request, "common.pleaseLogin"), { status: 401 });
     }
 
     if (!isObjectStorageConfigured()) {
-      return NextResponse.json(createErrorResponse("对象存储未配置，请联系管理员配置 MINIO_* 环境变量"), {
+      return NextResponse.json(localizedErrorResponse(request, "upload.storageNotConfigured"), {
         status: 503,
       });
     }
@@ -43,24 +48,24 @@ async function handleUploadsImagePOST(request: NextRequest) {
     const previousKey = String(formData.get("previousKey") || "").trim();
 
     if (!(file instanceof File)) {
-      return NextResponse.json(createErrorResponse("请使用 multipart 上传字段 file"), { status: 400 });
+      return NextResponse.json(localizedErrorResponse(request, "upload.multipartRequired"), { status: 400 });
     }
 
     if (!isObjectStorageScope(scopeRaw)) {
-      return NextResponse.json(createErrorResponse("scope 仅支持 article 或 profile"), { status: 400 });
+      return NextResponse.json(localizedErrorResponse(request, "upload.invalidScope"), { status: 400 });
     }
 
     const buf = Buffer.from(await file.arrayBuffer());
     if (buf.length === 0) {
-      return NextResponse.json(createErrorResponse("文件为空"), { status: 400 });
+      return NextResponse.json(localizedErrorResponse(request, "upload.fileEmpty"), { status: 400 });
     }
     if (buf.length > MAX_BYTES) {
-      return NextResponse.json(createErrorResponse("图片大小不能超过 10MB"), { status: 400 });
+      return NextResponse.json(localizedErrorResponse(request, "upload.fileTooLarge"), { status: 400 });
     }
 
     const contentType = normalizeContentType(file.type, file.name);
     if (!ALLOWED_IMAGE_MIME_TYPES.has(contentType)) {
-      return NextResponse.json(createErrorResponse("仅支持 JPEG、PNG、GIF、WebP 图片"), { status: 400 });
+      return NextResponse.json(localizedErrorResponse(request, "upload.invalidType"), { status: 400 });
     }
 
     const key = buildObjectKey(scopeRaw, user.userId, file.name);
@@ -78,12 +83,12 @@ async function handleUploadsImagePOST(request: NextRequest) {
 
     const url = buildPublicObjectUrl(key);
     if (!url) {
-      return NextResponse.json(createErrorResponse("MINIO_PUBLIC_BASE_URL 未配置，无法生成访问地址"), {
+      return NextResponse.json(localizedErrorResponse(request, "upload.publicUrlMissing"), {
         status: 500,
       });
     }
 
-    return NextResponse.json(createSuccessResponse({ url, key, scope: scopeRaw }, "上传成功"), {
+    return NextResponse.json(localizedSuccessResponse(request, { url, key, scope: scopeRaw }, "upload.success"), {
       status: 200,
     });
   } catch (error) {
@@ -95,11 +100,11 @@ async function handleUploadsImageDELETE(request: NextRequest) {
   try {
     const user = getAuthUserFromRequest(request);
     if (!user) {
-      return NextResponse.json(createErrorResponse("请先登录"), { status: 401 });
+      return NextResponse.json(localizedErrorResponse(request, "common.pleaseLogin"), { status: 401 });
     }
 
     if (!isObjectStorageConfigured()) {
-      return NextResponse.json(createErrorResponse("对象存储未配置"), { status: 503 });
+      return NextResponse.json(localizedErrorResponse(request, "upload.storageUnavailable"), { status: 503 });
     }
 
     let key = "";
@@ -111,15 +116,15 @@ async function handleUploadsImageDELETE(request: NextRequest) {
     }
 
     if (!key) {
-      return NextResponse.json(createErrorResponse("缺少参数 key"), { status: 400 });
+      return NextResponse.json(localizedErrorResponse(request, "upload.keyRequired"), { status: 400 });
     }
 
     if (!assertUserOwnsObjectKey(key, user.userId)) {
-      return NextResponse.json(createErrorResponse("无权删除该资源"), { status: 403 });
+      return NextResponse.json(localizedErrorResponse(request, "upload.forbiddenDelete"), { status: 403 });
     }
 
     await deleteObjectByKey(key);
-    return NextResponse.json(createSuccessResponse(null, "已删除"), { status: 200 });
+    return NextResponse.json(localizedSuccessResponse(request, null, "upload.deleted"), { status: 200 });
   } catch (error) {
     throw error;
   }
@@ -131,7 +136,9 @@ export const { POST, DELETE } = defineApiHandlers(
     DELETE: handleUploadsImageDELETE,
   },
   {
-    onUnhandledErrorResponse: ({ method }) =>
-      NextResponse.json(createErrorResponse(method === "POST" ? "上传失败" : "删除失败"), { status: 500 }),
+    onUnhandledErrorResponse: ({ request, method }) =>
+      NextResponse.json(localizedErrorResponse(request, method === "POST" ? "upload.failed" : "upload.deleteFailed"), {
+        status: 500,
+      }),
   }
 );

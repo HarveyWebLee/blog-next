@@ -6,10 +6,11 @@
  * PUT /api/posts/[id] - 更新指定文章
  * DELETE /api/posts/[id] - 删除指定文章
  */
-
 import { NextRequest, NextResponse } from "next/server";
 
 import { resolveOptionalPasswordForPostBody } from "@/lib/crypto/password-transport/resolve-secret";
+import { localizedErrorFromRaw, localizedErrorResponse, localizedSuccessResponse } from "@/lib/i18n/api-response";
+import { getRequestLocale } from "@/lib/i18n/locale";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { logger } from "@/lib/server/logger";
 import { notifyRouteUnhandledError } from "@/lib/server/route-alert";
@@ -33,7 +34,7 @@ async function handlePostByIdGET(request: NextRequest, { params }: { params: Pro
     // 验证ID参数
     const postId = parseInt(id);
     if (isNaN(postId) || postId <= 0) {
-      return NextResponse.json(createErrorResponse("无效的文章ID"), {
+      return NextResponse.json(localizedErrorResponse(request, "post.invalidId"), {
         status: 400,
       });
     }
@@ -46,7 +47,7 @@ async function handlePostByIdGET(request: NextRequest, { params }: { params: Pro
 
     // 检查文章是否存在
     if (!post) {
-      return NextResponse.json(createErrorResponse("文章不存在"), {
+      return NextResponse.json(localizedErrorResponse(request, "post.notFound"), {
         status: 404,
       });
     }
@@ -57,7 +58,7 @@ async function handlePostByIdGET(request: NextRequest, { params }: { params: Pro
     });
 
     // 返回成功响应
-    return NextResponse.json(createSuccessResponse(post, "获取文章详情成功"), {
+    return NextResponse.json(localizedSuccessResponse(request, post, "post.fetchDetailSuccess"), {
       status: 200,
     });
   } catch (error) {
@@ -77,7 +78,7 @@ async function handlePostByIdPUT(request: NextRequest, { params }: { params: Pro
     // 验证ID参数
     const postId = parseInt(id);
     if (isNaN(postId) || postId <= 0) {
-      return NextResponse.json(createErrorResponse("无效的文章ID"), {
+      return NextResponse.json(localizedErrorResponse(request, "post.invalidId"), {
         status: 400,
       });
     }
@@ -90,9 +91,10 @@ async function handlePostByIdPUT(request: NextRequest, { params }: { params: Pro
 
     // 获取请求体数据（密码字段支持 passwordTransport）
     const raw = (await request.json()) as Record<string, unknown>;
-    const pwdPart = await resolveOptionalPasswordForPostBody(raw);
+    const locale = getRequestLocale(request);
+    const pwdPart = await resolveOptionalPasswordForPostBody(raw, locale);
     if (!pwdPart.ok) {
-      return NextResponse.json(createErrorResponse(pwdPart.message), { status: pwdPart.status });
+      return NextResponse.json(localizedErrorFromRaw(request, pwdPart.message), { status: pwdPart.status });
     }
     const { passwordTransport: _pt, password: _pp, ...rest } = raw;
     const body: UpdatePostRequest = {
@@ -102,11 +104,11 @@ async function handlePostByIdPUT(request: NextRequest, { params }: { params: Pro
 
     // 验证更新数据
     if (body.title && body.title.length > 200) {
-      return NextResponse.json(createErrorResponse("文章标题不能超过200个字符"), { status: 400 });
+      return NextResponse.json(localizedErrorResponse(request, "post.titleTooLong"), { status: 400 });
     }
 
     if (body.content && body.content.length < 10) {
-      return NextResponse.json(createErrorResponse("文章内容不能少于10个字符"), { status: 400 });
+      return NextResponse.json(localizedErrorResponse(request, "post.contentTooShort"), { status: 400 });
     }
     // 可见性切到 password 时必须保证“最终密码”存在：
     // - 本次 body 传了 password：以本次为准；
@@ -116,7 +118,7 @@ async function handlePostByIdPUT(request: NextRequest, { params }: { params: Pro
       body.visibility ?? ((beforePost as { visibility?: string }).visibility as string | undefined);
     const nextPassword = body.password ?? (beforePost as { password?: string | null }).password ?? undefined;
     if (nextVisibility === "password" && !nextPassword?.trim()) {
-      return NextResponse.json(createErrorResponse("可见性为密码保护时，访问密码不能为空"), { status: 400 });
+      return NextResponse.json(localizedErrorResponse(request, "post.passwordVisibilityRequired"), { status: 400 });
     }
 
     // 调用服务层更新文章
@@ -141,18 +143,18 @@ async function handlePostByIdPUT(request: NextRequest, { params }: { params: Pro
     });
 
     // 返回成功响应
-    return NextResponse.json(createSuccessResponse(updatedPost, "文章更新成功"), { status: 200 });
+    return NextResponse.json(localizedSuccessResponse(request, updatedPost, "post.updateSuccess"), { status: 200 });
   } catch (error) {
     // 处理特定错误类型
     if (error instanceof Error) {
       if (error.message.includes("文章不存在")) {
-        return NextResponse.json(createErrorResponse("文章不存在"), {
+        return NextResponse.json(localizedErrorResponse(request, "post.notFound"), {
           status: 404,
         });
       }
 
       if (error.message.includes("文章别名已存在")) {
-        return NextResponse.json(createErrorResponse("文章别名已存在，请使用不同的标题或别名"), { status: 409 });
+        return NextResponse.json(localizedErrorResponse(request, "post.slugExists"), { status: 409 });
       }
     }
 
@@ -172,7 +174,7 @@ async function handlePostByIdDELETE(request: NextRequest, { params }: { params: 
     // 验证ID参数
     const postId = parseInt(id);
     if (isNaN(postId) || postId <= 0) {
-      return NextResponse.json(createErrorResponse("无效的文章ID"), {
+      return NextResponse.json(localizedErrorResponse(request, "post.invalidId"), {
         status: 400,
       });
     }
@@ -190,7 +192,7 @@ async function handlePostByIdDELETE(request: NextRequest, { params }: { params: 
     const result = await postService.deletePost(postId);
 
     if (!result) {
-      return NextResponse.json(createErrorResponse("删除文章失败"), {
+      return NextResponse.json(localizedErrorResponse(request, "post.deleteFailed"), {
         status: 500,
       });
     }
@@ -204,14 +206,14 @@ async function handlePostByIdDELETE(request: NextRequest, { params }: { params: 
     });
 
     // 返回成功响应
-    return NextResponse.json(createSuccessResponse(null, "文章删除成功"), {
+    return NextResponse.json(localizedSuccessResponse(request, null, "post.deleteSuccess"), {
       status: 200,
     });
   } catch (error) {
     // 处理特定错误类型
     if (error instanceof Error) {
       if (error.message.includes("文章不存在")) {
-        return NextResponse.json(createErrorResponse("文章不存在"), {
+        return NextResponse.json(localizedErrorResponse(request, "post.notFound"), {
           status: 404,
         });
       }
@@ -233,7 +235,7 @@ async function handlePostByIdPATCH(request: NextRequest, { params }: { params: P
     // 验证ID参数
     const postId = parseInt(id);
     if (isNaN(postId) || postId <= 0) {
-      return NextResponse.json(createErrorResponse("无效的文章ID"), {
+      return NextResponse.json(localizedErrorResponse(request, "post.invalidId"), {
         status: 400,
       });
     }
@@ -246,9 +248,10 @@ async function handlePostByIdPATCH(request: NextRequest, { params }: { params: P
 
     // 获取请求体数据（密码字段支持 passwordTransport）
     const raw = (await request.json()) as Record<string, unknown>;
-    const pwdPart = await resolveOptionalPasswordForPostBody(raw);
+    const locale = getRequestLocale(request);
+    const pwdPart = await resolveOptionalPasswordForPostBody(raw, locale);
     if (!pwdPart.ok) {
-      return NextResponse.json(createErrorResponse(pwdPart.message), { status: pwdPart.status });
+      return NextResponse.json(localizedErrorFromRaw(request, pwdPart.message), { status: pwdPart.status });
     }
     const { passwordTransport: _pt, password: _pp, ...rest } = raw;
     const body: UpdatePostRequest = {
@@ -258,13 +261,13 @@ async function handlePostByIdPATCH(request: NextRequest, { params }: { params: P
 
     // 验证更新数据
     if (body.status && !["draft", "published", "archived"].includes(body.status)) {
-      return NextResponse.json(createErrorResponse("无效的文章状态"), {
+      return NextResponse.json(localizedErrorResponse(request, "post.invalidStatus"), {
         status: 400,
       });
     }
 
     if (body.visibility && !["public", "private", "password"].includes(body.visibility)) {
-      return NextResponse.json(createErrorResponse("无效的文章可见性"), {
+      return NextResponse.json(localizedErrorResponse(request, "post.invalidVisibility"), {
         status: 400,
       });
     }
@@ -273,7 +276,7 @@ async function handlePostByIdPATCH(request: NextRequest, { params }: { params: P
       body.visibility ?? ((beforePost as { visibility?: string }).visibility as string | undefined);
     const nextPassword = body.password ?? (beforePost as { password?: string | null }).password ?? undefined;
     if (nextVisibility === "password" && !nextPassword?.trim()) {
-      return NextResponse.json(createErrorResponse("可见性为密码保护时，访问密码不能为空"), { status: 400 });
+      return NextResponse.json(localizedErrorResponse(request, "post.passwordVisibilityRequired"), { status: 400 });
     }
 
     // 调用服务层更新文章
@@ -298,7 +301,7 @@ async function handlePostByIdPATCH(request: NextRequest, { params }: { params: P
     });
 
     // 返回成功响应
-    return NextResponse.json(createSuccessResponse(updatedPost, "文章更新成功"), { status: 200 });
+    return NextResponse.json(localizedSuccessResponse(request, updatedPost, "post.updateSuccess"), { status: 200 });
   } catch (error) {
     throw error;
   }
@@ -315,10 +318,12 @@ export const { GET, PUT, DELETE, PATCH } = defineApiHandlers(
     onError: (payload) => {
       notifyRouteUnhandledError(payload);
     },
-    onUnhandledErrorResponse: ({ method }) => {
-      if (method === "GET") return NextResponse.json(createErrorResponse("获取文章详情失败"), { status: 500 });
-      if (method === "DELETE") return NextResponse.json(createErrorResponse("删除文章失败"), { status: 500 });
-      return NextResponse.json(createErrorResponse("更新文章失败"), { status: 500 });
+    onUnhandledErrorResponse: ({ request, method }) => {
+      if (method === "GET")
+        return NextResponse.json(localizedErrorResponse(request, "post.fetchFailed"), { status: 500 });
+      if (method === "DELETE")
+        return NextResponse.json(localizedErrorResponse(request, "post.deleteFailed"), { status: 500 });
+      return NextResponse.json(localizedErrorResponse(request, "post.updateFailed"), { status: 500 });
     },
   }
 );

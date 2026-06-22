@@ -6,15 +6,20 @@
  * PUT /api/profile/notifications - 标记通知为已读
  * DELETE /api/profile/notifications - 删除通知
  */
-
 import { NextRequest, NextResponse } from "next/server";
 import { and, desc, eq, inArray, SQL } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { userNotifications } from "@/lib/db/schema";
+import {
+  apiMessage,
+  jsonRateLimitError,
+  localizedErrorResponse,
+  localizedSuccessResponse,
+} from "@/lib/i18n/api-response";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { notifyRouteUnhandledError } from "@/lib/server/route-alert";
-import { requireAuthUser } from "@/lib/utils/request-auth";
+import { authErrorMessage, requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, NotificationQueryParams, PaginatedResponseData, UserNotification } from "@/types/blog";
 
 async function handleProfileNotificationsGET(request: NextRequest) {
@@ -24,7 +29,7 @@ async function handleProfileNotificationsGET(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: auth.reason === "missing" ? "未提供认证令牌" : "无效的认证令牌",
+          message: authErrorMessage(request, auth.reason),
           timestamp: new Date().toISOString(),
         },
         { status: 401 }
@@ -91,7 +96,7 @@ async function handleProfileNotificationsGET(request: NextRequest) {
     return NextResponse.json<ApiResponse<PaginatedResponseData<UserNotification>>>({
       success: true,
       data: responseData,
-      message: "通知列表获取成功",
+      message: apiMessage(request, "notification.legacyListSuccess"),
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
@@ -106,7 +111,7 @@ async function handleProfileNotificationsPUT(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: auth.reason === "missing" ? "未提供认证令牌" : "无效的认证令牌",
+          message: authErrorMessage(request, auth.reason),
           timestamp: new Date().toISOString(),
         },
         { status: 401 }
@@ -139,7 +144,7 @@ async function handleProfileNotificationsPUT(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "请提供要标记的通知ID或设置markAllAsRead为true",
+          message: apiMessage(request, "notification.legacyMarkNeedIds"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -149,7 +154,7 @@ async function handleProfileNotificationsPUT(request: NextRequest) {
     return NextResponse.json<ApiResponse>({
       success: true,
       data: null,
-      message: "通知标记成功",
+      message: apiMessage(request, "notification.legacyMarkSuccess"),
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
@@ -164,7 +169,7 @@ async function handleProfileNotificationsDELETE(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: auth.reason === "missing" ? "未提供认证令牌" : "无效的认证令牌",
+          message: authErrorMessage(request, auth.reason),
           timestamp: new Date().toISOString(),
         },
         { status: 401 }
@@ -179,7 +184,7 @@ async function handleProfileNotificationsDELETE(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "通知ID不能为空",
+          message: apiMessage(request, "notification.legacyIdRequired"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -194,7 +199,7 @@ async function handleProfileNotificationsDELETE(request: NextRequest) {
     return NextResponse.json<ApiResponse>({
       success: true,
       data: null,
-      message: "通知删除成功",
+      message: apiMessage(request, "notification.deleteSuccess"),
       timestamp: new Date().toISOString(),
     });
   } catch (error) {

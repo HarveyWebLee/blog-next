@@ -3,10 +3,11 @@
  * GET /api/posts/slug/[slug] - 根据 slug 获取文章详情（含密码保护校验）
  * PATCH /api/posts/slug/[slug] - 校验密码保护文章密码
  */
-
 import { NextRequest, NextResponse } from "next/server";
 
 import { resolveSecretFromBody } from "@/lib/crypto/password-transport/resolve-secret";
+import { localizedErrorFromRaw, localizedErrorResponse, localizedSuccessResponse } from "@/lib/i18n/api-response";
+import { getRequestLocale } from "@/lib/i18n/locale";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { logger } from "@/lib/server/logger";
 import { postService } from "@/lib/services/post.service";
@@ -63,12 +64,12 @@ async function handlePostBySlugGET(request: NextRequest, { params }: { params: P
     const { slug } = await params;
 
     if (!slug) {
-      return NextResponse.json(createErrorResponse("文章slug不能为空"), { status: 400 });
+      return NextResponse.json(localizedErrorResponse(request, "post.slugRequired"), { status: 400 });
     }
 
     const post = await postService.getPostBySlug(slug, true);
     if (!post) {
-      return NextResponse.json(createErrorResponse("文章不存在"), { status: 404 });
+      return NextResponse.json(localizedErrorResponse(request, "post.notFound"), { status: 404 });
     }
 
     const core = resolvePostCore(post);
@@ -85,7 +86,9 @@ async function handlePostBySlugGET(request: NextRequest, { params }: { params: P
       });
     }
 
-    return NextResponse.json(createSuccessResponse(responsePost, "获取文章详情成功"), { status: 200 });
+    return NextResponse.json(localizedSuccessResponse(request, responsePost, "post.fetchDetailSuccess"), {
+      status: 200,
+    });
   } catch (error) {
     throw error;
   }
@@ -99,31 +102,35 @@ async function handlePostBySlugPATCH(request: NextRequest, { params }: { params:
   try {
     const { slug } = await params;
     if (!slug) {
-      return NextResponse.json(createErrorResponse("文章slug不能为空"), { status: 400 });
+      return NextResponse.json(localizedErrorResponse(request, "post.slugRequired"), { status: 400 });
     }
 
     const post = await postService.getPostBySlug(slug, true);
     if (!post) {
-      return NextResponse.json(createErrorResponse("文章不存在"), { status: 404 });
+      return NextResponse.json(localizedErrorResponse(request, "post.notFound"), { status: 404 });
     }
     const core = resolvePostCore(post);
     const rawBody = (await request.json()) as Record<string, unknown>;
-    const secret = await resolveSecretFromBody({ body: rawBody, plainField: "password" });
+    const locale = getRequestLocale(request);
+    const secret = await resolveSecretFromBody({ body: rawBody, plainField: "password", locale });
     if (!secret.ok) {
-      return NextResponse.json(createErrorResponse(secret.message), { status: secret.status });
+      return NextResponse.json(localizedErrorFromRaw(request, secret.message), { status: secret.status });
     }
     const password = secret.plaintext.trim();
 
     if (core.visibility !== "password") {
-      return NextResponse.json(createSuccessResponse(sanitizePostForResponse(post, true, false), "文章无需密码"), {
-        status: 200,
-      });
+      return NextResponse.json(
+        localizedSuccessResponse(request, sanitizePostForResponse(post, true, false), "post.noPasswordRequired"),
+        {
+          status: 200,
+        }
+      );
     }
 
     const authUser = getAuthUserFromRequest(request);
     const isAuthor = Boolean(authUser && core.authorId && authUser.userId === core.authorId);
     if (!isAuthor && (!core.password || password !== String(core.password))) {
-      return NextResponse.json(createErrorResponse("密码错误"), { status: 403 });
+      return NextResponse.json(localizedErrorResponse(request, "post.wrongPassword"), { status: 403 });
     }
 
     const unlockToken = generatePostUnlockTicket(slug);
@@ -132,7 +139,7 @@ async function handlePostBySlugPATCH(request: NextRequest, { params }: { params:
       unlockToken,
     };
 
-    return NextResponse.json(createSuccessResponse(responsePost, "密码验证成功"), {
+    return NextResponse.json(localizedSuccessResponse(request, responsePost, "post.passwordVerifySuccess"), {
       status: 200,
     });
   } catch (error) {

@@ -28,7 +28,9 @@ import { PostCard } from "@/components/blog/post-card";
 import PostsAPI from "@/lib/api/posts";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { sealPasswordInRequestBody } from "@/lib/crypto/password-transport/body";
+import { useClientDictionary } from "@/lib/hooks/use-client-dictionary";
 import { usePosts } from "@/lib/hooks/usePosts";
+import { isTextReady, pickText } from "@/lib/i18n/pick-text";
 import { PostData } from "@/types/blog";
 
 export type BlogPageContentProps = {
@@ -45,79 +47,8 @@ export type BlogPageContentProps = {
 export function BlogPageContent({ lang, initialTagId, initialAuthorId, initialPostId }: BlogPageContentProps) {
   const router = useRouter();
   const blogBasePath = `/${lang}/blog`;
-
-  const t =
-    lang === "en-US"
-      ? {
-          loadFailed: "Load failed",
-          filterTitle: "Filter Posts",
-          filterDesc: "Search, filter by tag, and sort posts.",
-          createDoc: "Create Post",
-          searchPlaceholder: "Search title or content...",
-          selectSort: "Select sort",
-          loading: "Loading...",
-          emptyTitle: "No posts",
-          emptyHint: "No posts match your filters.",
-          totalFound: "posts found",
-          pagePrefix: "Page",
-          pageMiddle: "of",
-          pageSuffix: "",
-          reload: "Reload",
-          viewAllPosts: "View all posts",
-          passwordTitle: "Password Required",
-          passwordHint: "This post is protected. Enter password to continue.",
-          passwordPlaceholder: "Enter post password",
-          passwordConfirm: "Unlock & Read",
-          passwordCancel: "Cancel",
-          passwordInvalid: "Wrong password",
-        }
-      : lang === "ja-JP"
-        ? {
-            loadFailed: "読み込み失敗",
-            filterTitle: "記事を絞り込む",
-            filterDesc: "検索・タグ絞り込み・並び順で記事を探せます。",
-            createDoc: "記事を作成",
-            searchPlaceholder: "タイトルまたは内容を検索...",
-            selectSort: "並び順を選択",
-            loading: "読み込み中...",
-            emptyTitle: "記事がありません",
-            emptyHint: "条件に一致する記事がありません。",
-            totalFound: "件の記事",
-            pagePrefix: "ページ",
-            pageMiddle: "/",
-            pageSuffix: "",
-            reload: "再読み込み",
-            viewAllPosts: "すべての記事へ",
-            passwordTitle: "パスワードが必要です",
-            passwordHint: "この記事はパスワード保護されています。入力後に閲覧できます。",
-            passwordPlaceholder: "記事パスワードを入力",
-            passwordConfirm: "解除して読む",
-            passwordCancel: "キャンセル",
-            passwordInvalid: "パスワードが正しくありません",
-          }
-        : {
-            loadFailed: "加载失败",
-            filterTitle: "筛选文章",
-            filterDesc: "通过搜索、标签（侧栏入口）与排序找到您需要的文章。",
-            createDoc: "新建文章",
-            searchPlaceholder: "搜索文章标题或内容...",
-            selectSort: "选择排序",
-            loading: "加载中...",
-            emptyTitle: "暂无文章",
-            emptyHint: "当前没有找到符合条件的文章。",
-            totalFound: "篇文章",
-            pagePrefix: "第",
-            pageMiddle: "页 / 共",
-            pageSuffix: "页",
-            reload: "重新加载",
-            viewAllPosts: "查看全部文章",
-            passwordTitle: "需要文章密码",
-            passwordHint: "该文章已开启密码保护，请先输入密码再继续阅读。",
-            passwordPlaceholder: "请输入文章密码",
-            passwordConfirm: "解锁并阅读",
-            passwordCancel: "取消",
-            passwordInvalid: "密码错误，请重试",
-          };
+  const dict = useClientDictionary(lang);
+  const t = pickText((dict as { blog?: { listPage?: Record<string, string> } })?.blog?.listPage);
 
   const [searchValue, setSearchValue] = useState("");
   const [sortBy, setSortBy] = useState("publishedAt");
@@ -185,19 +116,15 @@ export function BlogPageContent({ lang, initialTagId, initialAuthorId, initialPo
 
   const tagHeading = useMemo(() => {
     if (activeTagId == null) return "";
-    const name =
-      lang === "en-US" ? `Tag #${activeTagId}` : lang === "ja-JP" ? `タグ #${activeTagId}` : `标签 #${activeTagId}`;
-    if (lang === "en-US") return `Posts tagged “${name}”`;
-    if (lang === "ja-JP") return `「${name}」の記事一覧`;
-    return `含「${name}」标签的文章`;
-  }, [activeTagId, lang]);
+    const name = (t.tagNameFallback ?? "标签 #{id}").replace("{id}", String(activeTagId));
+    const template = t.tagHeading ?? "含「{name}」标签的文章";
+    return template.replace("{name}", name);
+  }, [activeTagId, t.tagHeading, t.tagNameFallback]);
 
   const authorHeading = useMemo(() => {
     if (activeAuthorId == null) return "";
-    if (lang === "en-US") return `Posts by author #${activeAuthorId}`;
-    if (lang === "ja-JP") return `投稿者 #${activeAuthorId} の記事一覧`;
-    return `作者 #${activeAuthorId} 的文章`;
-  }, [activeAuthorId, lang]);
+    return (t.authorHeading ?? "作者 #{id} 的文章").replace("{id}", String(activeAuthorId));
+  }, [activeAuthorId, t.authorHeading]);
 
   const handleSearch = (value: string) => {
     setSearchValue(value);

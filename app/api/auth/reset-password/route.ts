@@ -4,6 +4,13 @@ import { and, eq } from "drizzle-orm";
 import { resolveSecretFromBody } from "@/lib/crypto/password-transport/resolve-secret";
 import { db } from "@/lib/db/config";
 import { emailVerifications, users } from "@/lib/db/schema";
+import {
+  apiMessage,
+  jsonRateLimitError,
+  localizedErrorResponse,
+  localizedSuccessResponse,
+} from "@/lib/i18n/api-response";
+import { getRequestLocale } from "@/lib/i18n/locale";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { logger } from "@/lib/server/logger";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
@@ -13,7 +20,8 @@ import { ApiResponse } from "@/types/blog";
 async function handleAuthResetPasswordPOST(request: NextRequest) {
   try {
     const body = (await request.json()) as Record<string, unknown>;
-    const secret = await resolveSecretFromBody({ body, plainField: "newPassword" });
+    const locale = getRequestLocale(request);
+    const secret = await resolveSecretFromBody({ body, plainField: "newPassword", locale });
     if (!secret.ok) {
       return NextResponse.json<ApiResponse>(
         {
@@ -32,7 +40,7 @@ async function handleAuthResetPasswordPOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "重置令牌和新密码不能为空",
+          message: apiMessage(request, "auth.resetTokenPasswordRequired"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -45,7 +53,7 @@ async function handleAuthResetPasswordPOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "密码强度不符合要求",
+          message: apiMessage(request, "auth.passwordWeak"),
           error: passwordValidation.errors.join("; "),
           timestamp: new Date().toISOString(),
         },
@@ -70,7 +78,7 @@ async function handleAuthResetPasswordPOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "无效或过期的重置令牌",
+          message: apiMessage(request, "auth.resetTokenInvalid"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -83,7 +91,7 @@ async function handleAuthResetPasswordPOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "重置令牌已过期，请重新申请",
+          message: apiMessage(request, "auth.resetTokenExpired"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -117,7 +125,7 @@ async function handleAuthResetPasswordPOST(request: NextRequest) {
 
     return NextResponse.json<ApiResponse>({
       success: true,
-      message: "密码重置成功，请使用新密码登录",
+      message: apiMessage(request, "auth.resetPasswordSuccess"),
       timestamp: new Date().toISOString(),
     });
   } catch (error) {

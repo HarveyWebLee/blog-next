@@ -8,6 +8,8 @@ import { Bell, Github, Globe, Mail, MapPin, Phone, Save, Shield, User } from "lu
 import { FeaturedImageUpload } from "@/components/blog/featured-image-upload";
 import { PROFILE_GLASS_CARD } from "@/components/profile/profile-ui-presets";
 import { useAuth } from "@/lib/contexts/auth-context";
+import { useProfileDict } from "@/lib/contexts/profile-dict-context";
+import { isTextReady, pickText } from "@/lib/i18n/pick-text";
 import { message } from "@/lib/utils";
 import { isValidEmailFormat } from "@/lib/utils/email-format";
 import type { ApiResponse, UpdateProfileRequest, UserProfile } from "@/types/blog";
@@ -47,255 +49,9 @@ function readSocialString(sl: Record<string, unknown>, keys: string[]): string {
 }
 
 export default function ProfileSettings({ lang }: ProfileSettingsProps) {
-  const t =
-    lang === "en-US"
-      ? {
-          saveSuccess: "Settings saved successfully!",
-          loadFailed: "Failed to load profile",
-          needLogin: "Please sign in to manage account settings.",
-          login: "Sign in",
-          title: "Account Settings",
-          subtitle: "Manage your personal info",
-          saving: "Saving...",
-          save: "Save Settings",
-          tabs: {
-            profile: "Basic Info",
-            notifications: "Notifications",
-            privacy: "Privacy",
-            social: "Social",
-          },
-          profile: {
-            title: "Basic Info",
-            displayName: "Display Name",
-            displayNamePlaceholder: "Enter display name",
-            avatar: "Avatar",
-            avatarDetail: "Upload your profile avatar; it will sync to the top-right header after saving",
-            email: "Email",
-            emailPlaceholder: "your@email.com",
-            emailCode: "Email verification code",
-            emailCodePlaceholder: "Enter 6-digit code",
-            sendEmailCode: "Send code",
-            sendingEmailCode: "Sending...",
-            emailFormatError: "Please enter a valid email address",
-            needEmailCode: "Please verify the new email before saving",
-            firstName: "First Name",
-            firstNamePlaceholder: "Enter first name",
-            lastName: "Last Name",
-            lastNamePlaceholder: "Enter last name",
-            phone: "Phone",
-            phonePlaceholder: "Enter phone number",
-            website: "Website",
-            websitePlaceholder: "Enter website URL",
-            location: "Location",
-            locationPlaceholder: "Enter location",
-          },
-          notifications: {
-            title: "Notification Settings",
-            methods: "Notification Methods",
-            types: "Notification Types",
-            email: "Email Notifications",
-            emailDesc: "Receive important notifications by email",
-            push: "Push Notifications",
-            pushDesc: "Show browser push notifications",
-            sms: "SMS Notifications",
-            smsDesc: "Receive urgent notifications by SMS",
-            comment: "Comment Notifications",
-            commentDesc: "Notify when someone comments your post",
-            like: "Like Notifications",
-            likeDesc: "Notify when someone likes your post",
-            follow: "Follow Notifications",
-            followDesc: "Notify when someone follows you",
-          },
-          privacy: {
-            title: "Privacy Settings",
-            profileVisibility: "Profile Visibility",
-            emailVisibility: "Email Visibility",
-            activityVisibility: "Activity Visibility",
-            githubVisibility: "GitHub Visibility",
-            wechatQrVisibility: "WeChat QR Visibility",
-            statsVisibility: "Statistics Visibility",
-            recentActivityVisibility: "Recent Activity Visibility",
-            visibilityPlaceholder: "Select visibility",
-            public: "Public",
-            private: "Private",
-            friends: "Followers only",
-          },
-          social: {
-            title: "Social Links",
-            github: "GitHub",
-            wechatQr: "WeChat QR code",
-            wechatQrDetail: "Upload a QR image for others to add you on WeChat",
-            douyin: "Douyin",
-            douyinPlaceholder: "Douyin ID or profile URL",
-            bilibili: "Bilibili",
-            bilibiliPlaceholder: "UID, username, or space URL",
-          },
-        }
-      : lang === "ja-JP"
-        ? {
-            saveSuccess: "設定を保存しました！",
-            loadFailed: "プロフィールの読み込みに失敗しました",
-            needLogin: "アカウント設定を行うにはログインしてください。",
-            login: "ログイン",
-            title: "アカウント設定",
-            subtitle: "個人情報を管理",
-            saving: "保存中...",
-            save: "設定を保存",
-            tabs: {
-              profile: "基本情報",
-              notifications: "通知設定",
-              privacy: "プライバシー",
-              social: "ソーシャル",
-            },
-            profile: {
-              title: "基本情報",
-              displayName: "表示名",
-              displayNamePlaceholder: "表示名を入力",
-              avatar: "アバター",
-              avatarDetail: "プロフィール画像をアップロードすると、保存後に右上ヘッダーへ反映されます",
-              email: "メール",
-              emailPlaceholder: "your@email.com",
-              emailCode: "メール認証コード",
-              emailCodePlaceholder: "6桁のコードを入力",
-              sendEmailCode: "コード送信",
-              sendingEmailCode: "送信中...",
-              emailFormatError: "有効なメールアドレスを入力してください",
-              needEmailCode: "新しいメールアドレスは認証後に保存できます",
-              firstName: "名",
-              firstNamePlaceholder: "名を入力",
-              lastName: "姓",
-              lastNamePlaceholder: "姓を入力",
-              phone: "電話番号",
-              phonePlaceholder: "電話番号を入力",
-              website: "ウェブサイト",
-              websitePlaceholder: "ウェブサイトURLを入力",
-              location: "所在地",
-              locationPlaceholder: "所在地を入力",
-            },
-            notifications: {
-              title: "通知設定",
-              methods: "通知方法",
-              types: "通知タイプ",
-              email: "メール通知",
-              emailDesc: "重要通知をメールで受信",
-              push: "プッシュ通知",
-              pushDesc: "ブラウザで通知を表示",
-              sms: "SMS通知",
-              smsDesc: "緊急通知をSMSで受信",
-              comment: "コメント通知",
-              commentDesc: "コメント時に通知",
-              like: "いいね通知",
-              likeDesc: "いいね時に通知",
-              follow: "フォロー通知",
-              followDesc: "フォロー時に通知",
-            },
-            privacy: {
-              title: "プライバシー設定",
-              profileVisibility: "プロフィール公開範囲",
-              emailVisibility: "メール公開範囲",
-              activityVisibility: "アクティビティ公開範囲",
-              githubVisibility: "GitHub 公開範囲",
-              wechatQrVisibility: "WeChat QR 公開範囲",
-              statsVisibility: "統計情報公開範囲",
-              recentActivityVisibility: "最近の活動公開範囲",
-              visibilityPlaceholder: "公開範囲を選択",
-              public: "公開",
-              private: "非公開",
-              friends: "フォロワーのみ",
-            },
-            social: {
-              title: "ソーシャルリンク",
-              github: "GitHub",
-              wechatQr: "WeChat QRコード",
-              wechatQrDetail: "WeChat で追加してもらうための QR 画像をアップロード",
-              douyin: "Douyin（抖音）",
-              douyinPlaceholder: "抖音号またはプロフィール URL",
-              bilibili: "bilibili",
-              bilibiliPlaceholder: "UID・ユーザー名・空間 URL",
-            },
-          }
-        : {
-            saveSuccess: "设置保存成功！",
-            loadFailed: "加载个人资料失败",
-            needLogin: "请先登录后再管理账户设置。",
-            login: "去登录",
-            title: "账户设置",
-            subtitle: "管理您的个人信息",
-            saving: "保存中...",
-            save: "保存设置",
-            tabs: {
-              profile: "基本信息",
-              notifications: "通知设置",
-              privacy: "隐私设置",
-              social: "社交媒体",
-            },
-            profile: {
-              title: "基本信息",
-              displayName: "显示名称",
-              displayNamePlaceholder: "请输入显示名称",
-              avatar: "个人头像",
-              avatarDetail: "上传头像后，保存成功会同步更新页面右上角头像",
-              email: "邮箱",
-              emailPlaceholder: "your@email.com",
-              emailCode: "邮箱验证码",
-              emailCodePlaceholder: "请输入6位验证码",
-              sendEmailCode: "发送验证码",
-              sendingEmailCode: "发送中...",
-              emailFormatError: "请输入有效的邮箱地址",
-              needEmailCode: "修改邮箱后需先完成验证码校验",
-              firstName: "名字",
-              firstNamePlaceholder: "请输入名字",
-              lastName: "姓氏",
-              lastNamePlaceholder: "请输入姓氏",
-              phone: "电话号码",
-              phonePlaceholder: "请输入电话号码",
-              website: "个人网站",
-              websitePlaceholder: "请输入个人网站",
-              location: "所在地",
-              locationPlaceholder: "请输入所在地",
-            },
-            notifications: {
-              title: "通知设置",
-              methods: "通知方式",
-              types: "通知类型",
-              email: "邮件通知",
-              emailDesc: "通过邮件接收重要通知",
-              push: "推送通知",
-              pushDesc: "在浏览器中显示推送通知",
-              sms: "短信通知",
-              smsDesc: "通过短信接收紧急通知",
-              comment: "评论通知",
-              commentDesc: "当有人评论您的文章时通知",
-              like: "点赞通知",
-              likeDesc: "当有人点赞您的文章时通知",
-              follow: "关注通知",
-              followDesc: "当有人关注您时通知",
-            },
-            privacy: {
-              title: "隐私设置",
-              profileVisibility: "个人资料可见性",
-              emailVisibility: "邮箱可见性",
-              activityVisibility: "活动可见性",
-              githubVisibility: "GitHub 可见性",
-              wechatQrVisibility: "微信二维码可见性",
-              statsVisibility: "数据统计可见性",
-              recentActivityVisibility: "最近活动可见性",
-              visibilityPlaceholder: "选择可见性",
-              public: "公开",
-              private: "仅自己",
-              friends: "仅关注者",
-            },
-            social: {
-              title: "社交媒体链接",
-              github: "GitHub",
-              wechatQr: "微信二维码",
-              wechatQrDetail: "上传二维码图片，便于访客添加您的微信",
-              douyin: "抖音",
-              douyinPlaceholder: "抖音号或主页链接",
-              bilibili: "哔哩哔哩",
-              bilibiliPlaceholder: "UID、用户名或空间链接",
-            },
-          };
+  // settings 词典含 profile/social/tabs 等嵌套结构，此处用宽松类型避免逐字段声明
+  const t = pickText(useProfileDict("settings") as Record<string, unknown> | null) as Record<string, any>;
+
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [fetchFailed, setFetchFailed] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -342,42 +98,19 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
   const { isAuthenticated, isLoading: authLoading, patchUser } = useAuth();
 
   /** 微信二维码上传组件文案（与 FeaturedImageUpload 约定一致） */
-  const wechatQrUploadLabels = useMemo(
-    () =>
-      lang === "en-US"
-        ? {
-            title: t.social.wechatQr,
-            hint: "JPEG, PNG, GIF or WebP, max 10MB",
-            emptyDropHint: "Click or drag to upload",
-            uploadButton: "Upload",
-            removeButton: "Remove",
-            uploading: "Uploading...",
-            needLogin: "Please sign in first",
-            uploadFailed: "Upload failed",
-          }
-        : lang === "ja-JP"
-          ? {
-              title: t.social.wechatQr,
-              hint: "JPEG / PNG / GIF / WebP、最大 10MB",
-              emptyDropHint: "クリックまたはドラッグでアップロード",
-              uploadButton: "アップロード",
-              removeButton: "削除",
-              uploading: "アップロード中...",
-              needLogin: "先にログインしてください",
-              uploadFailed: "アップロードに失敗しました",
-            }
-          : {
-              title: t.social.wechatQr,
-              hint: "支持 JPEG、PNG、GIF、WebP，最大 10MB",
-              emptyDropHint: "点击或拖拽图片到此处上传",
-              uploadButton: "上传图片",
-              removeButton: "移除",
-              uploading: "上传中…",
-              needLogin: "请先登录",
-              uploadFailed: "上传失败",
-            },
-    [lang, t.social.wechatQr]
-  );
+  const wechatQrUploadLabels = useMemo(() => {
+    const u = t.uploadWechat ?? {};
+    return {
+      title: t.social?.wechatQr ?? "",
+      hint: u.hint ?? "",
+      emptyDropHint: u.emptyDropHint ?? "",
+      uploadButton: u.uploadButton ?? "",
+      removeButton: u.removeButton ?? "",
+      uploading: u.uploading ?? "",
+      needLogin: u.needLogin ?? "",
+      uploadFailed: u.uploadFailed ?? "",
+    };
+  }, [t.social?.wechatQr, t.uploadWechat]);
 
   const applyProfileToForm = useCallback((data: UserProfile) => {
     const n = asRecord(data.notifications);
@@ -601,9 +334,7 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
         message.error(json.message || "Error");
         return;
       }
-      message.success(
-        json.message || (lang === "en-US" ? "Code sent" : lang === "ja-JP" ? "コードを送信しました" : "验证码已发送")
-      );
+      message.success(json.message || (t.emailCodeSent ?? ""));
     } catch (error) {
       console.error("发送邮箱验证码失败:", error);
       message.error(t.loadFailed);
@@ -638,7 +369,7 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
         <CardBody className="flex flex-col items-center gap-4 p-10 text-center">
           <p className="text-default-600">{t.loadFailed}</p>
           <Button color="primary" variant="flat" onPress={() => window.location.reload()}>
-            {lang === "en-US" ? "Retry" : lang === "ja-JP" ? "再試行" : "重试"}
+            {t.retry ?? "重试"}
           </Button>
         </CardBody>
       </Card>
@@ -726,40 +457,16 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
                       scope="profile"
                       value={formData.avatar}
                       onChange={(url) => handleInputChange("avatar", url)}
-                      labels={
-                        lang === "en-US"
-                          ? {
-                              title: t.profile.avatar,
-                              hint: "JPEG, PNG, GIF or WebP, max 10MB",
-                              emptyDropHint: "Click or drag to upload",
-                              uploadButton: "Upload",
-                              removeButton: "Remove",
-                              uploading: "Uploading...",
-                              needLogin: "Please sign in first",
-                              uploadFailed: "Upload failed",
-                            }
-                          : lang === "ja-JP"
-                            ? {
-                                title: t.profile.avatar,
-                                hint: "JPEG / PNG / GIF / WebP、最大 10MB",
-                                emptyDropHint: "クリックまたはドラッグでアップロード",
-                                uploadButton: "アップロード",
-                                removeButton: "削除",
-                                uploading: "アップロード中...",
-                                needLogin: "先にログインしてください",
-                                uploadFailed: "アップロードに失敗しました",
-                              }
-                            : {
-                                title: t.profile.avatar,
-                                hint: "支持 JPEG、PNG、GIF、WebP，最大 10MB",
-                                emptyDropHint: "点击或拖拽图片到此处上传",
-                                uploadButton: "上传图片",
-                                removeButton: "移除",
-                                uploading: "上传中…",
-                                needLogin: "请先登录",
-                                uploadFailed: "上传失败",
-                              }
-                      }
+                      labels={{
+                        title: t.profile?.avatar ?? "",
+                        hint: t.uploadWechat?.hint ?? "",
+                        emptyDropHint: t.uploadWechat?.emptyDropHint ?? "",
+                        uploadButton: t.uploadWechat?.uploadButton ?? "",
+                        removeButton: t.uploadWechat?.removeButton ?? "",
+                        uploading: t.uploadWechat?.uploading ?? "",
+                        needLogin: t.uploadWechat?.needLogin ?? "",
+                        uploadFailed: t.uploadWechat?.uploadFailed ?? "",
+                      }}
                     />
                   </div>
                   <Input

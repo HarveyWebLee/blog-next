@@ -7,6 +7,7 @@ import { and, eq } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { posts, userPostLikes } from "@/lib/db/schema";
+import { localizedErrorFromRaw, localizedErrorResponse, localizedSuccessResponse } from "@/lib/i18n/api-response";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
 import { createErrorResponse, createSuccessResponse, toJsonSafeInt } from "@/lib/utils";
@@ -34,7 +35,7 @@ async function handlePostLikeGET(request: NextRequest, { params }: { params: Pro
     const { id } = await params;
     const postId = Number(id);
     if (!Number.isFinite(postId) || postId <= 0) {
-      return NextResponse.json(createErrorResponse("无效的文章ID"), { status: 400 });
+      return NextResponse.json(localizedErrorResponse(request, "post.invalidId"), { status: 400 });
     }
 
     const postRows = await db
@@ -43,19 +44,24 @@ async function handlePostLikeGET(request: NextRequest, { params }: { params: Pro
       .where(eq(posts.id, postId))
       .limit(1);
     if (postRows.length === 0) {
-      return NextResponse.json(createErrorResponse("文章不存在"), { status: 404 });
+      return NextResponse.json(localizedErrorResponse(request, "post.notFound"), { status: 404 });
     }
 
     const auth = requireAuthUser(request);
     if (!auth.ok) {
       if (!canInteractPost(postRows[0])) {
-        return NextResponse.json(createErrorResponse("该文章当前不可互动"), { status: 403 });
+        return NextResponse.json(localizedErrorResponse(request, "post.notInteractive"), { status: 403 });
       }
       const likeCount = await getLikeCount(postId);
-      return NextResponse.json(createSuccessResponse({ liked: false, likeCount }, "获取点赞状态成功"), { status: 200 });
+      return NextResponse.json(
+        localizedSuccessResponse(request, { liked: false, likeCount }, "post.likeStatusSuccess"),
+        {
+          status: 200,
+        }
+      );
     }
     if (!canInteractPost(postRows[0], auth.user)) {
-      return NextResponse.json(createErrorResponse("该文章当前不可互动"), { status: 403 });
+      return NextResponse.json(localizedErrorResponse(request, "post.notInteractive"), { status: 403 });
     }
 
     const likedRows = await db
@@ -65,9 +71,10 @@ async function handlePostLikeGET(request: NextRequest, { params }: { params: Pro
       .limit(1);
     const likeCount = await getLikeCount(postId);
 
-    return NextResponse.json(createSuccessResponse({ liked: likedRows.length > 0, likeCount }, "获取点赞状态成功"), {
-      status: 200,
-    });
+    return NextResponse.json(
+      localizedSuccessResponse(request, { liked: likedRows.length > 0, likeCount }, "post.likeStatusSuccess"),
+      { status: 200 }
+    );
   } catch (error) {
     throw error;
   }
@@ -77,13 +84,13 @@ async function handlePostLikePOST(request: NextRequest, { params }: { params: Pr
   try {
     const auth = requireAuthUser(request);
     if (!auth.ok) {
-      return NextResponse.json(createErrorResponse("请先登录"), { status: 401 });
+      return NextResponse.json(localizedErrorResponse(request, "common.pleaseLogin"), { status: 401 });
     }
 
     const { id } = await params;
     const postId = Number(id);
     if (!Number.isFinite(postId) || postId <= 0) {
-      return NextResponse.json(createErrorResponse("无效的文章ID"), { status: 400 });
+      return NextResponse.json(localizedErrorResponse(request, "post.invalidId"), { status: 400 });
     }
 
     const postRows = await db
@@ -92,10 +99,10 @@ async function handlePostLikePOST(request: NextRequest, { params }: { params: Pr
       .where(eq(posts.id, postId))
       .limit(1);
     if (postRows.length === 0) {
-      return NextResponse.json(createErrorResponse("文章不存在"), { status: 404 });
+      return NextResponse.json(localizedErrorResponse(request, "post.notFound"), { status: 404 });
     }
     if (!canInteractPost(postRows[0], auth.user)) {
-      return NextResponse.json(createErrorResponse("该文章当前不可互动"), { status: 403 });
+      return NextResponse.json(localizedErrorResponse(request, "post.notInteractive"), { status: 403 });
     }
 
     const likedRows = await db
@@ -145,9 +152,10 @@ async function handlePostLikePOST(request: NextRequest, { params }: { params: Pr
       metadata: { postId, likeCount },
       request,
     });
-    return NextResponse.json(createSuccessResponse({ liked, likeCount }, liked ? "点赞成功" : "取消点赞成功"), {
-      status: 200,
-    });
+    return NextResponse.json(
+      localizedSuccessResponse(request, { liked, likeCount }, liked ? "post.likeSuccess" : "post.unlikeSuccess"),
+      { status: 200 }
+    );
   } catch (error) {
     throw error;
   }
@@ -159,7 +167,10 @@ export const { GET, POST } = defineApiHandlers(
     POST: handlePostLikePOST,
   },
   {
-    onUnhandledErrorResponse: ({ method }) =>
-      NextResponse.json(createErrorResponse(method === "GET" ? "获取点赞状态失败" : "点赞操作失败"), { status: 500 }),
+    onUnhandledErrorResponse: ({ request, method }) =>
+      NextResponse.json(
+        localizedErrorResponse(request, method === "GET" ? "post.likeStatusFailed" : "post.likeFailed"),
+        { status: 500 }
+      ),
   }
 );

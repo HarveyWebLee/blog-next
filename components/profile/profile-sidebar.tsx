@@ -8,6 +8,7 @@ import { X } from "lucide-react";
 
 import { PROFILE_GLASS_CARD } from "@/components/profile/profile-ui-presets";
 import { useAuth } from "@/lib/contexts/auth-context";
+import { useProfileDict } from "@/lib/contexts/profile-dict-context";
 import { cn } from "@/lib/utils";
 
 const DEFAULT_AVATAR = "/images/avatar.jpeg";
@@ -23,30 +24,21 @@ interface NavigationItem {
 interface ProfileSidebarProps {
   items: NavigationItem[];
   lang: string;
-  /** 大屏：嵌入栅格侧栏；小屏：抽屉覆盖层 */
   variant: "inline" | "drawer";
   isOpen?: boolean;
   onClose?: () => void;
 }
 
-/**
- * 个人中心侧栏：玻璃卡片 + 主题色激活态，与博客筛选侧栏气质一致。
- */
 export default function ProfileSidebar({ items, isOpen = false, onClose, lang, variant }: ProfileSidebarProps) {
   const pathname = usePathname();
   const { user, isAuthenticated } = useAuth();
+  const sidebar = useProfileDict<Record<string, string>>("sidebar");
 
-  const t =
-    lang === "en-US"
-      ? { navTitle: "Shortcuts", fallbackName: "Guest" }
-      : lang === "ja-JP"
-        ? { navTitle: "ショートカット", fallbackName: "ゲスト" }
-        : { navTitle: "快捷入口", fallbackName: "访客" };
+  const navTitle = sidebar?.navTitle ?? "";
+  const fallbackName = sidebar?.fallbackName ?? "";
 
   const displayName =
-    isAuthenticated && user
-      ? (user.displayName?.trim() || user.username || "").trim() || t.fallbackName
-      : t.fallbackName;
+    isAuthenticated && user ? (user.displayName?.trim() || user.username || "").trim() || fallbackName : fallbackName;
   const emailLine = isAuthenticated && user?.email ? user.email : "";
 
   const NavCard = (
@@ -73,7 +65,7 @@ export default function ProfileSidebar({ items, isOpen = false, onClose, lang, v
         </div>
 
         <div>
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-default-500">{t.navTitle}</p>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-default-500">{navTitle}</p>
           <nav className="flex flex-col gap-1">
             {items.map((item) => {
               const Icon = item.icon;

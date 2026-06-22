@@ -6,18 +6,23 @@
  * POST /api/profile/favorites - 收藏文章
  * DELETE /api/profile/favorites - 取消收藏
  */
-
 import { NextRequest, NextResponse } from "next/server";
 import { and, count, desc, eq } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { categories, posts, userFavorites, users } from "@/lib/db/schema";
+import {
+  apiMessage,
+  jsonRateLimitError,
+  localizedErrorResponse,
+  localizedSuccessResponse,
+} from "@/lib/i18n/api-response";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { notifyRouteUnhandledError } from "@/lib/server/route-alert";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
 import { isJwtInMemorySuperRoot } from "@/lib/utils/authz";
 import type { AuthJwtPayload } from "@/lib/utils/request-auth";
-import { requireAuthUser } from "@/lib/utils/request-auth";
+import { authErrorMessage, requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, FavoritePostRequest, PaginatedResponseData, PostData, UserFavorite } from "@/types/blog";
 
 function canInteractPost(
@@ -36,7 +41,7 @@ async function handleProfileFavoritesGET(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: auth.reason === "missing" ? "未提供认证令牌" : "无效的认证令牌",
+          message: authErrorMessage(request, auth.reason),
           timestamp: new Date().toISOString(),
         },
         { status: 401 }
@@ -172,7 +177,7 @@ async function handleProfileFavoritesGET(request: NextRequest) {
     return NextResponse.json<ApiResponse<PaginatedResponseData<UserFavorite>>>({
       success: true,
       data: responseData,
-      message: "收藏列表获取成功",
+      message: apiMessage(request, "profile.favoritesListSuccess"),
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
@@ -187,7 +192,7 @@ async function handleProfileFavoritesPOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: auth.reason === "missing" ? "未提供认证令牌" : "无效的认证令牌",
+          message: authErrorMessage(request, auth.reason),
           timestamp: new Date().toISOString(),
         },
         { status: 401 }
@@ -202,7 +207,7 @@ async function handleProfileFavoritesPOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "文章ID不能为空",
+          message: apiMessage(request, "profile.postIdRequired"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -220,7 +225,7 @@ async function handleProfileFavoritesPOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "文章不存在",
+          message: apiMessage(request, "post.notFound"),
           timestamp: new Date().toISOString(),
         },
         { status: 404 }
@@ -230,7 +235,7 @@ async function handleProfileFavoritesPOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "该文章当前不可收藏",
+          message: apiMessage(request, "post.notFavoritable"),
           timestamp: new Date().toISOString(),
         },
         { status: 403 }
@@ -248,7 +253,7 @@ async function handleProfileFavoritesPOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "已经收藏过该文章",
+          message: apiMessage(request, "post.alreadyFavorited"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -271,7 +276,7 @@ async function handleProfileFavoritesPOST(request: NextRequest) {
       {
         success: true,
         data: { id: insertResult.insertId },
-        message: "收藏成功",
+        message: apiMessage(request, "post.favoriteSuccess"),
         timestamp: new Date().toISOString(),
       },
       { status: 201 }
@@ -288,7 +293,7 @@ async function handleProfileFavoritesDELETE(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: auth.reason === "missing" ? "未提供认证令牌" : "无效的认证令牌",
+          message: authErrorMessage(request, auth.reason),
           timestamp: new Date().toISOString(),
         },
         { status: 401 }
@@ -303,7 +308,7 @@ async function handleProfileFavoritesDELETE(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "文章ID不能为空",
+          message: apiMessage(request, "profile.postIdRequired"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -325,7 +330,7 @@ async function handleProfileFavoritesDELETE(request: NextRequest) {
     return NextResponse.json<ApiResponse>({
       success: true,
       data: null,
-      message: "取消收藏成功",
+      message: apiMessage(request, "post.unfavoriteSuccess"),
       timestamp: new Date().toISOString(),
     });
   } catch (error) {

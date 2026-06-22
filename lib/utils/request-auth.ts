@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 
+import { apiMessage } from "@/lib/i18n/api-response";
 import { verifyToken } from "@/lib/utils/auth";
 
 /** JWT 载荷（与登录接口签发字段一致） */
@@ -60,4 +61,9 @@ export function requireAuthUser(request: NextRequest): RequireAuthResult {
     return { ok: false, reason: "invalid" };
   }
   return { ok: true, user };
+}
+
+/** 401 响应文案：按请求 locale 返回三语 */
+export function authErrorMessage(request: NextRequest, reason: "missing" | "invalid"): string {
+  return apiMessage(request, reason === "missing" ? "common.tokenMissing" : "common.tokenInvalid");
 }

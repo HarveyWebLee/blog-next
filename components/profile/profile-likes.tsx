@@ -25,7 +25,9 @@ import {
   PROFILE_NATIVE_CONTROL,
 } from "@/components/profile/profile-ui-presets";
 import { useAuth } from "@/lib/contexts/auth-context";
+import { useProfileDict } from "@/lib/contexts/profile-dict-context";
 import { sealPasswordInRequestBody } from "@/lib/crypto/password-transport/body";
+import { isTextReady, pickText } from "@/lib/i18n/pick-text";
 import { message } from "@/lib/utils";
 import { clientBearerHeaders } from "@/lib/utils/client-bearer-auth";
 import { stripMarkdownForExcerpt } from "@/lib/utils/markdown-plain";
@@ -46,83 +48,9 @@ export default function ProfileLikes({ lang }: ProfileLikesProps) {
   const params = useParams();
   const router = useRouter();
   const routeLang = typeof params?.lang === "string" ? params.lang : "zh-CN";
-  const { user } = useAuth();
+  const t = pickText(useProfileDict("likes")) as Record<string, string> & { labels?: Record<string, string> };
 
-  const t =
-    lang === "en-US"
-      ? {
-          title: "My Likes",
-          subtitle: "Posts you have liked",
-          loadFailed: "Failed to load likes",
-          removeFailed: "Failed to unlike",
-          total: "posts",
-          search: "Search liked posts...",
-          allCategories: "All Categories",
-          readPost: "Read",
-          remove: "Unlike",
-          likedAt: "Liked at",
-          emptyMatch: "No matching liked posts",
-          empty: "No likes yet",
-          emptyMatchDesc: "Try adjusting filters",
-          emptyDesc: "Start liking posts you enjoy",
-          browse: "Browse Posts",
-          passwordTitle: "Password Required",
-          passwordHint: "This post is protected. Enter password to continue.",
-          passwordPlaceholder: "Enter post password",
-          passwordConfirm: "Unlock & Read",
-          passwordCancel: "Cancel",
-          passwordInvalid: "Wrong password",
-          passwordTag: "Password",
-        }
-      : lang === "ja-JP"
-        ? {
-            title: "いいねした記事",
-            subtitle: "あなたがいいねした記事一覧",
-            loadFailed: "いいね一覧の取得に失敗しました",
-            removeFailed: "いいね解除に失敗しました",
-            total: "件",
-            search: "いいねした記事を検索...",
-            allCategories: "すべてのカテゴリー",
-            readPost: "記事を読む",
-            remove: "いいね解除",
-            likedAt: "いいね日時",
-            emptyMatch: "一致する記事がありません",
-            empty: "いいねした記事がありません",
-            emptyMatchDesc: "条件を調整してください",
-            emptyDesc: "気に入った記事にいいねしましょう",
-            browse: "記事を見る",
-            passwordTitle: "パスワードが必要です",
-            passwordHint: "この記事はパスワード保護されています。入力後に閲覧できます。",
-            passwordPlaceholder: "記事パスワードを入力",
-            passwordConfirm: "解除して読む",
-            passwordCancel: "キャンセル",
-            passwordInvalid: "パスワードが正しくありません",
-            passwordTag: "パスワード保護",
-          }
-        : {
-            title: "我的点赞",
-            subtitle: "您点赞过的文章列表",
-            loadFailed: "获取点赞列表失败",
-            removeFailed: "取消点赞失败",
-            total: "篇文章",
-            search: "搜索点赞的文章...",
-            allCategories: "全部分类",
-            readPost: "阅读文章",
-            remove: "取消点赞",
-            likedAt: "点赞于",
-            emptyMatch: "没有找到匹配的点赞",
-            empty: "还没有点赞任何文章",
-            emptyMatchDesc: "尝试调整搜索条件或筛选器",
-            emptyDesc: "开始给喜欢的文章点赞吧",
-            browse: "浏览文章",
-            passwordTitle: "需要文章密码",
-            passwordHint: "该文章已开启密码保护，请先输入密码后再阅读。",
-            passwordPlaceholder: "请输入文章密码",
-            passwordConfirm: "解锁并阅读",
-            passwordCancel: "取消",
-            passwordInvalid: "密码错误，请重试",
-            passwordTag: "密码保护",
-          };
+  const { user } = useAuth();
 
   const [likes, setLikes] = useState<UserLikeRecord[]>([]);
   const [loading, setLoading] = useState(true);

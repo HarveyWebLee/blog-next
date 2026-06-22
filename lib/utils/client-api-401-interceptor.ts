@@ -7,6 +7,7 @@
  * - 登录/注册等「凭据错误」返回的 401 不应触发整站登出，见 {@link isCredentialAuthApiPath}。
  */
 
+import { getClientPageLocale } from "@/lib/i18n/locale";
 import type { Locale } from "@/types/common";
 
 /** 与 middleware 中 locales、默认语言保持一致 */
@@ -64,13 +65,29 @@ export function installClientApi401Interceptor(onUnauthorized: () => void): () =
     // 在请求发出前记录是否曾持有 accessToken，用于区分「登录态失效」与「未登录访问受保护资源」
     const hadAccessTokenBefore = Boolean(localStorage.getItem("accessToken"));
 
-    const response = await originalFetch(input, init);
+    // 同源 /api 请求自动附加当前页面语言，供后端 apiMessage 解析
+    let patchedInit = init;
+    const urlStr = resolveRequestUrl(input);
+    try {
+      const u = new URL(urlStr, window.location.origin);
+      if (u.origin === window.location.origin && u.pathname.startsWith("/api")) {
+        const locale = getClientPageLocale();
+        const headers = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined));
+        if (!headers.has("X-Locale")) {
+          headers.set("X-Locale", locale);
+        }
+        patchedInit = { ...init, headers };
+      }
+    } catch {
+      // 忽略 URL 解析失败，走原始 fetch
+    }
+
+    const response = await originalFetch(input, patchedInit);
 
     if (response.status !== 401) {
       return response;
     }
 
-    const urlStr = resolveRequestUrl(input);
     let pathname: string;
     try {
       const u = new URL(urlStr, window.location.origin);

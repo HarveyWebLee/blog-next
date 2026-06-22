@@ -15,6 +15,8 @@ import { Tooltip } from "@heroui/tooltip";
 import { BarChart3, CheckCheck, Clock3, Github, Mail, QrCode, Search } from "lucide-react";
 
 import { PostCard } from "@/components/blog/post-card";
+import { useProfileDict } from "@/lib/contexts/profile-dict-context";
+import { isTextReady, pickText } from "@/lib/i18n/pick-text";
 import { message } from "@/lib/utils";
 import type { ApiResponse, PostData, ProfileStats, UserActivity } from "@/types/blog";
 
@@ -67,92 +69,9 @@ interface PublicUserProfileProps {
 }
 
 export default function PublicUserProfile({ lang, userId }: PublicUserProfileProps) {
-  const router = useRouter();
-  const t =
-    lang === "en-US"
-      ? {
-          loading: "Loading profile...",
-          empty: "No posts yet",
-          blocked: "Profile is not visible to you",
-          searchPlaceholder: "Search post title/content",
-          allCategories: "All categories",
-          allTags: "All tags",
-          recentPosts: "Recent posts",
-          loadMore: "Load more",
-          stats: "Stats",
-          recentActivities: "Recent activities",
-          email: "Email",
-          github: "GitHub",
-          wechatQr: "WeChat QR",
-          postsFound: "posts",
-          follow: "Follow",
-          followBack: "Follow Back",
-          mutualFollowing: "Mutual Following",
-          following: "Following",
-          unfollow: "Unfollow",
-          followSuccess: "Followed successfully",
-          unfollowSuccess: "Unfollowed",
-          followFailed: "Follow failed",
-          unfollowFailed: "Unfollow failed",
-          needLogin: "Please login first",
-          mutualHint: "Mutual following in progress",
-        }
-      : lang === "ja-JP"
-        ? {
-            loading: "プロフィールを読み込み中...",
-            empty: "まだ記事がありません",
-            blocked: "このプロフィールは閲覧できません",
-            searchPlaceholder: "記事タイトル/内容で検索",
-            allCategories: "すべてのカテゴリ",
-            allTags: "すべてのタグ",
-            recentPosts: "最新記事",
-            loadMore: "もっと見る",
-            stats: "統計",
-            recentActivities: "最近の活動",
-            email: "メール",
-            github: "GitHub",
-            wechatQr: "WeChat QR",
-            postsFound: "件の記事",
-            follow: "フォロー",
-            followBack: "フォローバック",
-            mutualFollowing: "相互フォロー",
-            following: "フォロー中",
-            unfollow: "フォロー解除",
-            followSuccess: "フォローしました",
-            unfollowSuccess: "フォロー解除しました",
-            followFailed: "フォローに失敗しました",
-            unfollowFailed: "フォロー解除に失敗しました",
-            needLogin: "先にログインしてください",
-            mutualHint: "相互フォロー中です",
-          }
-        : {
-            loading: "正在加载用户资料...",
-            empty: "该用户暂未发布文章",
-            blocked: "该用户资料当前对你不可见",
-            searchPlaceholder: "按文章标题或内容筛选",
-            allCategories: "全部分类",
-            allTags: "全部标签",
-            recentPosts: "最新文章",
-            loadMore: "查看更多",
-            stats: "数据统计",
-            recentActivities: "最近活动",
-            email: "邮箱",
-            github: "GitHub",
-            wechatQr: "微信二维码",
-            postsFound: "篇文章",
-            follow: "关注",
-            followBack: "回关",
-            mutualFollowing: "已互关",
-            following: "已关注",
-            unfollow: "取消关注",
-            followSuccess: "关注成功",
-            unfollowSuccess: "已取消关注",
-            followFailed: "关注失败",
-            unfollowFailed: "取消关注失败",
-            needLogin: "请先登录",
-            mutualHint: "当前为互相关注关系",
-          };
+  const t = pickText(useProfileDict("public")) as Record<string, string> & { labels?: Record<string, string> };
 
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);

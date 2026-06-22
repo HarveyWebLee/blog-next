@@ -22,6 +22,7 @@ import {
 import { ArrowLeft, Calendar, Edit, Eye, FileText, Folder, Save } from "lucide-react";
 
 import { CategoryTreeSelect } from "@/components/ui/category-tree-select";
+import { useClientDictionary } from "@/lib/hooks/use-client-dictionary";
 import { message } from "@/lib/utils";
 import { clientBearerHeaders } from "@/lib/utils/client-bearer-auth";
 import { Locale } from "@/types";
@@ -36,140 +37,13 @@ const resolveLocale = (lang: string): Locale => {
   return "zh-CN";
 };
 
-const EDIT_TEXT: Record<Locale, Record<string, string>> = {
-  "zh-CN": {
-    requiredName: "分类名称是必填项",
-    fetchFailed: "获取分类信息失败",
-    updateSuccess: "分类更新成功",
-    updateFailed: "更新分类失败",
-    notFound: "分类不存在",
-    notFoundDesc: "请检查分类ID是否正确",
-    back: "返回",
-    title: "编辑分类",
-    editingPrefix: "编辑分类：",
-    info: "分类信息",
-    name: "分类名称",
-    namePlaceholder: "请输入分类名称",
-    nameDesc: "分类的显示名称",
-    slug: "分类标识 (Slug)",
-    slugPlaceholder: "URL友好的标识符",
-    slugDesc: "URL中使用的标识符",
-    description: "分类描述",
-    descriptionPlaceholder: "请输入分类描述",
-    descriptionDesc: "可选的分类描述信息",
-    parent: "父分类",
-    parentPlaceholder: "选择父分类（可选）",
-    parentDesc: "选择父分类以创建层级结构",
-    sortOrder: "排序顺序",
-    sortDesc: "数字越小排序越靠前",
-    status: "状态",
-    active: "激活",
-    inactive: "停用",
-    activeDesc: "分类将显示在网站上",
-    inactiveDesc: "分类将隐藏",
-    cancel: "取消",
-    saving: "保存中...",
-    save: "保存更改",
-    preview: "预览",
-    details: "分类详情",
-    categoryId: "分类ID",
-    createdAt: "创建时间",
-    updatedAt: "更新时间",
-    postCount: "文章数量",
-    currentStatus: "当前状态",
-    none: "无",
-    postUnit: "篇",
-  },
-  "en-US": {
-    requiredName: "Category name is required",
-    fetchFailed: "Failed to load category info",
-    updateSuccess: "Category updated successfully",
-    updateFailed: "Failed to update category",
-    notFound: "Category not found",
-    notFoundDesc: "Please check the category ID",
-    back: "Back",
-    title: "Edit Category",
-    editingPrefix: "Editing: ",
-    info: "Category Info",
-    name: "Category Name",
-    namePlaceholder: "Enter category name",
-    nameDesc: "Display name of category",
-    slug: "Category Slug",
-    slugPlaceholder: "URL-friendly identifier",
-    slugDesc: "Identifier used in URL",
-    description: "Description",
-    descriptionPlaceholder: "Enter category description",
-    descriptionDesc: "Optional category description",
-    parent: "Parent Category",
-    parentPlaceholder: "Select parent (optional)",
-    parentDesc: "Choose parent to create hierarchy",
-    sortOrder: "Sort Order",
-    sortDesc: "Smaller number appears first",
-    status: "Status",
-    active: "Active",
-    inactive: "Inactive",
-    activeDesc: "Category will be visible on site",
-    inactiveDesc: "Category will be hidden",
-    cancel: "Cancel",
-    saving: "Saving...",
-    save: "Save Changes",
-    preview: "Preview",
-    details: "Details",
-    categoryId: "Category ID",
-    createdAt: "Created At",
-    updatedAt: "Updated At",
-    postCount: "Posts",
-    currentStatus: "Current Status",
-    none: "None",
-    postUnit: "posts",
-  },
-  "ja-JP": {
-    requiredName: "カテゴリー名は必須です",
-    fetchFailed: "カテゴリー情報の取得に失敗しました",
-    updateSuccess: "カテゴリーを更新しました",
-    updateFailed: "カテゴリー更新に失敗しました",
-    notFound: "カテゴリーが存在しません",
-    notFoundDesc: "カテゴリーIDを確認してください",
-    back: "戻る",
-    title: "カテゴリー編集",
-    editingPrefix: "編集中：",
-    info: "カテゴリー情報",
-    name: "カテゴリー名",
-    namePlaceholder: "カテゴリー名を入力",
-    nameDesc: "表示用のカテゴリー名",
-    slug: "カテゴリースラッグ",
-    slugPlaceholder: "URL 用識別子",
-    slugDesc: "URL で使用される識別子",
-    description: "説明",
-    descriptionPlaceholder: "カテゴリー説明を入力",
-    descriptionDesc: "任意の説明",
-    parent: "親カテゴリー",
-    parentPlaceholder: "親カテゴリーを選択（任意）",
-    parentDesc: "階層構造を作成します",
-    sortOrder: "並び順",
-    sortDesc: "小さい数字ほど先頭に表示",
-    status: "状態",
-    active: "有効",
-    inactive: "無効",
-    activeDesc: "サイト上に表示されます",
-    inactiveDesc: "サイト上で非表示になります",
-    cancel: "キャンセル",
-    saving: "保存中...",
-    save: "変更を保存",
-    preview: "プレビュー",
-    details: "詳細",
-    categoryId: "カテゴリーID",
-    createdAt: "作成日",
-    updatedAt: "更新日",
-    postCount: "記事数",
-    currentStatus: "現在の状態",
-    none: "なし",
-    postUnit: "件",
-  },
-};
-
 export default function EditCategoryPage({ params }: EditCategoryPageProps) {
   const router = useRouter();
+  const [pageLang, setPageLang] = useState<Locale>("zh-CN");
+  const dict = useClientDictionary(pageLang);
+  const t = dict?.category as Record<string, string> | undefined;
+  const te = (dict?.category as { edit?: Record<string, string> } | undefined)?.edit;
+  const c = dict?.common as Record<string, string> | undefined;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [category, setCategory] = useState<Category | null>(null);
@@ -182,8 +56,6 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
     sortOrder: 0,
     isActive: true,
   });
-  const [lang, setLang] = useState<Locale>("zh-CN");
-  const t = EDIT_TEXT[lang];
 
   // 编辑页父分类禁用列表：当前分类及其后代不可选，避免循环层级
   const disabledParentIds = useMemo(() => {
@@ -228,18 +100,18 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
             isActive: result.data.isActive,
           });
         } else {
-          message.error(result.message || t.fetchFailed);
+          message.error(result.message || te!.fetchFailed);
           router.back();
         }
       } catch (error) {
         console.error("获取分类信息失败:", error);
-        message.error(t.fetchFailed);
+        message.error(te!.fetchFailed);
         router.back();
       } finally {
         setLoading(false);
       }
     },
-    [router, t.fetchFailed]
+    [router, te?.fetchFailed]
   );
 
   const fetchCategories = useCallback(async () => {
@@ -263,7 +135,7 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
     e.preventDefault();
 
     if (!formData.name?.trim()) {
-      message.warning(t.requiredName);
+      message.warning(t!.nameRequired);
       return;
     }
 
@@ -284,15 +156,15 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
       const result: ApiResponse = await response.json();
 
       if (result.success) {
-        message.success(t.updateSuccess);
-        router.push(`/${lang}/categories/manage`);
+        message.success(t!.categoryUpdated);
+        router.push(`/${pageLang}/categories/manage`);
         router.refresh();
       } else {
-        message.error(result.message || t.updateFailed);
+        message.error(result.message || te!.updateFailed);
       }
     } catch (error) {
       console.error("更新分类失败:", error);
-      message.error(t.updateFailed);
+      message.error(te!.updateFailed);
     } finally {
       setSaving(false);
     }
@@ -301,7 +173,7 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
   useEffect(() => {
     const initPage = async () => {
       const resolvedParams = await params;
-      setLang(resolveLocale(resolvedParams.lang));
+      setPageLang(resolveLocale(resolvedParams.lang));
       await fetchCategory(resolvedParams.id);
     };
 
@@ -314,7 +186,7 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
     }
   }, [category, fetchCategories]);
 
-  if (loading) {
+  if (loading || !t || !te || !c) {
     return (
       <div className="flex justify-center items-center py-12">
         <Spinner size="lg" />
@@ -326,10 +198,10 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
     return (
       <div className="text-center py-12">
         <Folder className="w-16 h-16 text-default-300 mx-auto mb-4" />
-        <h3 className="text-lg font-semibold text-default-600 mb-2">{t.notFound}</h3>
-        <p className="text-default-500 mb-4">{t.notFoundDesc}</p>
+        <h3 className="text-lg font-semibold text-default-600 mb-2">{te.notFound}</h3>
+        <p className="text-default-500 mb-4">{te.notFoundDesc}</p>
         <Button color="primary" onPress={() => router.back()}>
-          {t.back}
+          {te.back}
         </Button>
       </div>
     );
@@ -344,10 +216,10 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
         </Button>
         <div className="flex-1">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-            {t.title}
+            {te.title}
           </h1>
           <p className="text-default-600 mt-2 text-lg">
-            {t.editingPrefix}
+            {te.editingPrefix}
             {category.name}
           </p>
         </div>
@@ -365,7 +237,7 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Folder className="w-5 h-5" />
-                <span className="text-lg font-semibold">{t.info}</span>
+                <span className="text-lg font-semibold">{te.info}</span>
               </div>
             </CardHeader>
             <CardBody>
@@ -373,20 +245,20 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <Input
                     label={t.name}
-                    placeholder={t.namePlaceholder}
+                    placeholder={te.namePlaceholder}
                     value={formData.name}
                     onValueChange={(value) => setFormData({ ...formData, name: value })}
                     isRequired
-                    description={t.nameDesc}
+                    description={te.nameDesc}
                     startContent={<Folder className="w-4 h-4 text-default-400" />}
                     className="w-full"
                   />
                   <Input
-                    label={t.slug}
-                    placeholder={t.slugPlaceholder}
+                    label={te.slugLabel}
+                    placeholder={te.slugPlaceholder}
                     value={formData.slug}
                     onValueChange={(value) => setFormData({ ...formData, slug: value })}
-                    description={t.slugDesc}
+                    description={te.slugDesc}
                     startContent={<FileText className="w-4 h-4 text-default-400" />}
                     className="w-full"
                   />
@@ -394,10 +266,10 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
 
                 <Textarea
                   label={t.description}
-                  placeholder={t.descriptionPlaceholder}
+                  placeholder={te.descriptionPlaceholder}
                   value={formData.description}
                   onValueChange={(value) => setFormData({ ...formData, description: value })}
-                  description={t.descriptionDesc}
+                  description={te.descriptionDesc}
                   minRows={3}
                   startContent={<FileText className="w-4 h-4 text-default-400" />}
                 />
@@ -405,15 +277,15 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-3">
                     <CategoryTreeSelect
-                      label={t.parent}
-                      placeholder={t.parentPlaceholder}
-                      noneLabel={t.none}
+                      label={t.parentCategory}
+                      placeholder={te.parentPlaceholder}
+                      noneLabel={te.none}
                       categories={categories}
                       value={formData.parentId}
                       disabledIds={disabledParentIds}
                       onChange={(parentId) => setFormData({ ...formData, parentId })}
                     />
-                    <p className="text-xs text-default-500">{t.parentDesc}</p>
+                    <p className="text-xs text-default-500">{te.parentDesc}</p>
                   </div>
 
                   <div className="space-y-3">
@@ -423,7 +295,7 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
                       placeholder="0"
                       value={formData.sortOrder?.toString() || "0"}
                       onValueChange={(value) => setFormData({ ...formData, sortOrder: parseInt(value) || 0 })}
-                      description={t.sortDesc}
+                      description={te.sortDesc}
                     />
                   </div>
                 </div>
@@ -439,7 +311,7 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
                     />
                     <div>
                       <p className="font-medium text-foreground">{formData.isActive ? t.active : t.inactive}</p>
-                      <p className="text-sm text-default-500">{formData.isActive ? t.activeDesc : t.inactiveDesc}</p>
+                      <p className="text-sm text-default-500">{formData.isActive ? te.activeDesc : te.inactiveDesc}</p>
                     </div>
                   </div>
                 </div>
@@ -448,7 +320,7 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
 
                 <div className="flex gap-4 pt-4">
                   <Button variant="light" onPress={() => router.back()} className="flex-1">
-                    {t.cancel}
+                    {c.cancel}
                   </Button>
                   <Button
                     type="submit"
@@ -457,7 +329,7 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
                     isLoading={saving}
                     className="flex-1"
                   >
-                    {saving ? t.saving : t.save}
+                    {saving ? t.saving : te.save}
                   </Button>
                 </div>
               </form>
@@ -472,7 +344,7 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Eye className="w-5 h-5" />
-                <span className="text-lg font-semibold">{t.preview}</span>
+                <span className="text-lg font-semibold">{te.preview}</span>
               </div>
             </CardHeader>
             <CardBody>
@@ -496,7 +368,7 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
                     </Chip>
                     {formData.parentId && (
                       <Chip size="sm" color="primary" variant="flat">
-                        {t.parent}
+                        {t.parentCategory}
                       </Chip>
                     )}
                   </div>
@@ -510,31 +382,31 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Calendar className="w-5 h-5" />
-                <span className="text-lg font-semibold">{t.details}</span>
+                <span className="text-lg font-semibold">{te.details}</span>
               </div>
             </CardHeader>
             <CardBody>
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-default-500">{t.categoryId}</span>
+                  <span className="text-default-500">{te.categoryId}</span>
                   <span className="font-medium">#{category.id}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-default-500">{t.createdAt}</span>
-                  <span className="font-medium">{new Date(category.createdAt).toLocaleDateString(lang)}</span>
+                  <span className="text-default-500">{te.createdAt}</span>
+                  <span className="font-medium">{new Date(category.createdAt).toLocaleDateString(pageLang)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-default-500">{t.updatedAt}</span>
-                  <span className="font-medium">{new Date(category.updatedAt).toLocaleDateString(lang)}</span>
+                  <span className="text-default-500">{te.updatedAt}</span>
+                  <span className="font-medium">{new Date(category.updatedAt).toLocaleDateString(pageLang)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-default-500">{t.postCount}</span>
                   <span className="font-medium">
-                    {(category as any).postCount || 0} {t.postUnit}
+                    {(category as any).postCount || 0} {te.postUnit}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-default-500">{t.currentStatus}</span>
+                  <span className="text-default-500">{te.currentStatus}</span>
                   <Chip size="sm" color={category.isActive ? "success" : "warning"} variant="flat">
                     {category.isActive ? t.active : t.inactive}
                   </Chip>

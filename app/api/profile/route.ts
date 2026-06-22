@@ -6,17 +6,22 @@
  * POST /api/profile - 创建个人资料
  * PUT /api/profile - 更新个人资料
  */
-
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { userProfiles, users } from "@/lib/db/schema";
+import {
+  apiMessage,
+  jsonRateLimitError,
+  localizedErrorResponse,
+  localizedSuccessResponse,
+} from "@/lib/i18n/api-response";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { notifyRouteUnhandledError } from "@/lib/server/route-alert";
 import { resolveProfileEmailUpdateOrError, verifyProfileEmailCodeOrError } from "@/lib/services/profile-email.service";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
-import { requireAuthUser } from "@/lib/utils/request-auth";
+import { authErrorMessage, requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, UpdateProfileRequest, UserProfile } from "@/types/blog";
 
 function asObjectRecord(v: unknown): Record<string, unknown> {
@@ -67,7 +72,7 @@ async function handleProfileGET(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: auth.reason === "missing" ? "未提供认证令牌" : "无效的认证令牌",
+          message: authErrorMessage(request, auth.reason),
           timestamp: new Date().toISOString(),
         },
         { status: 401 }
@@ -82,7 +87,7 @@ async function handleProfileGET(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "用户不存在",
+          message: apiMessage(request, "common.userNotFound"),
           timestamp: new Date().toISOString(),
         },
         { status: 404 }
@@ -118,7 +123,7 @@ async function handleProfileGET(request: NextRequest) {
         createdAt: profileData?.createdAt || new Date(),
         updatedAt: profileData?.updatedAt || new Date(),
       },
-      message: "个人资料获取成功",
+      message: apiMessage(request, "profile.fetchSuccess"),
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
@@ -133,7 +138,7 @@ async function handleProfilePOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: auth.reason === "missing" ? "未提供认证令牌" : "无效的认证令牌",
+          message: authErrorMessage(request, auth.reason),
           timestamp: new Date().toISOString(),
         },
         { status: 401 }
@@ -192,7 +197,7 @@ async function handleProfilePOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "个人资料已存在，请使用PUT方法更新",
+          message: apiMessage(request, "profile.existsUsePut"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -246,7 +251,7 @@ async function handleProfilePOST(request: NextRequest) {
       {
         success: true,
         data: { id: insertResult.insertId },
-        message: "个人资料创建成功",
+        message: apiMessage(request, "profile.createSuccess"),
         timestamp: new Date().toISOString(),
       },
       { status: 201 }
@@ -263,7 +268,7 @@ async function handleProfilePUT(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: auth.reason === "missing" ? "未提供认证令牌" : "无效的认证令牌",
+          message: authErrorMessage(request, auth.reason),
           timestamp: new Date().toISOString(),
         },
         { status: 401 }
@@ -299,7 +304,7 @@ async function handleProfilePUT(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "个人资料不存在，请先创建",
+          message: apiMessage(request, "profile.notFoundCreateFirst"),
           timestamp: new Date().toISOString(),
         },
         { status: 404 }
@@ -383,7 +388,7 @@ async function handleProfilePUT(request: NextRequest) {
     return NextResponse.json<ApiResponse>({
       success: true,
       data: null,
-      message: "个人资料更新成功",
+      message: apiMessage(request, "profile.updateSuccess"),
       timestamp: new Date().toISOString(),
     });
   } catch (error) {

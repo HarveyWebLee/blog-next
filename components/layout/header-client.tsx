@@ -1,58 +1,55 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import NextImage from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Image } from "@heroui/react";
 import clsx from "clsx";
 
-import { getDictionary } from "@/lib/dictionaries";
-import { Dictionary, Locale } from "@/types";
-
-interface NavigationItem {
-  name: {
-    "zh-CN": string;
-    "en-US": string;
-    "ja-JP": string;
-  };
-  href: string;
-  icon: React.ReactNode;
-}
+import { useClientDictionary } from "@/lib/hooks/use-client-dictionary";
+import { Locale } from "@/types";
 
 interface HeaderClientProps {
-  navigation: NavigationItem[];
   lang: Locale;
+  navIcons: {
+    home: React.ReactNode;
+    blog: React.ReactNode;
+    about: React.ReactNode;
+  };
 }
 
-export function HeaderClient({ navigation, lang }: HeaderClientProps) {
+export function HeaderClient({ lang, navIcons }: HeaderClientProps) {
   const pathname = usePathname();
-  const [dict, setDict] = useState<Dictionary | null>(null);
+  const dict = useClientDictionary(lang);
+  const nav = (dict as { navigation?: Record<string, string> })?.navigation;
+  const siteTitle = (dict as { title?: string })?.title ?? "";
+
+  const navigation = useMemo(() => {
+    if (!nav) return [];
+    return [
+      { key: "home", name: nav.home, href: `/${lang}`, icon: navIcons.home },
+      { key: "blog", name: nav.blog, href: `/${lang}/blog`, icon: navIcons.blog },
+      { key: "about", name: nav.about, href: `/${lang}/about`, icon: navIcons.about },
+    ];
+  }, [lang, nav, navIcons.about, navIcons.blog, navIcons.home]);
+
   const activeIndex = navigation.findIndex((item) => item.href === pathname);
 
-  useEffect(() => {
-    const loadDictionary = async () => {
-      const dictionary = await getDictionary(lang);
-      setDict(dictionary);
-    };
-    loadDictionary();
-  }, [lang]);
-
-  if (!dict) {
+  if (!dict || navigation.length === 0) {
     return (
       <div className="flex items-center space-x-2">
-        <div className="w-10 h-10 bg-gray-200 rounded animate-pulse" />
-        <div className="w-20 h-6 bg-gray-200 rounded animate-pulse hidden md:block" />
+        <div className="h-10 w-10 animate-pulse rounded bg-gray-200" />
+        <div className="hidden h-6 w-20 animate-pulse rounded bg-gray-200 md:block" />
       </div>
     );
   }
 
   return (
     <>
-      {/* Logo */}
       <Link href={`/${lang}`} className="flex items-center space-x-2">
         <Image
-          alt={dict.title}
+          alt={siteTitle}
           src="/images/logo.png"
           width={40}
           height={40}
@@ -62,11 +59,10 @@ export function HeaderClient({ navigation, lang }: HeaderClientProps) {
           fallbackSrc="/images/fallback.svg"
           as={NextImage}
         />
-        <span className="text-xl font-bold md:block hidden">{dict.title}</span>
+        <span className="hidden text-xl font-bold md:block">{siteTitle}</span>
       </Link>
 
-      {/* 主导航 */}
-      <nav className="w-[60%] relative flex items-center h-[48px] bg-[hsla(var(--blog-nav-background))] blog-box-shadow rounded-full">
+      <nav className="relative flex h-[48px] w-[60%] items-center rounded-full bg-[hsla(var(--blog-nav-background))] blog-box-shadow">
         <div
           style={{
             display: activeIndex < 0 ? "none" : "block",
@@ -76,19 +72,19 @@ export function HeaderClient({ navigation, lang }: HeaderClientProps) {
             boxShadow: "0 0 10px var(--blog-color-bg-end)",
             transform: `translateX(${activeIndex * 100}%)`,
           }}
-          className="bg-[var(--blog-nav-link-active-color-bg)] h-full absolute left-0 rounded-full"
+          className="absolute left-0 h-full rounded-full bg-[var(--blog-nav-link-active-color-bg)]"
         ></div>
         {navigation.map((item) => (
           <Link
-            key={item.name[lang as keyof typeof item.name]}
+            key={item.key}
             href={item.href}
             className={clsx(
-              `relative z-[1] flex items-center justify-center flex-1 h-full transition-colors hover:text-primary`,
+              "relative z-[1] flex h-full flex-1 items-center justify-center transition-colors hover:text-primary",
               pathname === item.href ? "link-active" : undefined
             )}
           >
             {item.icon}
-            <span className="ml-1 hidden md:block">{item.name[lang as keyof typeof item.name]}</span>
+            <span className="ml-1 hidden md:block">{item.name}</span>
           </Link>
         ))}
       </nav>

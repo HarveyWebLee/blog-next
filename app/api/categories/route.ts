@@ -8,12 +8,17 @@
  * GET /api/categories - 获取分类列表（支持分页、搜索、状态与父分类过滤）
  * POST /api/categories - 创建新分类（ownerId 由服务端按登录态写入）
  */
-
 import { NextRequest, NextResponse } from "next/server";
 import { and, asc, count, desc, eq, like } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { categories } from "@/lib/db/schema";
+import {
+  apiMessage,
+  jsonRateLimitError,
+  localizedErrorResponse,
+  localizedSuccessResponse,
+} from "@/lib/i18n/api-response";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { logger } from "@/lib/server/logger";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
@@ -128,7 +133,7 @@ async function handleCategoriesGET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: responseData,
-      message: "分类列表获取成功",
+      message: apiMessage(request, "taxonomy.categoryListSuccess"),
       timestamp: new Date().toISOString(),
     } as ApiResponse<PaginatedResponseData<Category>>);
   } catch (error) {
@@ -163,7 +168,7 @@ async function handleCategoriesPOST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: "分类名称和slug不能为空",
+          message: apiMessage(request, "taxonomy.nameSlugRequired"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -181,7 +186,7 @@ async function handleCategoriesPOST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: "分类名称已存在",
+          message: apiMessage(request, "taxonomy.nameExists"),
           timestamp: new Date().toISOString(),
         },
         { status: 409 }
@@ -199,7 +204,7 @@ async function handleCategoriesPOST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: "分类slug已存在",
+          message: apiMessage(request, "taxonomy.slugExists"),
           timestamp: new Date().toISOString(),
         },
         { status: 409 }
@@ -242,7 +247,7 @@ async function handleCategoriesPOST(request: NextRequest) {
         parentId: newCategory.parentId || undefined,
         isActive: newCategory.isActive ?? true,
       },
-      message: "分类创建成功",
+      message: apiMessage(request, "taxonomy.categoryCreateSuccess"),
       timestamp: new Date().toISOString(),
     } as ApiResponse<Category>);
   } catch (error) {

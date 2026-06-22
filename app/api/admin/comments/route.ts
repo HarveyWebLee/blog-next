@@ -3,6 +3,12 @@ import { and, count, desc, eq, gte, inArray, like, lte, or } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { comments, posts, users } from "@/lib/db/schema";
+import {
+  apiMessage,
+  jsonRateLimitError,
+  localizedErrorResponse,
+  localizedSuccessResponse,
+} from "@/lib/i18n/api-response";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { notifyRouteUnhandledError } from "@/lib/server/route-alert";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
@@ -123,7 +129,7 @@ async function handleAdminCommentsGET(request: NextRequest) {
     return NextResponse.json<ApiResponse<PaginatedResponseData<AdminCommentRow>>>({
       success: true,
       data: payload,
-      message: "获取评论审核列表成功",
+      message: apiMessage(request, "admin.commentsListSuccess"),
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
@@ -152,13 +158,17 @@ async function handleAdminCommentsPATCH(request: NextRequest) {
   const nextStatus = body.status;
   if (ids.length === 0) {
     return NextResponse.json<ApiResponse>(
-      { success: false, message: "ids 不能为空", timestamp: new Date().toISOString() },
+      { success: false, message: apiMessage(request, "admin.idsRequired"), timestamp: new Date().toISOString() },
       { status: 400 }
     );
   }
   if (!nextStatus || !["pending", "approved", "spam"].includes(nextStatus)) {
     return NextResponse.json<ApiResponse>(
-      { success: false, message: "status 必须为 pending/approved/spam", timestamp: new Date().toISOString() },
+      {
+        success: false,
+        message: apiMessage(request, "admin.invalidCommentStatus"),
+        timestamp: new Date().toISOString(),
+      },
       { status: 400 }
     );
   }
@@ -167,7 +177,7 @@ async function handleAdminCommentsPATCH(request: NextRequest) {
     const exists = await db.select({ id: comments.id }).from(comments).where(inArray(comments.id, ids));
     if (exists.length === 0) {
       return NextResponse.json<ApiResponse>(
-        { success: false, message: "评论不存在", timestamp: new Date().toISOString() },
+        { success: false, message: apiMessage(request, "admin.commentNotFound"), timestamp: new Date().toISOString() },
         { status: 404 }
       );
     }
@@ -191,7 +201,7 @@ async function handleAdminCommentsPATCH(request: NextRequest) {
     return NextResponse.json<ApiResponse>({
       success: true,
       data: { ids: existingIds, status: nextStatus, updatedCount: existingIds.length },
-      message: "批量更新评论状态成功",
+      message: apiMessage(request, "admin.batchCommentUpdateSuccess"),
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
@@ -219,7 +229,7 @@ async function handleAdminCommentsDELETE(request: NextRequest) {
     : [];
   if (ids.length === 0) {
     return NextResponse.json<ApiResponse>(
-      { success: false, message: "ids 不能为空", timestamp: new Date().toISOString() },
+      { success: false, message: apiMessage(request, "admin.idsRequired"), timestamp: new Date().toISOString() },
       { status: 400 }
     );
   }
@@ -228,7 +238,7 @@ async function handleAdminCommentsDELETE(request: NextRequest) {
     const exists = await db.select({ id: comments.id }).from(comments).where(inArray(comments.id, ids));
     if (exists.length === 0) {
       return NextResponse.json<ApiResponse>(
-        { success: false, message: "评论不存在", timestamp: new Date().toISOString() },
+        { success: false, message: apiMessage(request, "admin.commentNotFound"), timestamp: new Date().toISOString() },
         { status: 404 }
       );
     }
@@ -237,7 +247,7 @@ async function handleAdminCommentsDELETE(request: NextRequest) {
     return NextResponse.json<ApiResponse>({
       success: true,
       data: { ids: existingIds, deletedCount: existingIds.length },
-      message: "批量删除评论成功",
+      message: apiMessage(request, "admin.batchCommentDeleteSuccess"),
       timestamp: new Date().toISOString(),
     });
   } catch (error) {

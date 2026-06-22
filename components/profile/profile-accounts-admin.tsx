@@ -29,6 +29,8 @@ import {
 import { Search, Shield, UserRound } from "lucide-react";
 
 import { useAuth } from "@/lib/contexts/auth-context";
+import { useProfileDict } from "@/lib/contexts/profile-dict-context";
+import { isTextReady, pickText } from "@/lib/i18n/pick-text";
 import { message } from "@/lib/utils";
 import type { Locale } from "@/types";
 import type {
@@ -45,191 +47,6 @@ const resolveLocale = (lang: string): Locale => {
   return "zh-CN";
 };
 
-/** 三语文案（en/ja 词典未含 profile 区块时仍可用） */
-const T: Record<
-  Locale,
-  {
-    title: string;
-    subtitle: string;
-    needSuper: string;
-    back: string;
-    searchPh: string;
-    search: string;
-    list: string;
-    total: string;
-    usersUnit: string;
-    colUser: string;
-    colEmail: string;
-    colName: string;
-    colRole: string;
-    colStatus: string;
-    colLastIn: string;
-    colCreated: string;
-    colActions: string;
-    roles: Record<UserRole, string>;
-    statuses: Record<UserStatus, string>;
-    viewProfile: string;
-    viewEdit: string;
-    detailTitle: string;
-    profileSection: string;
-    emailVerified: string;
-    emailUnverified: string;
-    save: string;
-    cancel: string;
-    loadFailed: string;
-    updateFailed: string;
-    updateOk: string;
-    noData: string;
-    neverLogin: string;
-    fieldBio: string;
-    fieldPhone: string;
-    fieldLocation: string;
-    fieldWebsite: string;
-  }
-> = {
-  "zh-CN": {
-    title: "账户管理",
-    subtitle: "管理平台注册用户：角色与启用状态（非「正常」状态无法登录）",
-    needSuper: "仅超级管理员可访问此页面",
-    back: "返回概览",
-    searchPh: "搜索用户名、邮箱、显示名…",
-    search: "搜索",
-    list: "用户列表",
-    total: "共",
-    usersUnit: "人",
-    colUser: "用户名",
-    colEmail: "邮箱",
-    colName: "显示名",
-    colRole: "角色",
-    colStatus: "状态",
-    colLastIn: "最后登录",
-    colCreated: "注册时间",
-    colActions: "操作",
-    roles: {
-      super_admin: "超级管理员",
-      admin: "管理员",
-      author: "作者",
-      user: "用户",
-    },
-    statuses: {
-      active: "正常",
-      inactive: "已停用",
-      banned: "已封禁",
-    },
-    viewProfile: "查看个人主页",
-    viewEdit: "查看 / 编辑",
-    detailTitle: "用户详情",
-    profileSection: "扩展资料",
-    emailVerified: "邮箱已验证",
-    emailUnverified: "邮箱未验证",
-    save: "保存",
-    cancel: "取消",
-    loadFailed: "加载失败",
-    updateFailed: "保存失败",
-    updateOk: "已保存",
-    noData: "暂无用户",
-    neverLogin: "从未登录",
-    fieldBio: "简介",
-    fieldPhone: "电话",
-    fieldLocation: "所在地",
-    fieldWebsite: "网站",
-  },
-  "en-US": {
-    title: "Accounts",
-    subtitle: "Manage registered users: roles and account state (only Active may sign in).",
-    needSuper: "Super admin only.",
-    back: "Back to overview",
-    searchPh: "Search username, email, display name…",
-    search: "Search",
-    list: "Users",
-    total: "",
-    usersUnit: " users",
-    colUser: "Username",
-    colEmail: "Email",
-    colName: "Display name",
-    colRole: "Role",
-    colStatus: "Status",
-    colLastIn: "Last login",
-    colCreated: "Registered",
-    colActions: "Actions",
-    roles: {
-      super_admin: "Super admin",
-      admin: "Admin",
-      author: "Author",
-      user: "User",
-    },
-    statuses: {
-      active: "Active",
-      inactive: "Disabled",
-      banned: "Banned",
-    },
-    viewProfile: "View profile",
-    viewEdit: "View / edit",
-    detailTitle: "User detail",
-    profileSection: "Profile",
-    emailVerified: "Email verified",
-    emailUnverified: "Email not verified",
-    save: "Save",
-    cancel: "Cancel",
-    loadFailed: "Failed to load",
-    updateFailed: "Failed to save",
-    updateOk: "Saved",
-    noData: "No users",
-    neverLogin: "Never",
-    fieldBio: "Bio",
-    fieldPhone: "Phone",
-    fieldLocation: "Location",
-    fieldWebsite: "Website",
-  },
-  "ja-JP": {
-    title: "アカウント管理",
-    subtitle: "登録ユーザーのロールと有効状態（「正常」以外はログイン不可）",
-    needSuper: "スーパー管理者のみアクセスできます",
-    back: "概要へ戻る",
-    searchPh: "ユーザー名・メール・表示名で検索…",
-    search: "検索",
-    list: "ユーザー一覧",
-    total: "合計",
-    usersUnit: "人",
-    colUser: "ユーザー名",
-    colEmail: "メール",
-    colName: "表示名",
-    colRole: "ロール",
-    colStatus: "状態",
-    colLastIn: "最終ログイン",
-    colCreated: "登録日",
-    colActions: "操作",
-    roles: {
-      super_admin: "スーパー管理者",
-      admin: "管理者",
-      author: "作者",
-      user: "ユーザー",
-    },
-    statuses: {
-      active: "正常",
-      inactive: "停止",
-      banned: "利用禁止",
-    },
-    viewProfile: "プロフィールを見る",
-    viewEdit: "表示・編集",
-    detailTitle: "ユーザー詳細",
-    profileSection: "拡張プロフィール",
-    emailVerified: "メール確認済み",
-    emailUnverified: "未確認",
-    save: "保存",
-    cancel: "キャンセル",
-    loadFailed: "読み込みに失敗しました",
-    updateFailed: "保存に失敗しました",
-    updateOk: "保存しました",
-    noData: "ユーザーがありません",
-    neverLogin: "未ログイン",
-    fieldBio: "自己紹介",
-    fieldPhone: "電話",
-    fieldLocation: "所在地",
-    fieldWebsite: "サイト",
-  },
-};
-
 function formatDt(lang: string, d: Date | string | null | undefined): string {
   if (d == null) return "—";
   const date = typeof d === "string" ? new Date(d) : d;
@@ -240,9 +57,14 @@ function formatDt(lang: string, d: Date | string | null | undefined): string {
   });
 }
 
+type AccountsAdminText = Record<string, string> & {
+  roles: Record<UserRole, string>;
+  statuses: Record<UserStatus, string>;
+};
+
 export default function ProfileAccountsAdmin({ lang }: { lang: string }) {
   const loc = resolveLocale(lang);
-  const t = T[loc];
+  const t = pickText(useProfileDict("accountsAdmin") as AccountsAdminText | null) as AccountsAdminText;
   const router = useRouter();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
 
@@ -390,6 +212,8 @@ export default function ProfileAccountsAdmin({ lang }: { lang: string }) {
 
   const roleKeys: UserRole[] = ["admin", "author", "user"];
   const statusKeys: UserStatus[] = ["active", "inactive", "banned"];
+
+  if (!isTextReady(t)) return null;
 
   return (
     <div className="space-y-6">

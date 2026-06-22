@@ -3,6 +3,12 @@ import { and, eq, gt } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { emailSubscriptions, emailVerifications, users } from "@/lib/db/schema";
+import {
+  apiMessage,
+  jsonRateLimitError,
+  localizedErrorResponse,
+  localizedSuccessResponse,
+} from "@/lib/i18n/api-response";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { logger } from "@/lib/server/logger";
 import { isValidEmail } from "@/lib/utils";
@@ -37,7 +43,7 @@ async function handleAuthSendVerificationCodePOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "邮箱为必填项",
+          message: apiMessage(request, "auth.emailRequired"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -48,7 +54,7 @@ async function handleAuthSendVerificationCodePOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "邮箱格式不符合规范，请填写有效的邮箱地址",
+          message: apiMessage(request, "auth.emailInvalid"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -60,7 +66,7 @@ async function handleAuthSendVerificationCodePOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "验证码类型不正确",
+          message: apiMessage(request, "auth.verificationTypeInvalid"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -78,7 +84,7 @@ async function handleAuthSendVerificationCodePOST(request: NextRequest) {
         return NextResponse.json<ApiResponse>(
           {
             success: false,
-            message: "该邮箱已处于订阅状态，无需重复订阅",
+            message: apiMessage(request, "auth.emailAlreadySubscribed"),
             timestamp: new Date().toISOString(),
           },
           { status: 409 }
@@ -97,7 +103,7 @@ async function handleAuthSendVerificationCodePOST(request: NextRequest) {
         return NextResponse.json<ApiResponse>(
           {
             success: false,
-            message: "该邮箱当前未订阅，无法发送退订验证码",
+            message: apiMessage(request, "auth.emailNotSubscribed"),
             timestamp: new Date().toISOString(),
           },
           { status: 400 }
@@ -113,7 +119,7 @@ async function handleAuthSendVerificationCodePOST(request: NextRequest) {
         return NextResponse.json<ApiResponse>(
           {
             success: false,
-            message: "邮箱已存在，已被用户使用",
+            message: apiMessage(request, "auth.emailAlreadyUsed"),
             timestamp: new Date().toISOString(),
           },
           { status: 409 }
@@ -139,7 +145,7 @@ async function handleAuthSendVerificationCodePOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "验证码发送过于频繁，请1分钟后再试",
+          message: apiMessage(request, "auth.verificationRateLimit"),
           timestamp: new Date().toISOString(),
         },
         { status: 429 }
@@ -193,7 +199,7 @@ async function handleAuthSendVerificationCodePOST(request: NextRequest) {
 
     return NextResponse.json<ApiResponse>({
       success: true,
-      message: "验证码已发送到您的邮箱",
+      message: apiMessage(request, "auth.verificationSent"),
       timestamp: new Date().toISOString(),
     });
   } catch (error) {

@@ -3,15 +3,20 @@
  *
  * GET /api/profile/following - 获取当前登录用户的关注列表（分页）
  */
-
 import { NextRequest, NextResponse } from "next/server";
 import { and, count, desc, eq, inArray, like, or } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { userFollows, users } from "@/lib/db/schema";
+import {
+  apiMessage,
+  jsonRateLimitError,
+  localizedErrorResponse,
+  localizedSuccessResponse,
+} from "@/lib/i18n/api-response";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { logger } from "@/lib/server/logger";
-import { requireAuthUser } from "@/lib/utils/request-auth";
+import { authErrorMessage, requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, PaginatedResponseData, ProfileRelationItem } from "@/types/blog";
 
 function parsePage(v: string | null): number {
@@ -33,7 +38,7 @@ async function handleProfileFollowingGET(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: auth.reason === "missing" ? "未提供认证令牌" : "无效的认证令牌",
+          message: authErrorMessage(request, auth.reason),
           timestamp: new Date().toISOString(),
         },
         { status: 401 }
@@ -70,7 +75,7 @@ async function handleProfileFollowingGET(request: NextRequest) {
       return NextResponse.json<ApiResponse<PaginatedResponseData<ProfileRelationItem>>>({
         success: true,
         data: emptyData,
-        message: "关注列表获取成功",
+        message: apiMessage(request, "profile.followingListSuccess"),
         timestamp: new Date().toISOString(),
       });
     }
@@ -147,7 +152,7 @@ async function handleProfileFollowingGET(request: NextRequest) {
     return NextResponse.json<ApiResponse<PaginatedResponseData<ProfileRelationItem>>>({
       success: true,
       data: responseData,
-      message: "关注列表获取成功",
+      message: apiMessage(request, "profile.followingListSuccess"),
       timestamp: new Date().toISOString(),
     });
   } catch (error) {

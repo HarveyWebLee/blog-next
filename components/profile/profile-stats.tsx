@@ -7,6 +7,8 @@ import { Bell, BookOpen, ChevronRight, Eye, Heart, MessageSquare, Star, UserPlus
 
 import { PROFILE_GLASS_CARD } from "@/components/profile/profile-ui-presets";
 import { useAuth } from "@/lib/contexts/auth-context";
+import { useProfileDict } from "@/lib/contexts/profile-dict-context";
+import { isTextReady, pickText } from "@/lib/i18n/pick-text";
 import { message } from "@/lib/utils";
 import type { ApiResponse, ProfileStats as ProfileStatsData } from "@/types/blog";
 
@@ -43,66 +45,7 @@ const toneIconWrap: Record<(typeof statsItems)[number]["tone"], string> = {
 
 export default function ProfileStats({ lang }: ProfileStatsProps) {
   const locale = resolveLocale(lang);
-  const t =
-    locale === "en-US"
-      ? {
-          loadFailed: "Unable to load statistics",
-          needLogin: "Please sign in to view your statistics.",
-          login: "Sign in",
-          title: "Statistics",
-          subtitle: "Overview of your content and engagement.",
-          lastActivity: "Last activity",
-          clickableHint: "Click to view details",
-          labels: {
-            totalPosts: "My Posts",
-            totalComments: "My Comments",
-            totalViews: "Total Views",
-            totalLikes: "Total Likes",
-            totalFavorites: "Favorites",
-            totalFollowers: "Followers",
-            totalFollowing: "Following",
-            unreadNotifications: "Unread",
-          },
-        }
-      : locale === "ja-JP"
-        ? {
-            loadFailed: "統計情報を読み込めません",
-            needLogin: "統計情報を表示するにはログインしてください。",
-            login: "ログイン",
-            title: "データ統計",
-            subtitle: "コンテンツとエンゲージメントの概要",
-            lastActivity: "最終アクティビティ",
-            clickableHint: "クリックして詳細を見る",
-            labels: {
-              totalPosts: "自分の記事",
-              totalComments: "自分のコメント",
-              totalViews: "総閲覧数",
-              totalLikes: "総いいね数",
-              totalFavorites: "お気に入り",
-              totalFollowers: "フォロワー",
-              totalFollowing: "フォロー中",
-              unreadNotifications: "未読通知",
-            },
-          }
-        : {
-            loadFailed: "无法加载统计信息",
-            needLogin: "请先登录后查看统计信息。",
-            login: "去登录",
-            title: "数据统计",
-            subtitle: "内容产出与互动表现一览",
-            lastActivity: "最后活动",
-            clickableHint: "点击查看详情",
-            labels: {
-              totalPosts: "我的文章",
-              totalComments: "我的评论",
-              totalViews: "总浏览量",
-              totalLikes: "总点赞数",
-              totalFavorites: "我的收藏",
-              totalFollowers: "粉丝数",
-              totalFollowing: "关注数",
-              unreadNotifications: "未读通知",
-            },
-          };
+  const t = pickText(useProfileDict("stats")) as Record<string, string> & { labels?: Record<string, string> };
   const [stats, setStats] = useState<ProfileStatsData | null>(null);
   const [loading, setLoading] = useState(true);
   const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -143,7 +86,7 @@ export default function ProfileStats({ lang }: ProfileStatsProps) {
     };
 
     void fetchStats();
-  }, [authLoading, isAuthenticated, t.loadFailed]);
+  }, [authLoading, isAuthenticated, (t as { loadFailed?: string })?.loadFailed]);
 
   if (!authLoading && !isAuthenticated) {
     return (
@@ -210,7 +153,7 @@ export default function ProfileStats({ lang }: ProfileStatsProps) {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-medium uppercase tracking-wide text-default-500">
-                      {t.labels[item.key as keyof typeof t.labels]}
+                      {t.labels?.[item.key as string] ?? item.key}
                     </p>
                     <p className="mt-1 text-2xl font-bold leading-none tracking-tight text-foreground">
                       {value.toLocaleString()}
@@ -247,7 +190,7 @@ export default function ProfileStats({ lang }: ProfileStatsProps) {
                 key={item.key}
                 href={`/${lang}${item.href}`}
                 className="rounded-xl border border-default-200/70 bg-content1/80 p-4 shadow-sm backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 dark:border-default-100/10"
-                aria-label={t.labels[item.key as keyof typeof t.labels]}
+                aria-label={t.labels?.[item.key as string] ?? item.key}
               >
                 {content}
               </Link>

@@ -4,8 +4,9 @@
 
 import type { NextRequest } from "next/server";
 
+import { apiMessage } from "@/lib/i18n/api-response";
 import type { AuthJwtPayload } from "@/lib/utils/request-auth";
-import { requireAuthUser } from "@/lib/utils/request-auth";
+import { authErrorMessage, requireAuthUser } from "@/lib/utils/request-auth";
 
 /** JWT 是否表示超级管理员 root 会话 */
 export function isJwtInMemorySuperRoot(payload: AuthJwtPayload | null | undefined): boolean {
@@ -37,11 +38,11 @@ export function requireInMemorySuperRoot(request: NextRequest): RequireSuperRoot
     return {
       ok: false,
       status: 401,
-      message: auth.reason === "missing" ? "未提供认证令牌" : "无效的认证令牌",
+      message: authErrorMessage(request, auth.reason),
     };
   }
   if (!isJwtInMemorySuperRoot(auth.user)) {
-    return { ok: false, status: 403, message: "需要超级管理员权限" };
+    return { ok: false, status: 403, message: apiMessage(request, "common.superAdminRequired") };
   }
   return { ok: true, user: auth.user };
 }

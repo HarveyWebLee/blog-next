@@ -6,7 +6,6 @@
  * - 返回该用户公开文章列表（分页、分类/标签/标题筛选，按时间倒序）
  * - 过滤项 categories/tags 来源于该用户本人创建的数据（owner 维度），而非文章反向聚合
  */
-
 import { NextRequest, NextResponse } from "next/server";
 import { and, count, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 
@@ -23,6 +22,12 @@ import {
   userProfiles,
   users,
 } from "@/lib/db/schema";
+import {
+  apiMessage,
+  jsonRateLimitError,
+  localizedErrorResponse,
+  localizedSuccessResponse,
+} from "@/lib/i18n/api-response";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { logger } from "@/lib/server/logger";
 import { getAuthUserFromRequest } from "@/lib/utils/request-auth";
@@ -99,7 +104,7 @@ async function handleProfilePublicByUserIdGET(
     const targetUserId = Number.parseInt(userIdRaw, 10);
     if (!Number.isInteger(targetUserId) || targetUserId <= 0) {
       return NextResponse.json<ApiResponse>(
-        { success: false, message: "无效的用户 ID", timestamp: new Date().toISOString() },
+        { success: false, message: apiMessage(request, "common.invalidUserId"), timestamp: new Date().toISOString() },
         { status: 400, headers: NO_STORE_HEADERS }
       );
     }
@@ -115,7 +120,7 @@ async function handleProfilePublicByUserIdGET(
 
     if (userRows.length === 0) {
       return NextResponse.json<ApiResponse>(
-        { success: false, message: "用户不存在", timestamp: new Date().toISOString() },
+        { success: false, message: apiMessage(request, "common.userNotFound"), timestamp: new Date().toISOString() },
         { status: 404, headers: NO_STORE_HEADERS }
       );
     }
@@ -168,7 +173,7 @@ async function handleProfilePublicByUserIdGET(
               avatar: userRow.avatar || undefined,
             },
           },
-          message: "资料受限",
+          message: apiMessage(request, "profile.publicRestricted"),
           timestamp: new Date().toISOString(),
         },
         { status: 200, headers: NO_STORE_HEADERS }
@@ -463,7 +468,7 @@ async function handleProfilePublicByUserIdGET(
             tags: tagFilterRows,
           },
         },
-        message: "公开资料获取成功",
+        message: apiMessage(request, "profile.publicFetchSuccess"),
         timestamp: new Date().toISOString(),
       },
       { headers: NO_STORE_HEADERS }

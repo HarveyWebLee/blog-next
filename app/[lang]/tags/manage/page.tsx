@@ -52,6 +52,7 @@ import {
   Trash2,
 } from "lucide-react";
 
+import { useClientDictionary } from "@/lib/hooks/use-client-dictionary";
 import { generateRandomUrlAlias, message } from "@/lib/utils";
 import { clientBearerHeaders } from "@/lib/utils/client-bearer-auth";
 import { Locale } from "@/types";
@@ -61,6 +62,13 @@ const resolveLocale = (lang: string): Locale => {
   if (lang === "en-US" || lang === "ja-JP") return lang;
   return "zh-CN";
 };
+
+/** 词典占位符替换 */
+function fmt(template: string, params: Record<string, string | number>) {
+  return template.replace(/\{(\w+)\}/g, (_, key: string) => String(params[key] ?? `{${key}}`));
+}
+
+type TagDict = Record<string, string>;
 
 /** 将用户输入规范为 #RRGGBB；无法解析时返回 null */
 const normalizeHexColor = (raw: string): string | null => {
@@ -77,151 +85,15 @@ const normalizeHexColor = (raw: string): string | null => {
   return `#${hex.toLowerCase()}`;
 };
 
-const T: Record<Locale, Record<string, string>> = {
-  "zh-CN": {
-    title: "标签管理",
-    subtitle: "管理博客标签，包括创建、编辑、删除和状态控制",
-    total: "总标签",
-    active: "激活",
-    inactive: "停用",
-    search: "搜索标签名称...",
-    all: "全部",
-    create: "创建标签",
-    list: "标签列表",
-    noData: "暂无标签",
-    noDataDesc: "开始创建你的第一个标签吧",
-    info: "标签信息",
-    desc: "描述",
-    posts: "文章数量",
-    status: "状态",
-    createdAt: "创建时间",
-    actions: "操作",
-    noDesc: "无描述",
-    edit: "编辑",
-    del: "删除",
-    deleteFailed: "删除标签失败",
-    updateFailed: "更新标签状态失败",
-    confirmTitle: "确认删除",
-    confirmBodyPrefix: "确定要删除标签",
-    confirmBodySuffix: "吗？",
-    confirmWarning: "注意：如果该标签下还有文章，将无法删除。",
-    cancel: "取消",
-    deleting: "删除中...",
-    totalCount: "个标签",
-    postUnit: "篇",
-    editTag: "编辑标签",
-    createTag: "新建标签",
-    nameRequired: "标签名称不能为空",
-    save: "保存",
-    saving: "保存中...",
-    saveFailed: "保存标签失败",
-    nameLabel: "标签名称",
-    slugLabel: "标签标识",
-    descLabel: "标签描述",
-    colorLabel: "标签颜色",
-    hexColor: "十六进制颜色",
-    invalidColor: "请输入有效的十六进制颜色（如 #667eea 或 667eea）",
-    statusLabel: "启用状态",
-  },
-  "en-US": {
-    title: "Tag Management",
-    subtitle: "Manage blog tags including create, edit, delete and status",
-    total: "Total",
-    active: "Active",
-    inactive: "Inactive",
-    search: "Search tags...",
-    all: "All",
-    create: "Create Tag",
-    list: "Tag List",
-    noData: "No tags",
-    noDataDesc: "Create your first tag",
-    info: "Tag",
-    desc: "Description",
-    posts: "Posts",
-    status: "Status",
-    createdAt: "Created At",
-    actions: "Actions",
-    noDesc: "No description",
-    edit: "Edit",
-    del: "Delete",
-    deleteFailed: "Failed to delete tag",
-    updateFailed: "Failed to update tag status",
-    confirmTitle: "Confirm Delete",
-    confirmBodyPrefix: "Are you sure to delete tag",
-    confirmBodySuffix: "?",
-    confirmWarning: "If this tag has posts, it cannot be deleted.",
-    cancel: "Cancel",
-    deleting: "Deleting...",
-    totalCount: "tags",
-    postUnit: "posts",
-    editTag: "Edit Tag",
-    createTag: "Create Tag",
-    nameRequired: "Tag name is required",
-    save: "Save",
-    saving: "Saving...",
-    saveFailed: "Failed to save tag",
-    nameLabel: "Tag Name",
-    slugLabel: "Slug",
-    descLabel: "Description",
-    colorLabel: "Color",
-    hexColor: "Hex color",
-    invalidColor: "Enter a valid hex color (e.g. #667eea or 667eea)",
-    statusLabel: "Active",
-  },
-  "ja-JP": {
-    title: "タグ管理",
-    subtitle: "タグの作成・編集・削除と状態管理",
-    total: "総数",
-    active: "有効",
-    inactive: "無効",
-    search: "タグ名を検索...",
-    all: "すべて",
-    create: "タグ作成",
-    list: "タグ一覧",
-    noData: "タグがありません",
-    noDataDesc: "最初のタグを作成しましょう",
-    info: "タグ情報",
-    desc: "説明",
-    posts: "記事数",
-    status: "状態",
-    createdAt: "作成日",
-    actions: "操作",
-    noDesc: "説明なし",
-    edit: "編集",
-    del: "削除",
-    deleteFailed: "タグの削除に失敗しました",
-    updateFailed: "タグ状態の更新に失敗しました",
-    confirmTitle: "削除確認",
-    confirmBodyPrefix: "タグ",
-    confirmBodySuffix: "を削除しますか？",
-    confirmWarning: "このタグに記事がある場合は削除できません。",
-    cancel: "キャンセル",
-    deleting: "削除中...",
-    totalCount: "件",
-    postUnit: "件",
-    editTag: "タグ編集",
-    createTag: "タグ作成",
-    nameRequired: "タグ名は必須です",
-    save: "保存",
-    saving: "保存中...",
-    saveFailed: "タグの保存に失敗しました",
-    nameLabel: "タグ名",
-    slugLabel: "スラッグ",
-    descLabel: "説明",
-    colorLabel: "色",
-    hexColor: "16進カラー",
-    invalidColor: "有効な16進色を入力してください（例: #667eea または 667eea）",
-    statusLabel: "有効状態",
-  },
-};
-
 /**
  * 标签管理页面组件
  */
 export default function TagsManagePage() {
   const params = useParams<{ lang: string }>();
   const locale = resolveLocale(params.lang);
-  const t = T[locale];
+  const dict = useClientDictionary(params.lang);
+  const t = dict?.tag as TagDict | undefined;
+  const c = dict?.common as Record<string, string> | undefined;
 
   // 状态管理
   const [tags, setTags] = useState<Tag[]>([]);
@@ -372,11 +244,11 @@ export default function TagsManagePage() {
         fetchTags();
         fetchSummary();
       } else {
-        message.error(result.message || t.deleteFailed);
+        message.error(result.message || t!.deleteFailed);
       }
     } catch (error) {
       console.error("删除标签失败:", error);
-      message.error(t.deleteFailed);
+      message.error(t!.deleteFailed);
     } finally {
       setDeleteLoading(false);
     }
@@ -417,7 +289,7 @@ export default function TagsManagePage() {
 
   const handleSaveTag = async () => {
     if (!formData.name.trim()) {
-      message.warning(t.nameRequired);
+      message.warning(t!.nameRequired);
       return;
     }
 
@@ -426,7 +298,7 @@ export default function TagsManagePage() {
       const normalizedFromInput = normalizeHexColor(colorHexInput);
       const finalColor = normalizedFromInput ?? normalizeHexColor(formData.color);
       if (!finalColor) {
-        message.warning(t.invalidColor);
+        message.warning(t!.invalidColor);
         setSaveLoading(false);
         return;
       }
@@ -447,7 +319,7 @@ export default function TagsManagePage() {
       });
       const result: ApiResponse<Tag> = await response.json();
       if (!result.success) {
-        message.error(result.message || t.saveFailed);
+        message.error(result.message || t!.saveFailed);
         return;
       }
       setIsEditModalOpen(false);
@@ -455,7 +327,7 @@ export default function TagsManagePage() {
       fetchSummary();
     } catch (error) {
       console.error("保存标签失败:", error);
-      message.error(t.saveFailed);
+      message.error(t!.saveFailed);
     } finally {
       setSaveLoading(false);
     }
@@ -479,11 +351,11 @@ export default function TagsManagePage() {
         fetchTags();
         fetchSummary();
       } else {
-        message.error(result.message || t.updateFailed);
+        message.error(result.message || t!.updateFailed);
       }
     } catch (error) {
       console.error("更新标签状态失败:", error);
-      message.error(t.updateFailed);
+      message.error(t!.updateFailed);
     }
   };
 
@@ -501,15 +373,23 @@ export default function TagsManagePage() {
     };
   }, []);
 
+  if (!t || !c) {
+    return (
+      <div className="flex justify-center py-12">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* 页面标题和统计 */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
         <div>
           <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-            {t.title}
+            {t.tagManagement}
           </h1>
-          <p className="text-default-600 mt-2 text-lg">{t.subtitle}</p>
+          <p className="text-default-600 mt-2 text-lg">{t.manageTags}</p>
         </div>
 
         {/* 统计卡片 */}
@@ -519,7 +399,7 @@ export default function TagsManagePage() {
               <BarChart3 className="w-5 h-5 text-primary" />
               <div>
                 <p className="text-2xl font-bold text-foreground">{summary.total}</p>
-                <p className="text-sm text-default-500">{t.total}</p>
+                <p className="text-sm text-default-500">{t.statsTotal}</p>
               </div>
             </div>
           </Card>
@@ -528,7 +408,7 @@ export default function TagsManagePage() {
               <Eye className="w-5 h-5 text-success" />
               <div>
                 <p className="text-2xl font-bold text-success">{summary.active}</p>
-                <p className="text-sm text-default-500">{t.active}</p>
+                <p className="text-sm text-default-500">{t.statsActive}</p>
               </div>
             </div>
           </Card>
@@ -537,7 +417,7 @@ export default function TagsManagePage() {
               <EyeOff className="w-5 h-5 text-warning" />
               <div>
                 <p className="text-2xl font-bold text-warning">{summary.inactive}</p>
-                <p className="text-sm text-default-500">{t.inactive}</p>
+                <p className="text-sm text-default-500">{t.statsInactive}</p>
               </div>
             </div>
           </Card>
@@ -550,7 +430,7 @@ export default function TagsManagePage() {
           <div className="flex flex-col lg:flex-row gap-4">
             {/* 搜索框 */}
             <Input
-              placeholder={t.search}
+              placeholder={t.searchTags}
               value={searchQuery}
               onValueChange={handleSearch}
               startContent={<Search className="w-4 h-4 text-default-400" />}
@@ -565,7 +445,7 @@ export default function TagsManagePage() {
                 onPress={() => handleStatusFilter(undefined)}
                 startContent={<Filter className="w-4 h-4" />}
               >
-                {t.all}
+                {t.filterAll}
               </Button>
               <Button
                 variant={statusFilter === true ? "solid" : "bordered"}
@@ -592,7 +472,7 @@ export default function TagsManagePage() {
               onPress={openCreateModal}
               className="lg:ml-auto"
             >
-              {t.create}
+              {t.createTag}
             </Button>
           </div>
         </CardBody>
@@ -603,10 +483,10 @@ export default function TagsManagePage() {
         <CardHeader>
           <div className="flex items-center gap-2">
             <TagIcon className="w-5 h-5" />
-            <span className="text-lg font-semibold">{t.list}</span>
+            <span className="text-lg font-semibold">{t.tagList}</span>
             <Badge content={total} color="primary" variant="flat">
               <Chip size="sm" variant="flat">
-                {total} {t.totalCount}
+                {total} {t.countSuffix}
               </Chip>
             </Badge>
           </div>
@@ -622,16 +502,16 @@ export default function TagsManagePage() {
               <h3 className="text-lg font-semibold text-default-600 mb-2">{t.noData}</h3>
               <p className="text-default-500 mb-4">{t.noDataDesc}</p>
               <Button color="primary" startContent={<Plus className="w-4 h-4" />} onPress={openCreateModal}>
-                {t.create}
+                {t.createTag}
               </Button>
             </div>
           ) : (
             <>
-              <Table aria-label={t.list} className="min-h-[400px]">
+              <Table aria-label={t.tagList} className="min-h-[400px]">
                 <TableHeader>
-                  <TableColumn>{t.info}</TableColumn>
-                  <TableColumn>{t.desc}</TableColumn>
-                  <TableColumn>{t.posts}</TableColumn>
+                  <TableColumn>{t.tableInfo}</TableColumn>
+                  <TableColumn>{t.description}</TableColumn>
+                  <TableColumn>{t.postCount}</TableColumn>
                   <TableColumn>{t.status}</TableColumn>
                   <TableColumn>{t.createdAt}</TableColumn>
                   <TableColumn>{t.actions}</TableColumn>
@@ -660,7 +540,7 @@ export default function TagsManagePage() {
                           {tag.description ? (
                             <p className="truncate text-default-700">{tag.description}</p>
                           ) : (
-                            <span className="text-default-400 italic">{t.noDesc}</span>
+                            <span className="text-default-400 italic">{t.noDescription}</span>
                           )}
                         </div>
                       </TableCell>
@@ -703,7 +583,7 @@ export default function TagsManagePage() {
                               startContent={<Edit className="w-4 h-4" />}
                               onPress={() => openEditModal(tag)}
                             >
-                              {t.edit}
+                              {c.edit}
                             </DropdownItem>
                             <DropdownItem
                               key="delete"
@@ -712,7 +592,7 @@ export default function TagsManagePage() {
                               startContent={<Trash2 className="w-4 h-4" />}
                               onPress={() => openDeleteModal(tag)}
                             >
-                              {t.del}
+                              {c.delete}
                             </DropdownItem>
                           </DropdownMenu>
                         </Dropdown>
@@ -742,34 +622,34 @@ export default function TagsManagePage() {
 
       <Modal isOpen={isEditModalOpen} onOpenChange={setIsEditModalOpen} size="2xl">
         <ModalContent>
-          <ModalHeader>{editingTagId ? t.editTag : t.createTag}</ModalHeader>
+          <ModalHeader>{editingTagId ? t.editTag : t.createTagModal}</ModalHeader>
           <ModalBody>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Input
-                label={t.nameLabel}
+                label={t.name}
                 value={formData.name}
                 onValueChange={(value) => setFormData((prev) => ({ ...prev, name: value }))}
                 isRequired
               />
               <Input
-                label={t.slugLabel}
+                label={t.slug}
                 value={formData.slug}
                 onValueChange={(value) => setFormData((prev) => ({ ...prev, slug: value }))}
               />
             </div>
             <Textarea
-              label={t.descLabel}
+              label={t.description}
               value={formData.description}
               onValueChange={(value) => setFormData((prev) => ({ ...prev, description: value }))}
               minRows={3}
             />
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <p className="text-sm font-medium text-foreground">{t.colorLabel}</p>
+                <p className="text-sm font-medium text-foreground">{t.color}</p>
                 <div className="flex flex-wrap items-end gap-3">
                   <Input
                     type="color"
-                    aria-label={t.colorLabel}
+                    aria-label={t.color}
                     className="w-20 min-w-[5rem]"
                     value={formData.color}
                     onValueChange={(value) => {
@@ -794,16 +674,16 @@ export default function TagsManagePage() {
                 isSelected={formData.isActive}
                 onValueChange={(checked) => setFormData((prev) => ({ ...prev, isActive: checked }))}
               >
-                {t.statusLabel}
+                {t.activeStatusLabel}
               </Switch>
             </div>
           </ModalBody>
           <ModalFooter>
             <Button variant="light" onPress={() => setIsEditModalOpen(false)}>
-              {t.cancel}
+              {c.cancel}
             </Button>
             <Button color="primary" onPress={handleSaveTag} isLoading={saveLoading}>
-              {saveLoading ? t.saving : t.save}
+              {saveLoading ? t.saving : c.save}
             </Button>
           </ModalFooter>
         </ModalContent>
@@ -815,26 +695,23 @@ export default function TagsManagePage() {
           <ModalHeader className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
               <Trash2 className="w-5 h-5 text-danger" />
-              {t.confirmTitle}
+              {t.confirmDeleteTitle}
             </div>
           </ModalHeader>
           <ModalBody>
             <div className="space-y-3">
-              <p>
-                {t.confirmBodyPrefix} <strong className="text-foreground">{selectedTag?.name}</strong>{" "}
-                {t.confirmBodySuffix}
-              </p>
+              <p>{fmt(t.confirmDeleteNamed, { name: selectedTag?.name || "" })}</p>
               <div className="p-3 bg-warning-50 border border-warning-200 rounded-lg">
                 <p className="text-sm text-warning-700 flex items-center gap-2">
                   <EyeOff className="w-4 h-4" />
-                  {t.confirmWarning}
+                  {t.deleteWarningExtended}
                 </p>
               </div>
             </div>
           </ModalBody>
           <ModalFooter>
             <Button variant="light" onPress={() => setIsDeleteModalOpen(false)}>
-              {t.cancel}
+              {c.cancel}
             </Button>
             <Button
               color="danger"
@@ -842,7 +719,7 @@ export default function TagsManagePage() {
               isLoading={deleteLoading}
               startContent={!deleteLoading && <Trash2 className="w-4 h-4" />}
             >
-              {deleteLoading ? t.deleting : t.del}
+              {deleteLoading ? t.deleting : c.delete}
             </Button>
           </ModalFooter>
         </ModalContent>

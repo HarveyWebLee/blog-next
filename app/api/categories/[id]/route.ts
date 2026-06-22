@@ -9,12 +9,17 @@
  * PUT /api/categories/[id] - 更新分类（校验名称/slug 在 owner 范围内唯一）
  * DELETE /api/categories/[id] - 删除分类（若存在子分类或关联文章则拒绝）
  */
-
 import { NextRequest, NextResponse } from "next/server";
 import { and, count, eq, ne } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { categories, posts } from "@/lib/db/schema";
+import {
+  apiMessage,
+  jsonRateLimitError,
+  localizedErrorResponse,
+  localizedSuccessResponse,
+} from "@/lib/i18n/api-response";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { logger } from "@/lib/server/logger";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
@@ -47,7 +52,7 @@ async function handleCategoryByIdGET(request: NextRequest, { params }: { params:
       return NextResponse.json(
         {
           success: false,
-          message: "无效的分类ID",
+          message: apiMessage(request, "taxonomy.invalidCategoryId"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -69,7 +74,7 @@ async function handleCategoryByIdGET(request: NextRequest, { params }: { params:
       return NextResponse.json(
         {
           success: false,
-          message: "分类不存在",
+          message: apiMessage(request, "taxonomy.categoryNotFound"),
           timestamp: new Date().toISOString(),
         },
         { status: 404 }
@@ -87,7 +92,7 @@ async function handleCategoryByIdGET(request: NextRequest, { params }: { params:
     return NextResponse.json({
       success: true,
       data: categoryWithCount,
-      message: "分类获取成功",
+      message: apiMessage(request, "taxonomy.categoryFetchSuccess"),
       timestamp: new Date().toISOString(),
     } as ApiResponse<Category & { postCount: number }>);
   } catch (error) {
@@ -121,7 +126,7 @@ async function handleCategoryByIdPUT(request: NextRequest, { params }: { params:
       return NextResponse.json(
         {
           success: false,
-          message: "无效的分类ID",
+          message: apiMessage(request, "taxonomy.invalidCategoryId"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -143,7 +148,7 @@ async function handleCategoryByIdPUT(request: NextRequest, { params }: { params:
       return NextResponse.json(
         {
           success: false,
-          message: "分类不存在",
+          message: apiMessage(request, "taxonomy.categoryNotFound"),
           timestamp: new Date().toISOString(),
         },
         { status: 404 }
@@ -168,7 +173,7 @@ async function handleCategoryByIdPUT(request: NextRequest, { params }: { params:
         return NextResponse.json(
           {
             success: false,
-            message: "分类名称已存在",
+            message: apiMessage(request, "taxonomy.nameExists"),
             timestamp: new Date().toISOString(),
           },
           { status: 409 }
@@ -194,7 +199,7 @@ async function handleCategoryByIdPUT(request: NextRequest, { params }: { params:
         return NextResponse.json(
           {
             success: false,
-            message: "分类slug已存在",
+            message: apiMessage(request, "taxonomy.slugExists"),
             timestamp: new Date().toISOString(),
           },
           { status: 409 }
@@ -235,7 +240,7 @@ async function handleCategoryByIdPUT(request: NextRequest, { params }: { params:
         parentId: updatedCategory.parentId || undefined,
         isActive: updatedCategory.isActive ?? true,
       },
-      message: "分类更新成功",
+      message: apiMessage(request, "taxonomy.categoryUpdateSuccess"),
       timestamp: new Date().toISOString(),
     } as ApiResponse<Category>);
   } catch (error) {
@@ -268,7 +273,7 @@ async function handleCategoryByIdDELETE(request: NextRequest, { params }: { para
       return NextResponse.json(
         {
           success: false,
-          message: "无效的分类ID",
+          message: apiMessage(request, "taxonomy.invalidCategoryId"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -290,7 +295,7 @@ async function handleCategoryByIdDELETE(request: NextRequest, { params }: { para
       return NextResponse.json(
         {
           success: false,
-          message: "分类不存在",
+          message: apiMessage(request, "taxonomy.categoryNotFound"),
           timestamp: new Date().toISOString(),
         },
         { status: 404 }
@@ -304,7 +309,7 @@ async function handleCategoryByIdDELETE(request: NextRequest, { params }: { para
       return NextResponse.json(
         {
           success: false,
-          message: "无法删除分类，该分类下还有文章",
+          message: apiMessage(request, "taxonomy.cannotDeleteHasPosts"),
           timestamp: new Date().toISOString(),
         },
         { status: 409 }
@@ -321,7 +326,7 @@ async function handleCategoryByIdDELETE(request: NextRequest, { params }: { para
       return NextResponse.json(
         {
           success: false,
-          message: "无法删除分类，该分类下还有子分类",
+          message: apiMessage(request, "taxonomy.cannotDeleteHasChildren"),
           timestamp: new Date().toISOString(),
         },
         { status: 409 }
@@ -342,7 +347,7 @@ async function handleCategoryByIdDELETE(request: NextRequest, { params }: { para
     return NextResponse.json({
       success: true,
       data: null,
-      message: "分类删除成功",
+      message: apiMessage(request, "taxonomy.categoryDeleteSuccess"),
       timestamp: new Date().toISOString(),
     } as ApiResponse<null>);
   } catch (error) {

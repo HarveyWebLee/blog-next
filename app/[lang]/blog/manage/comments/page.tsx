@@ -19,10 +19,9 @@ import {
 import { Search, ShieldCheck, Trash2 } from "lucide-react";
 
 import { BlogNavigation } from "@/components/blog/blog-navigation";
-import enUS from "@/dictionaries/en-US.json";
-import jaJP from "@/dictionaries/ja-JP.json";
-import zhCN from "@/dictionaries/zh-CN.json";
 import { useAuth } from "@/lib/contexts/auth-context";
+import { useClientDictionary } from "@/lib/hooks/use-client-dictionary";
+import { pickText } from "@/lib/i18n/pick-text";
 import { message } from "@/lib/utils";
 import type { AdminManagedUserRow, ApiResponse, PaginatedResponseData } from "@/types/blog";
 
@@ -50,9 +49,9 @@ export default function BlogCommentsReviewPage() {
   const lang = params.lang || "zh-CN";
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
 
-  const dict = lang === "en-US" ? enUS : lang === "ja-JP" ? jaJP : zhCN;
-  const t = dict.profile.commentReview;
-  const unknownLabel = t.unknown;
+  const dict = useClientDictionary(lang);
+  const t = pickText((dict as { profile?: { commentReview?: Record<string, string> } })?.profile?.commentReview);
+  const unknownLabel = t.unknown ?? "";
 
   const [items, setItems] = useState<AdminCommentItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,7 +70,7 @@ export default function BlogCommentsReviewPage() {
   const [batchLoading, setBatchLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [authorFilterOptions, setAuthorFilterOptions] = useState<Array<{ key: string; label: string }>>([]);
-  const authorSelectItems = [{ key: "all", label: "全部作者" }, ...authorFilterOptions];
+  const authorSelectItems = [{ key: "all", label: t.allAuthors ?? "全部作者" }, ...authorFilterOptions];
 
   const normalizeDateValue = (v: unknown): string => {
     if (!v) return "";
@@ -162,10 +161,7 @@ export default function BlogCommentsReviewPage() {
   const updateStatus = async (id: number, nextStatus: ReviewStatus) => {
     setUpdatingId(id);
     try {
-      const reason = window.prompt(
-        lang === "en-US" ? "Optional moderation reason:" : lang === "ja-JP" ? "審査理由（任意）:" : "审核理由（可选）:",
-        ""
-      );
+      const reason = window.prompt(t.moderationReasonPrompt ?? "", "");
       const res = await fetch(`/api/admin/comments/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", ...buildAuthHeaders() },
@@ -199,13 +195,7 @@ export default function BlogCommentsReviewPage() {
   };
 
   const deleteOne = async (id: number) => {
-    const ok = window.confirm(
-      lang === "en-US"
-        ? "Delete this comment?"
-        : lang === "ja-JP"
-          ? "このコメントを削除しますか？"
-          : "确定删除该评论吗？"
-    );
+    const ok = window.confirm(t.deleteConfirmOne ?? "");
     if (!ok) return;
     setDeletingId(id);
     try {
@@ -215,9 +205,7 @@ export default function BlogCommentsReviewPage() {
       });
       const json = (await res.json()) as ApiResponse;
       if (!json.success) {
-        throw new Error(
-          json.message || (lang === "en-US" ? "Delete failed" : lang === "ja-JP" ? "削除に失敗しました" : "删除失败")
-        );
+        throw new Error(json.message || (t.deleteFailed ?? ""));
       }
       message.success(t.deleted);
       setItems((prev) => prev.filter((it) => it.id !== id));
@@ -234,14 +222,7 @@ export default function BlogCommentsReviewPage() {
     if (selectedIds.length === 0) return;
     setBatchLoading(true);
     try {
-      const reason = window.prompt(
-        lang === "en-US"
-          ? "Optional batch moderation reason:"
-          : lang === "ja-JP"
-            ? "一括審査理由（任意）:"
-            : "批量审核理由（可选）:",
-        ""
-      );
+      const reason = window.prompt(t.batchModerationReasonPrompt ?? "", "");
       const res = await fetch("/api/admin/comments", {
         method: "PATCH",
         headers: { "Content-Type": "application/json", ...buildAuthHeaders() },
@@ -264,13 +245,7 @@ export default function BlogCommentsReviewPage() {
 
   const batchDelete = async () => {
     if (selectedIds.length === 0) return;
-    const ok = window.confirm(
-      lang === "en-US"
-        ? `Delete ${selectedIds.length} selected comments?`
-        : lang === "ja-JP"
-          ? `選択した ${selectedIds.length} 件のコメントを削除しますか？`
-          : `确定删除已选中的 ${selectedIds.length} 条评论吗？`
-    );
+    const ok = window.confirm((t.deleteConfirmBatch ?? "").replace("{count}", String(selectedIds.length)));
     if (!ok) return;
     setBatchLoading(true);
     try {

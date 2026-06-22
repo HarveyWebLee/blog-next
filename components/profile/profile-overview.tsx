@@ -8,6 +8,8 @@ import { Edit, Github, Globe, Mail, MapPin, Phone } from "lucide-react";
 
 import { PROFILE_GLASS_CARD } from "@/components/profile/profile-ui-presets";
 import { useAuth } from "@/lib/contexts/auth-context";
+import { useProfileDict } from "@/lib/contexts/profile-dict-context";
+import { isTextReady, pickText } from "@/lib/i18n/pick-text";
 import { message } from "@/lib/utils";
 import type { ApiResponse, UserProfile } from "@/types/blog";
 
@@ -38,57 +40,7 @@ function readSocialValue(socialLinks: Record<string, unknown>, key: (typeof SOCI
 }
 
 export default function ProfileOverview({ lang }: ProfileOverviewProps) {
-  const t =
-    lang === "en-US"
-      ? {
-          loadFailed: "Unable to load profile",
-          username: "Username",
-          website: "Website",
-          edit: "Edit Profile",
-          contact: "Contact",
-          social: "Social",
-          github: "GitHub",
-          wechatQr: "WeChat QR",
-          douyin: "Douyin",
-          bilibili: "Bilibili",
-          openLink: "Open Link",
-          needLogin: "Please sign in to view your profile.",
-          login: "Sign in",
-          quickActions: ["View My Posts", "Manage Favorites", "View Notifications", "Activity Log"],
-        }
-      : lang === "ja-JP"
-        ? {
-            loadFailed: "プロフィールを読み込めません",
-            username: "ユーザー名",
-            website: "ウェブサイト",
-            edit: "プロフィール編集",
-            contact: "連絡先情報",
-            social: "ソーシャル",
-            github: "GitHub",
-            wechatQr: "WeChat QR",
-            douyin: "抖音",
-            bilibili: "bilibili",
-            openLink: "リンクを開く",
-            needLogin: "プロフィールを表示するにはログインしてください。",
-            login: "ログイン",
-            quickActions: ["自分の記事を見る", "お気に入り管理", "通知を見る", "アクティビティログ"],
-          }
-        : {
-            loadFailed: "无法加载个人资料",
-            username: "用户名",
-            website: "个人网站",
-            edit: "编辑资料",
-            contact: "联系信息",
-            social: "社交媒体",
-            github: "GitHub",
-            wechatQr: "微信二维码",
-            douyin: "抖音",
-            bilibili: "哔哩哔哩",
-            openLink: "打开链接",
-            needLogin: "请先登录后查看个人资料。",
-            login: "去登录",
-            quickActions: ["查看我的文章", "管理收藏", "查看通知", "活动日志"],
-          };
+  const t = pickText(useProfileDict("overview")) as Record<string, string> & { labels?: Record<string, string> };
 
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);

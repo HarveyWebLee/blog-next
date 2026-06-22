@@ -9,6 +9,13 @@ import {
 import { resolveSecretFromBody } from "@/lib/crypto/password-transport/resolve-secret";
 import { db } from "@/lib/db/config";
 import { userProfiles, users } from "@/lib/db/schema";
+import {
+  apiMessage,
+  jsonRateLimitError,
+  localizedErrorResponse,
+  localizedSuccessResponse,
+} from "@/lib/i18n/api-response";
+import { getRequestLocale } from "@/lib/i18n/locale";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { notifyRouteUnhandledError } from "@/lib/server/route-alert";
 import { generateAccessToken, generateRefreshToken, verifyPassword } from "@/lib/utils";
@@ -17,7 +24,8 @@ import { ApiResponse, LoginResponse } from "@/types/blog";
 async function handleAuthLoginPOST(request: NextRequest) {
   try {
     const body = (await request.json()) as Record<string, unknown>;
-    const secret = await resolveSecretFromBody({ body, plainField: "password" });
+    const locale = getRequestLocale(request);
+    const secret = await resolveSecretFromBody({ body, plainField: "password", locale });
     if (!secret.ok) {
       return NextResponse.json<ApiResponse>(
         {
@@ -37,7 +45,7 @@ async function handleAuthLoginPOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "用户名和密码不能为空",
+          message: apiMessage(request, "auth.usernamePasswordRequired"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -70,7 +78,7 @@ async function handleAuthLoginPOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "用户名或密码错误",
+          message: apiMessage(request, "auth.invalidCredentials"),
           timestamp: new Date().toISOString(),
         },
         { status: 401 }
@@ -117,7 +125,7 @@ async function handleAuthLoginPOST(request: NextRequest) {
       };
       return NextResponse.json<ApiResponse<LoginResponse>>({
         success: true,
-        message: "登录成功",
+        message: apiMessage(request, "auth.loginSuccess"),
         data: response,
         timestamp: new Date().toISOString(),
       });
@@ -131,7 +139,7 @@ async function handleAuthLoginPOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "用户名或密码错误",
+          message: apiMessage(request, "auth.invalidCredentials"),
           timestamp: new Date().toISOString(),
         },
         { status: 401 }
@@ -145,7 +153,7 @@ async function handleAuthLoginPOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "用户名或密码错误",
+          message: apiMessage(request, "auth.invalidCredentials"),
           timestamp: new Date().toISOString(),
         },
         { status: 401 }
@@ -156,7 +164,7 @@ async function handleAuthLoginPOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "账户已停用或受限，无法登录。如有疑问请联系管理员。",
+          message: apiMessage(request, "auth.accountDisabled"),
           timestamp: new Date().toISOString(),
         },
         { status: 403 }
@@ -189,7 +197,7 @@ async function handleAuthLoginPOST(request: NextRequest) {
 
     return NextResponse.json<ApiResponse<LoginResponse>>({
       success: true,
-      message: "登录成功",
+      message: apiMessage(request, "auth.loginSuccess"),
       data: response,
       timestamp: new Date().toISOString(),
     });
@@ -204,11 +212,11 @@ export const { POST } = defineApiHandlers(
     onError: (payload) => {
       notifyRouteUnhandledError(payload);
     },
-    onUnhandledErrorResponse: () =>
+    onUnhandledErrorResponse: ({ request }) =>
       NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "服务器内部错误",
+          message: apiMessage(request, "common.internalError"),
           timestamp: new Date().toISOString(),
         },
         { status: 500 }

@@ -3,6 +3,12 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { categories, posts, tags, users } from "@/lib/db/schema";
+import {
+  apiMessage,
+  jsonRateLimitError,
+  localizedErrorResponse,
+  localizedSuccessResponse,
+} from "@/lib/i18n/api-response";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { requireInMemorySuperRoot } from "@/lib/utils/authz";
 
@@ -344,7 +350,7 @@ async function handleSeedGET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "数据库种子数据初始化完成",
+      message: apiMessage(request, "ops.seedSuccess"),
       stats,
     });
   } catch (error) {
@@ -353,7 +359,7 @@ async function handleSeedGET(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        message: "种子数据初始化失败",
+        message: apiMessage(request, "ops.seedFailed"),
         error: error instanceof Error ? error.message : "未知错误",
       },
       { status: 500 }

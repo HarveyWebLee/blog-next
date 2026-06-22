@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Avatar } from "@heroui/avatar";
 import { Button } from "@heroui/button";
 import { Card, CardBody, CardHeader } from "@heroui/card";
@@ -12,27 +12,21 @@ import { Divider } from "@heroui/divider";
 import { Input } from "@heroui/input";
 import { Textarea } from "@heroui/react";
 import { Spinner } from "@heroui/spinner";
-import {
-  ArrowLeft,
-  BookOpen,
-  Calendar,
-  Edit,
-  Eye,
-  Heart,
-  Lock,
-  MessageCircle,
-  Share2,
-  Star,
-  ThumbsUp,
-} from "lucide-react";
+import { ArrowLeft, BookOpen, Calendar, Edit, Eye, Heart, MessageCircle, Share2, Star, ThumbsUp } from "lucide-react";
 
 import MarkdownRenderer from "@/components/blog/markdown-renderer";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { sealPasswordInRequestBody } from "@/lib/crypto/password-transport/body";
+import { useClientDictionary } from "@/lib/hooks/use-client-dictionary";
 import { message } from "@/lib/utils";
 import { clientBearerHeaders } from "@/lib/utils/client-bearer-auth";
 import { stripMarkdownForExcerpt } from "@/lib/utils/markdown-plain";
 import { PostData } from "@/types/blog";
+
+/** 将词典模板中的 {count} 替换为实际数值 */
+function formatCountLabel(template: string, count: number) {
+  return template.replace("{count}", String(count));
+}
 
 export default function BlogDetailPage({ params }: { params: Promise<{ lang: string; slug: string }> }) {
   const [resolvedParams, setResolvedParams] = useState<{ lang: string; slug: string } | null>(null);
@@ -55,101 +49,8 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
   const [likeCount, setLikeCount] = useState(0);
   const [favoriteCount, setFavoriteCount] = useState(0);
   const lang = resolvedParams?.lang || "zh-CN";
-  const t =
-    lang === "en-US"
-      ? {
-          fetchFailed: "Failed to load post",
-          passwordWrong: "Incorrect password, try again",
-          verifyFailed: "Verification failed, try again",
-          commentRequired: "Please enter comment content",
-          guest: "Guest",
-          commentSuccess: "Comment submitted successfully!",
-          commentFailed: "Failed to submit comment, try again",
-          passwordLabel: "Access Password",
-          passwordPlaceholder: "Enter password",
-          published: "✨ Published",
-          draft: "📝 Draft",
-          archived: "📦 Archived",
-          unknownAuthor: "Unknown Author",
-          liked: "Liked",
-          like: "Like",
-          commentLabel: "💭 Leave a comment",
-          commentPlaceholder: "Share your thoughts...",
-          submitting: "Submitting...",
-          submitComment: "Post Comment",
-          anonymous: "Anonymous",
-          authorBadge: "Author",
-          editArticle: "Edit post",
-          follow: "Follow",
-          following: "Following",
-          followFailed: "Failed to follow, try again",
-          followSuccess: "Followed",
-          loginToFollow: "Please login first",
-        }
-      : lang === "ja-JP"
-        ? {
-            fetchFailed: "記事の取得に失敗しました",
-            passwordWrong: "パスワードが違います",
-            verifyFailed: "検証に失敗しました",
-            commentRequired: "コメント内容を入力してください",
-            guest: "ゲスト",
-            commentSuccess: "コメントを投稿しました！",
-            commentFailed: "コメント投稿に失敗しました",
-            passwordLabel: "アクセスパスワード",
-            passwordPlaceholder: "パスワードを入力",
-            published: "✨ 公開済み",
-            draft: "📝 下書き",
-            archived: "📦 アーカイブ",
-            unknownAuthor: "不明な著者",
-            liked: "いいね済み",
-            like: "いいね",
-            favorited: "お気に入り済み",
-            favorite: "お気に入り",
-            commentLabel: "💭 コメントを投稿",
-            commentPlaceholder: "ご意見をどうぞ...",
-            submitting: "投稿中...",
-            submitComment: "コメント投稿",
-            anonymous: "匿名ユーザー",
-            authorBadge: "作者",
-            editArticle: "記事を編集",
-            follow: "フォロー",
-            following: "フォロー中",
-            followFailed: "フォローに失敗しました",
-            followSuccess: "フォローしました",
-            loginToFollow: "先にログインしてください",
-          }
-        : {
-            fetchFailed: "获取博客失败",
-            passwordWrong: "密码错误，请重试",
-            verifyFailed: "验证失败，请重试",
-            commentRequired: "请输入评论内容",
-            guest: "访客",
-            commentSuccess: "评论提交成功！",
-            commentFailed: "评论提交失败，请重试",
-            passwordLabel: "访问密码",
-            passwordPlaceholder: "输入密码",
-            published: "✨ 已发布",
-            draft: "📝 草稿",
-            archived: "📦 已归档",
-            unknownAuthor: "未知作者",
-            liked: "已点赞",
-            like: "点赞",
-            favorited: "已收藏",
-            favorite: "收藏",
-            commentLabel: "💭 发表您的评论",
-            commentPlaceholder: "写下您的想法和见解...",
-            submitting: "发布中...",
-            submitComment: "发表评论",
-            anonymous: "匿名用户",
-            authorBadge: "作者",
-            editArticle: "编辑文章",
-            follow: "关注",
-            following: "已关注",
-            followFailed: "关注失败，请重试",
-            followSuccess: "关注成功",
-            loginToFollow: "请先登录",
-          };
-
+  const dict = useClientDictionary(lang);
+  const t = (dict as { blog?: { detail?: Record<string, string> } })?.blog?.detail;
   const { user, isAuthenticated } = useAuth();
 
   // 解析params
@@ -157,9 +58,9 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
     params.then(setResolvedParams);
   }, [params]);
 
-  // 获取博客详情
+  // 获取博客详情（等待词典就绪后再展示错误文案）
   useEffect(() => {
-    if (!resolvedParams?.slug) return;
+    if (!resolvedParams?.slug || !t) return;
 
     const fetchPost = async () => {
       try {
@@ -188,20 +89,20 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
             setShowPasswordForm(true);
           } else {
             message.error(t.fetchFailed);
-            router.push("/blog");
+            router.push(`/${lang}/blog`);
           }
         }
       } catch (error) {
         console.error("获取博客失败:", error);
         message.error(t.fetchFailed);
-        router.push("/blog");
+        router.push(`/${lang}/blog`);
       } finally {
         setLoading(false);
       }
     };
 
     fetchPost();
-  }, [resolvedParams?.slug, router, searchParams, t.fetchFailed]);
+  }, [resolvedParams?.slug, router, searchParams, t, lang]);
 
   useEffect(() => {
     if (!post?.id) return;
@@ -274,6 +175,25 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
       cancelled = true;
     };
   }, [post?.authorId, post?.author?.id, isAuthenticated, currentUserId]);
+
+  // 获取状态标签颜色（不依赖词典，可置于词典守卫之前）
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "published":
+        return "success";
+      case "draft":
+        return "warning";
+      case "archived":
+        return "default";
+      default:
+        return "default";
+    }
+  };
+
+  // 词典未就绪时不渲染，同时收窄 t 类型供下方事件处理使用
+  if (!t) {
+    return null;
+  }
 
   // 验证密码
   const handlePasswordSubmit = async (e: React.FormEvent) => {
@@ -355,7 +275,7 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
           setPost(postResult.data);
         }
       } else {
-        message.error(`评论提交失败: ${result.message}`);
+        message.error(t.commentFailedWithReason.replace("{reason}", result.message));
       }
     } catch (error) {
       console.error("提交评论失败:", error);
@@ -381,14 +301,14 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
       });
       const result = await response.json();
       if (!result.success) {
-        message.error(result.message || "点赞失败");
+        message.error(result.message || t.likeFailed);
         return;
       }
       setIsLiked(Boolean(result.data?.liked));
       setLikeCount(Number(result.data?.likeCount || 0));
     } catch (error) {
       console.error("点赞失败:", error);
-      message.error("点赞失败");
+      message.error(t.likeFailed);
     } finally {
       setLikeLoading(false);
     }
@@ -409,15 +329,15 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
       });
       const result = await response.json();
       if (!result.success) {
-        message.error(result.message || "收藏失败");
+        message.error(result.message || t.favoriteFailed);
         return;
       }
       setIsFavorited(Boolean(result.data?.favorited));
       setFavoriteCount(Number(result.data?.favoriteCount || 0));
-      message.success(result.message || (result.data?.favorited ? "收藏成功" : "已取消收藏"));
+      message.success(result.message || (result.data?.favorited ? t.favoriteSuccess : t.unfavoriteSuccess));
     } catch (error) {
       console.error("收藏失败:", error);
-      message.error("收藏失败");
+      message.error(t.favoriteFailed);
     } finally {
       setFavoriteLoading(false);
     }
@@ -486,24 +406,10 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
     } else if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
       try {
         await navigator.clipboard.writeText(url);
-        message.success(lang === "en-US" ? "Link copied" : lang === "ja-JP" ? "リンクをコピーしました" : "链接已复制");
+        message.success(t.linkCopied);
       } catch {
-        message.error(lang === "en-US" ? "Copy failed" : lang === "ja-JP" ? "コピーに失敗しました" : "复制失败");
+        message.error(t.copyFailed);
       }
-    }
-  };
-
-  // 获取状态标签颜色
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "published":
-        return "success";
-      case "draft":
-        return "warning";
-      case "archived":
-        return "default";
-      default:
-        return "default";
     }
   };
 
@@ -519,7 +425,7 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
               </div>
               <div className="mt-6 space-y-2">
                 <div className="animate-blog-shimmer h-4 bg-default-200 rounded-full w-32 mx-auto"></div>
-                <p className="text-default-500 animate-pulse loading-gradient">正在加载精彩内容...</p>
+                <p className="text-default-500 animate-pulse loading-gradient">{t.loading}</p>
               </div>
             </CardBody>
           </Card>
@@ -536,8 +442,8 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
           <Card className="max-w-md mx-auto glass-enhanced hover-lift-enhanced">
             <CardHeader className="flex gap-3 pb-6">
               <div className="flex flex-col">
-                <p className="text-xl font-bold blog-title-gradient">🔐 需要密码访问</p>
-                <p className="text-small text-default-500">请输入访问密码以查看内容</p>
+                <p className="text-xl font-bold blog-title-gradient">{t.passwordGateTitle}</p>
+                <p className="text-small text-default-500">{t.passwordGateHint}</p>
               </div>
             </CardHeader>
             <CardBody className="pt-0">
@@ -564,7 +470,7 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
                   className="w-full button-hover-effect animate-blog-slide-in-right delay-100 gradient-button-primary"
                   size="lg"
                 >
-                  🔓 验证密码
+                  {t.verifyPassword}
                 </Button>
               </form>
             </CardBody>
@@ -584,15 +490,15 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
               <div className="animate-blog-float">
                 <BookOpen className="w-24 h-24 mx-auto mb-6 text-default-300" />
               </div>
-              <p className="text-xl text-default-500 mb-6">博客内容不存在</p>
+              <p className="text-xl text-default-500 mb-6">{t.notFound}</p>
               <Button
-                onPress={() => router.push("/blog")}
+                onPress={() => router.push(`/${lang}/blog`)}
                 color="primary"
                 size="lg"
                 className="button-hover-effect gradient-button-primary"
                 startContent={<ArrowLeft className="w-4 h-4" />}
               >
-                返回博客列表
+                {t.backToList}
               </Button>
             </CardBody>
           </Card>
@@ -613,7 +519,7 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
             startContent={<ArrowLeft className="w-4 h-4" />}
             className="hover-lift button-hover-effect"
           >
-            返回上一页
+            {t.backPrevious}
           </Button>
           {/* 仅文章作者本人可见编辑入口（与 /api/posts/[id] PUT 权限一致） */}
           {isAuthenticated && user != null && (post.authorId === user.id || post.author?.id === user.id) && (
@@ -648,12 +554,12 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
                 <div className="flex flex-wrap items-center gap-3">
                   {post.visibility === "private" && (
                     <Chip color="secondary" variant="flat" size="lg" className="animate-blog-scale-in delay-300">
-                      🔒 私有
+                      {t.privateBadge}
                     </Chip>
                   )}
                   {post.visibility === "password" && (
                     <Chip color="warning" variant="flat" size="lg" className="animate-blog-scale-in delay-400">
-                      🔐 密码保护
+                      {t.passwordProtectedBadge}
                     </Chip>
                   )}
                 </div>
@@ -701,7 +607,7 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
                 <div className="meta-item flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
                   <span>
-                    {new Date(post.createdAt).toLocaleDateString("zh-CN", {
+                    {new Date(post.createdAt).toLocaleDateString(lang, {
                       year: "numeric",
                       month: "long",
                       day: "numeric",
@@ -710,15 +616,15 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
                 </div>
                 <div className="meta-item flex items-center gap-2">
                   <Eye className="w-4 h-4" />
-                  <span>{post.viewCount} 次浏览</span>
+                  <span>{formatCountLabel(t.viewsCount, post.viewCount)}</span>
                 </div>
                 <div className="meta-item flex items-center gap-2">
                   <MessageCircle className="w-4 h-4" />
-                  <span>{post.comments?.length || 0} 条评论</span>
+                  <span>{formatCountLabel(t.commentsCount, post.comments?.length || 0)}</span>
                 </div>
                 <div className="meta-item flex items-center gap-2">
                   <Heart className="w-4 h-4" />
-                  <span>{post.likeCount} 个赞</span>
+                  <span>{formatCountLabel(t.likesCount, post.likeCount)}</span>
                 </div>
                 {Number(post.authorId) > 0 && (!user || Number(post.authorId) !== user.id) && (
                   <div className="meta-item">
@@ -757,7 +663,7 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
               <div className="flex flex-col lg:flex-row lg:items-center gap-6 animate-blog-slide-in-right delay-400">
                 {post.category && (
                   <div className="flex items-center gap-3">
-                    <span className="text-sm font-medium text-default-600">📁 分类:</span>
+                    <span className="text-sm font-medium text-default-600">{t.categoryLabel}</span>
                     <div className="flex flex-wrap gap-2">
                       <Chip
                         key={post.category?.slug}
@@ -772,7 +678,7 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
                 )}
                 {post.tags && post.tags.length > 0 && (
                   <div className="flex items-center gap-3">
-                    <span className="text-sm font-medium text-default-600">🏷️ 标签:</span>
+                    <span className="text-sm font-medium text-default-600">{t.tagsLabel}</span>
                     <div className="flex flex-wrap gap-2">
                       {post.tags.map((tag, index) => (
                         <Chip
@@ -842,7 +748,7 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
                       className="button-hover-effect animate-blog-scale-in delay-200 gradient-button-primary"
                       onPress={() => void handleShare()}
                     >
-                      分享文章
+                      {t.shareArticle}
                     </Button>
                   </div>
                 </div>
@@ -856,9 +762,9 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
               <Card className="card-hover-effect glass-enhanced">
                 <CardHeader className="pb-6">
                   <div className="flex items-center gap-3">
-                    <p className="text-2xl font-bold blog-title-gradient">💬 评论区</p>
+                    <p className="text-2xl font-bold blog-title-gradient">{t.commentsSection}</p>
                     <Chip variant="flat" color="primary" size="sm">
-                      {post.comments?.length || 0} 条评论
+                      {formatCountLabel(t.commentsCount, post.comments?.length || 0)}
                     </Chip>
                   </div>
                 </CardHeader>
@@ -900,7 +806,7 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
                     <div className="space-y-6">
                       <h3 className="text-xl font-bold flex items-center gap-2">
                         <MessageCircle className="w-5 h-5 text-secondary" />
-                        全部评论
+                        {t.allComments}
                       </h3>
                       <div className="space-y-4">
                         {post.comments.map((comment, index) => (
@@ -924,7 +830,7 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
                                       )}
                                     </div>
                                     <p className="text-sm text-default-400">
-                                      {new Date(comment.createdAt).toLocaleDateString("zh-CN", {
+                                      {new Date(comment.createdAt).toLocaleDateString(lang, {
                                         year: "numeric",
                                         month: "long",
                                         day: "numeric",
@@ -946,8 +852,8 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
                       <div className="animate-blog-float">
                         <MessageCircle className="w-20 h-20 mx-auto mb-6 text-default-300" />
                       </div>
-                      <p className="text-xl text-default-500 mb-4">暂无评论</p>
-                      <p className="text-default-400">成为第一个评论的人，分享您的想法！</p>
+                      <p className="text-xl text-default-500 mb-4">{t.noComments}</p>
+                      <p className="text-default-400">{t.beFirstComment}</p>
                     </div>
                   )}
                 </CardBody>

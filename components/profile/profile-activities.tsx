@@ -20,6 +20,8 @@ import {
 
 import { PROFILE_GLASS_CARD } from "@/components/profile/profile-ui-presets";
 import { useAuth } from "@/lib/contexts/auth-context";
+import { useProfileDict } from "@/lib/contexts/profile-dict-context";
+import { isTextReady, pickText } from "@/lib/i18n/pick-text";
 import { message } from "@/lib/utils";
 import type { ApiResponse, PaginatedResponseData, UserActivity } from "@/types/blog";
 
@@ -76,111 +78,8 @@ const activityColors = {
 };
 
 export default function ProfileActivities({ lang }: ProfileActivitiesProps) {
-  const t =
-    lang === "en-US"
-      ? {
-          title: "Recent Activities",
-          total: "Total",
-          loading: "Loading...",
-          needLogin: "Please sign in to view your recent activities.",
-          loadMore: "Load More",
-          empty: "No activities yet",
-          labels: {
-            post_created: "Created post",
-            post_updated: "Updated post",
-            post_deleted: "Deleted post",
-            comment_created: "Commented",
-            post_liked: "Liked post",
-            post_unliked: "Unliked post",
-            post_favorited: "Favorited post",
-            post_unfavorited: "Removed favorite",
-            post_shared: "Shared post",
-            user_followed: "Followed user",
-            post_viewed: "Viewed post",
-            profile_updated: "Updated profile",
-            category_created: "Created category",
-            category_updated: "Updated category",
-            category_deleted: "Deleted category",
-            tag_created: "Created tag",
-            tag_updated: "Updated tag",
-            tag_deleted: "Deleted tag",
-            newsletter_subscribed: "Subscribed to newsletter",
-            newsletter_unsubscribed: "Unsubscribed",
-            admin_user_updated: "Admin: updated user",
-          },
-          agoMin: "m ago",
-          agoHour: "h ago",
-          agoDay: "d ago",
-        }
-      : lang === "ja-JP"
-        ? {
-            title: "最近のアクティビティ",
-            total: "合計",
-            loading: "読み込み中...",
-            needLogin: "最近のアクティビティを表示するにはログインしてください。",
-            loadMore: "もっと見る",
-            empty: "アクティビティはありません",
-            labels: {
-              post_created: "記事を作成",
-              post_updated: "記事を更新",
-              post_deleted: "記事を削除",
-              comment_created: "コメントを投稿",
-              post_liked: "記事にいいね",
-              post_unliked: "いいねを取り消し",
-              post_favorited: "記事をお気に入り",
-              post_unfavorited: "お気に入り解除",
-              post_shared: "記事を共有",
-              user_followed: "ユーザーをフォロー",
-              post_viewed: "記事を閲覧",
-              profile_updated: "プロフィールを更新",
-              category_created: "カテゴリーを作成",
-              category_updated: "カテゴリーを更新",
-              category_deleted: "カテゴリーを削除",
-              tag_created: "タグを作成",
-              tag_updated: "タグを更新",
-              tag_deleted: "タグを削除",
-              newsletter_subscribed: "メール購読",
-              newsletter_unsubscribed: "購読解除",
-              admin_user_updated: "管理：ユーザー更新",
-            },
-            agoMin: "分前",
-            agoHour: "時間前",
-            agoDay: "日前",
-          }
-        : {
-            title: "最近活动",
-            total: "共",
-            loading: "加载中...",
-            needLogin: "请先登录后查看最近活动。",
-            loadMore: "加载更多",
-            empty: "暂无活动记录",
-            labels: {
-              post_created: "创建了文章",
-              post_updated: "更新了文章",
-              post_deleted: "删除了文章",
-              comment_created: "发表了评论",
-              post_liked: "点赞了文章",
-              post_unliked: "取消点赞",
-              post_favorited: "收藏了文章",
-              post_unfavorited: "取消收藏",
-              post_shared: "分享了文章",
-              user_followed: "关注了用户",
-              post_viewed: "浏览了文章",
-              profile_updated: "更新了资料",
-              category_created: "创建了分类",
-              category_updated: "更新了分类",
-              category_deleted: "删除了分类",
-              tag_created: "创建了标签",
-              tag_updated: "更新了标签",
-              tag_deleted: "删除了标签",
-              newsletter_subscribed: "订阅了邮件",
-              newsletter_unsubscribed: "取消邮件订阅",
-              admin_user_updated: "管理员更新了用户",
-            },
-            agoMin: "分钟前",
-            agoHour: "小时前",
-            agoDay: "天前",
-          };
+  const t = pickText(useProfileDict("activities")) as Record<string, string> & { labels?: Record<string, string> };
+
   const [activities, setActivities] = useState<UserActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -313,7 +212,7 @@ export default function ProfileActivities({ lang }: ProfileActivitiesProps) {
             const Icon = activityIcons[activity.action as keyof typeof activityIcons] || Clock;
             const colorClass =
               activityColors[activity.action as keyof typeof activityColors] || "bg-default-200/80 text-default-600";
-            const label = t.labels[activity.action as keyof typeof t.labels] || activity.action;
+            const label = t.labels?.[activity.action as string] || activity.action;
 
             return (
               <div

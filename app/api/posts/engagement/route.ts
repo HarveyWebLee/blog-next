@@ -7,6 +7,7 @@ import { and, eq, inArray } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { userFavorites, userPostLikes } from "@/lib/db/schema";
+import { localizedErrorResponse, localizedSuccessResponse } from "@/lib/i18n/api-response";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { createErrorResponse, createSuccessResponse } from "@/lib/utils";
 import { findMysqlDriverError } from "@/lib/utils/mysql-error";
@@ -23,7 +24,7 @@ async function handlePostsEngagementGET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const idsRaw = (searchParams.get("ids") || "").trim();
     if (!idsRaw) {
-      return NextResponse.json(createErrorResponse("缺少 ids 参数"), { status: 400 });
+      return NextResponse.json(localizedErrorResponse(request, "post.engagementIdsRequired"), { status: 400 });
     }
 
     const ids = Array.from(
@@ -37,7 +38,7 @@ async function handlePostsEngagementGET(request: NextRequest) {
     ).slice(0, 100);
 
     if (ids.length === 0) {
-      return NextResponse.json(createErrorResponse("ids 参数无有效文章ID"), { status: 400 });
+      return NextResponse.json(localizedErrorResponse(request, "post.engagementIdsInvalid"), { status: 400 });
     }
 
     const auth = requireAuthUser(request);
@@ -47,7 +48,9 @@ async function handlePostsEngagementGET(request: NextRequest) {
         liked: false,
         favorited: false,
       }));
-      return NextResponse.json(createSuccessResponse(anonymousStates, "获取互动状态成功"), { status: 200 });
+      return NextResponse.json(localizedSuccessResponse(request, anonymousStates, "post.engagementSuccess"), {
+        status: 200,
+      });
     }
 
     const [likesRows, favoritesRows] = await Promise.all([
@@ -70,7 +73,7 @@ async function handlePostsEngagementGET(request: NextRequest) {
       favorited: favoritedSet.has(postId),
     }));
 
-    return NextResponse.json(createSuccessResponse(states, "获取互动状态成功"), { status: 200 });
+    return NextResponse.json(localizedSuccessResponse(request, states, "post.engagementSuccess"), { status: 200 });
   } catch (error) {
     throw error;
   }
@@ -79,9 +82,11 @@ async function handlePostsEngagementGET(request: NextRequest) {
 export const { GET } = defineApiHandlers(
   { GET: handlePostsEngagementGET },
   {
-    onUnhandledErrorResponse: ({ error }) => {
+    onUnhandledErrorResponse: ({ request, error }) => {
       const my = findMysqlDriverError(error);
-      return NextResponse.json(createErrorResponse("获取互动状态失败", my?.code || "未知错误"), { status: 500 });
+      return NextResponse.json(localizedErrorResponse(request, "post.engagementFailed", my?.code || "UNKNOWN_ERROR"), {
+        status: 500,
+      });
     },
   }
 );

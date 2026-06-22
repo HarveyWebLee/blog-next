@@ -7,6 +7,8 @@ import { CheckCheck, Search, UserMinus, Users } from "lucide-react";
 
 import { PROFILE_GLASS_CARD } from "@/components/profile/profile-ui-presets";
 import ProfileRelationsAPI from "@/lib/api/profile-relations";
+import { useProfileDict } from "@/lib/contexts/profile-dict-context";
+import { isTextReady, pickText } from "@/lib/i18n/pick-text";
 import { message } from "@/lib/utils";
 import type { ProfileRelationItem } from "@/types/blog";
 
@@ -21,63 +23,7 @@ interface ProfileFollowingProps {
  * 3) 按“可操作列表”设计，保留取消关注和查看主页入口。
  */
 export default function ProfileFollowing({ lang }: ProfileFollowingProps) {
-  const t =
-    lang === "en-US"
-      ? {
-          title: "Following",
-          subtitle: "People you follow",
-          searchPh: "Search following...",
-          mutual: "Mutual follow",
-          mutualDone: "Mutual following",
-          unfollow: "Unfollow",
-          viewProfile: "View profile",
-          mutualOnly: "Mutual only",
-          allRelations: "All",
-          empty: "You are not following anyone",
-          emptyDesc: "Follow creators and keep up with their updates.",
-          loadFailed: "Unable to load following list, showing fallback data.",
-          overview: "Back to profile",
-          lastActive: "Last active",
-          neverActive: "No recent activity",
-          followedAt: "Followed at",
-        }
-      : lang === "ja-JP"
-        ? {
-            title: "フォロー中",
-            subtitle: "あなたがフォローしているユーザー",
-            searchPh: "フォロー中を検索...",
-            mutual: "相互フォロー",
-            mutualDone: "相互フォロー中",
-            unfollow: "フォロー解除",
-            viewProfile: "プロフィールを見る",
-            mutualOnly: "相互のみ",
-            allRelations: "すべて",
-            empty: "まだ誰もフォローしていません",
-            emptyDesc: "クリエイターをフォローして更新を受け取りましょう。",
-            loadFailed: "フォロー中一覧の取得に失敗したため、代替データを表示しています。",
-            overview: "プロフィールへ戻る",
-            lastActive: "最終アクティブ",
-            neverActive: "活動履歴なし",
-            followedAt: "フォロー日時",
-          }
-        : {
-            title: "我的关注",
-            subtitle: "你正在关注的用户",
-            searchPh: "搜索关注对象昵称/用户名...",
-            mutual: "互相关注",
-            mutualDone: "已互关",
-            unfollow: "取消关注",
-            viewProfile: "查看主页",
-            mutualOnly: "仅互关",
-            allRelations: "全部",
-            empty: "你还没有关注任何人",
-            emptyDesc: "去发现更多创作者，关注后可在这里管理。",
-            loadFailed: "加载关注列表失败，已展示占位数据。",
-            overview: "返回个人中心",
-            lastActive: "最近活跃",
-            neverActive: "暂无活跃记录",
-            followedAt: "关注时间",
-          };
+  const t = pickText(useProfileDict("following")) as Record<string, string> & { labels?: Record<string, string> };
 
   const placeholderFollowing = useMemo<ProfileRelationItem[]>(
     () => [
@@ -179,10 +125,10 @@ export default function ProfileFollowing({ lang }: ProfileFollowingProps) {
     try {
       await ProfileRelationsAPI.unfollowUser(targetUserId);
       setFollowing((prev) => prev.filter((item) => item.userId !== targetUserId));
-      message.success(lang === "en-US" ? "Unfollowed" : lang === "ja-JP" ? "フォロー解除しました" : "已取消关注");
+      message.success(t.unfollowOk ?? "");
     } catch (error) {
       console.error("取消关注失败:", error);
-      message.error(error instanceof Error ? error.message : "取消关注失败");
+      message.error(error instanceof Error ? error.message : (t.unfollowFail ?? ""));
     } finally {
       setActionUserId(null);
     }

@@ -3,16 +3,21 @@
  * GET /api/profile/likes - 获取当前用户点赞的文章列表
  * DELETE /api/profile/likes?postId=1 - 取消点赞
  */
-
 import { NextRequest, NextResponse } from "next/server";
 import { and, count, desc, eq } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { categories, posts, userPostLikes, users } from "@/lib/db/schema";
+import {
+  apiMessage,
+  jsonRateLimitError,
+  localizedErrorResponse,
+  localizedSuccessResponse,
+} from "@/lib/i18n/api-response";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { logger } from "@/lib/server/logger";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
-import { requireAuthUser } from "@/lib/utils/request-auth";
+import { authErrorMessage, requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, PaginatedResponseData, PostData } from "@/types/blog";
 
 type ProfileLikeItem = {
@@ -29,7 +34,7 @@ async function handleProfileLikesGET(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: auth.reason === "missing" ? "未提供认证令牌" : "无效的认证令牌",
+          message: authErrorMessage(request, auth.reason),
           timestamp: new Date().toISOString(),
         },
         { status: 401 }
@@ -153,7 +158,7 @@ async function handleProfileLikesGET(request: NextRequest) {
     return NextResponse.json<ApiResponse<PaginatedResponseData<ProfileLikeItem>>>({
       success: true,
       data: responseData,
-      message: "点赞列表获取成功",
+      message: apiMessage(request, "profile.likesListSuccess"),
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
@@ -168,7 +173,7 @@ async function handleProfileLikesDELETE(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: auth.reason === "missing" ? "未提供认证令牌" : "无效的认证令牌",
+          message: authErrorMessage(request, auth.reason),
           timestamp: new Date().toISOString(),
         },
         { status: 401 }
@@ -181,7 +186,7 @@ async function handleProfileLikesDELETE(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "文章ID不能为空",
+          message: apiMessage(request, "profile.postIdRequired"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -212,7 +217,7 @@ async function handleProfileLikesDELETE(request: NextRequest) {
     return NextResponse.json<ApiResponse>({
       success: true,
       data: null,
-      message: "取消点赞成功",
+      message: apiMessage(request, "profile.unlikeSuccess"),
       timestamp: new Date().toISOString(),
     });
   } catch (error) {

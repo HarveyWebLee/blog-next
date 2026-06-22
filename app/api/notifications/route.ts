@@ -6,16 +6,21 @@
  * PUT /api/notifications - 批量标记已读（本人；超级管理员可按 userId 跨用户）
  * POST /api/notifications - 创建通知（本人可给自己创建；超级管理员可给任意用户创建）
  */
-
 import { NextRequest, NextResponse } from "next/server";
 import { and, count, desc, eq, inArray } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { userNotifications } from "@/lib/db/schema";
+import {
+  apiMessage,
+  jsonRateLimitError,
+  localizedErrorResponse,
+  localizedSuccessResponse,
+} from "@/lib/i18n/api-response";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { notifyRouteUnhandledError } from "@/lib/server/route-alert";
 import { isJwtInMemorySuperRoot } from "@/lib/utils/authz";
-import { requireAuthUser } from "@/lib/utils/request-auth";
+import { authErrorMessage, requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, PaginatedResponseData, UserNotification } from "@/types/blog";
 
 const NOTIFICATION_TYPES = new Set(["comment", "like", "follow", "mention", "system"]);
@@ -33,7 +38,7 @@ async function handleNotificationsListGET(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: auth.reason === "missing" ? "未提供认证令牌" : "无效的认证令牌",
+          message: authErrorMessage(request, auth.reason),
           timestamp: new Date().toISOString(),
         },
         { status: 401 }
@@ -58,7 +63,7 @@ async function handleNotificationsListGET(request: NextRequest) {
         return NextResponse.json<ApiResponse>(
           {
             success: false,
-            message: "无效的通知类型",
+            message: apiMessage(request, "notification.invalidType"),
             timestamp: new Date().toISOString(),
           },
           { status: 400 }
@@ -110,7 +115,7 @@ async function handleNotificationsListGET(request: NextRequest) {
     return NextResponse.json<ApiResponse<PaginatedResponseData<UserNotification>>>({
       success: true,
       data: responseData,
-      message: "获取通知列表成功",
+      message: apiMessage(request, "notification.listSuccess"),
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
@@ -131,7 +136,7 @@ async function handleNotificationsMarkReadPUT(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: auth.reason === "missing" ? "未提供认证令牌" : "无效的认证令牌",
+          message: authErrorMessage(request, auth.reason),
           timestamp: new Date().toISOString(),
         },
         { status: 401 }
@@ -151,7 +156,7 @@ async function handleNotificationsMarkReadPUT(request: NextRequest) {
       return NextResponse.json<ApiResponse>({
         success: true,
         data: null,
-        message: "已全部标记为已读",
+        message: apiMessage(request, "notification.markAllSuccess"),
         timestamp: new Date().toISOString(),
       });
     }
@@ -163,7 +168,7 @@ async function handleNotificationsMarkReadPUT(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "请提供 notificationIds 或 markAllAsRead=true",
+          message: apiMessage(request, "notification.markNeedIds"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -180,7 +185,7 @@ async function handleNotificationsMarkReadPUT(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "无可操作的通知",
+          message: apiMessage(request, "notification.noOp"),
           timestamp: new Date().toISOString(),
         },
         { status: 403 }
@@ -201,7 +206,7 @@ async function handleNotificationsMarkReadPUT(request: NextRequest) {
     return NextResponse.json<ApiResponse>({
       success: true,
       data: { updatedCount: scopedIds.length },
-      message: "通知批量标记成功",
+      message: apiMessage(request, "notification.batchMarkSuccess"),
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
@@ -222,7 +227,7 @@ async function handleNotificationsBulkDELETE(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: auth.reason === "missing" ? "未提供认证令牌" : "无效的认证令牌",
+          message: authErrorMessage(request, auth.reason),
           timestamp: new Date().toISOString(),
         },
         { status: 401 }
@@ -245,7 +250,7 @@ async function handleNotificationsBulkDELETE(request: NextRequest) {
       return NextResponse.json<ApiResponse>({
         success: true,
         data: null,
-        message: "已清理全部已读通知",
+        message: apiMessage(request, "notification.clearReadSuccess"),
         timestamp: new Date().toISOString(),
       });
     }
@@ -257,7 +262,7 @@ async function handleNotificationsBulkDELETE(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "请提供 notificationIds 或 clearRead=true",
+          message: apiMessage(request, "notification.deleteNeedIds"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -271,7 +276,7 @@ async function handleNotificationsBulkDELETE(request: NextRequest) {
     return NextResponse.json<ApiResponse>({
       success: true,
       data: null,
-      message: "通知删除成功",
+      message: apiMessage(request, "notification.deleteSuccess"),
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
@@ -292,7 +297,7 @@ async function handleNotificationsCreatePOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: auth.reason === "missing" ? "未提供认证令牌" : "无效的认证令牌",
+          message: authErrorMessage(request, auth.reason),
           timestamp: new Date().toISOString(),
         },
         { status: 401 }
@@ -318,7 +323,7 @@ async function handleNotificationsCreatePOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "标题和类型是必填项",
+          message: apiMessage(request, "notification.createRequired"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -328,7 +333,7 @@ async function handleNotificationsCreatePOST(request: NextRequest) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          message: "无效的通知类型",
+          message: apiMessage(request, "notification.invalidType"),
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -364,7 +369,7 @@ async function handleNotificationsCreatePOST(request: NextRequest) {
           createdAt: created.createdAt,
           updatedAt: created.createdAt,
         },
-        message: "通知创建成功",
+        message: apiMessage(request, "notification.createSuccess"),
         timestamp: new Date().toISOString(),
       },
       { status: 201 }

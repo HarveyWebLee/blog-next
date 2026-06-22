@@ -9,105 +9,17 @@ import { Input } from "@heroui/input";
 import { AlertCircle, ArrowLeft, CheckCircle, Eye, EyeOff, Lock } from "lucide-react";
 
 import { sealPasswordInRequestBody } from "@/lib/crypto/password-transport/body";
+import { useClientDictionary } from "@/lib/hooks/use-client-dictionary";
+import { isTextReady, pickText } from "@/lib/i18n/pick-text";
 import { extractResponseErrorMessage, extractUnknownErrorMessage } from "@/lib/utils/client-error";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
   const params = useParams<{ lang: string }>();
   const lang = params.lang || "zh-CN";
-  const t =
-    lang === "en-US"
-      ? {
-          invalidLink: "Invalid Link",
-          invalidDesc: "Reset link is invalid or expired.",
-          applyAgain: "Request Again",
-          backLogin: "Back to Login",
-          title: "Reset Password",
-          subtitle: "Please enter your new password",
-          newPassword: "New Password",
-          newPasswordPlaceholder: "Enter new password",
-          confirmPassword: "Confirm New Password",
-          confirmPasswordPlaceholder: "Re-enter new password",
-          passwordReq: "Password requirements:",
-          req1: "At least 8 characters",
-          req2: "Contains uppercase and lowercase letters",
-          req3: "Contains at least one number",
-          req4: "Contains at least one special character",
-          resetting: "Resetting...",
-          resetBtn: "Reset Password",
-          successTitle: "Password Reset Successful",
-          successDesc: "Your password has been reset successfully.",
-          loginNow: "Sign In Now",
-          footer: "After reset, please sign in with your new password.",
-          errEnter: "Please enter new password",
-          errMin: "Password must be at least 8 characters",
-          errComplex: "Password must include upper/lowercase letters, number and special character",
-          errConfirm: "Please confirm new password",
-          errMismatch: "Passwords do not match",
-          errFailed: "Reset failed, please try again",
-          errNetwork: "Network error, please try again",
-        }
-      : lang === "ja-JP"
-        ? {
-            invalidLink: "無効なリンク",
-            invalidDesc: "リンクが無効または期限切れです。",
-            applyAgain: "再申請",
-            backLogin: "ログインへ戻る",
-            title: "パスワード再設定",
-            subtitle: "新しいパスワードを入力してください",
-            newPassword: "新しいパスワード",
-            newPasswordPlaceholder: "新しいパスワードを入力",
-            confirmPassword: "新しいパスワード確認",
-            confirmPasswordPlaceholder: "もう一度入力",
-            passwordReq: "パスワード要件：",
-            req1: "8文字以上",
-            req2: "大文字・小文字を含む",
-            req3: "数字を1つ以上含む",
-            req4: "記号を1つ以上含む",
-            resetting: "リセット中...",
-            resetBtn: "パスワードをリセット",
-            successTitle: "パスワード再設定成功",
-            successDesc: "パスワードを再設定しました。",
-            loginNow: "今すぐログイン",
-            footer: "再設定後は新しいパスワードでログインしてください。",
-            errEnter: "新しいパスワードを入力してください",
-            errMin: "パスワードは8文字以上必要です",
-            errComplex: "大文字/小文字/数字/記号を含めてください",
-            errConfirm: "確認用パスワードを入力してください",
-            errMismatch: "パスワードが一致しません",
-            errFailed: "リセットに失敗しました",
-            errNetwork: "ネットワークエラーが発生しました",
-          }
-        : {
-            invalidLink: "无效的链接",
-            invalidDesc: "密码重置链接无效或已过期，请重新申请。",
-            applyAgain: "重新申请",
-            backLogin: "返回登录",
-            title: "重置密码",
-            subtitle: "请输入您的新密码",
-            newPassword: "新密码",
-            newPasswordPlaceholder: "请输入新密码",
-            confirmPassword: "确认新密码",
-            confirmPasswordPlaceholder: "请再次输入新密码",
-            passwordReq: "密码要求：",
-            req1: "至少8个字符",
-            req2: "包含大写和小写字母",
-            req3: "包含至少一个数字",
-            req4: "包含至少一个特殊字符",
-            resetting: "重置中...",
-            resetBtn: "重置密码",
-            successTitle: "密码重置成功",
-            successDesc: "您的密码已成功重置，现在可以使用新密码登录了。",
-            loginNow: "立即登录",
-            footer: "密码重置后，您需要使用新密码重新登录。",
-            errEnter: "请输入新密码",
-            errMin: "密码长度至少8位",
-            errComplex: "密码必须包含大小写字母、数字和特殊字符",
-            errConfirm: "请确认新密码",
-            errMismatch: "两次输入的密码不一致",
-            errFailed: "重置失败，请稍后重试",
-            errNetwork: "网络错误，请稍后重试",
-          };
+  const dict = useClientDictionary(lang);
+  const t = pickText((dict as { auth?: { resetPasswordPage?: Record<string, string> } })?.auth?.resetPasswordPage);
+
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
 
@@ -195,6 +107,8 @@ export default function ResetPasswordPage() {
       setIsSubmitting(false);
     }
   };
+
+  if (!isTextReady(t)) return null;
 
   if (isSuccess) {
     return (

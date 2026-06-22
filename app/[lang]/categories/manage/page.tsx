@@ -51,6 +51,7 @@ import {
 } from "lucide-react";
 
 import { CategoryTreeSelect } from "@/components/ui/category-tree-select";
+import { useClientDictionary } from "@/lib/hooks/use-client-dictionary";
 import { generateRandomUrlAlias, message } from "@/lib/utils";
 import { clientBearerHeaders } from "@/lib/utils/client-bearer-auth";
 import { Locale } from "@/types";
@@ -61,201 +62,14 @@ const resolveLocale = (lang: string): Locale => {
   return "zh-CN";
 };
 
-const MANAGE_TEXT: Record<
-  Locale,
-  {
-    pageTitle: string;
-    pageDesc: string;
-    totalLabel: string;
-    activeLabel: string;
-    inactiveLabel: string;
-    searchPlaceholder: string;
-    all: string;
-    active: string;
-    inactive: string;
-    createCategory: string;
-    listTitle: string;
-    totalCount: (count: number) => string;
-    noData: string;
-    noDataDesc: string;
-    tableInfo: string;
-    tableDesc: string;
-    tablePostCount: string;
-    tableStatus: string;
-    tableCreatedAt: string;
-    tableActions: string;
-    noDesc: string;
-    postUnit: string;
-    edit: string;
-    del: string;
-    deleting: string;
-    deleteConfirmTitle: string;
-    deleteConfirmDesc: (name?: string) => string;
-    deleteWarning: string;
-    cancel: string;
-    deleteFailed: string;
-    updateFailed: string;
-    editCategory: string;
-    createCategoryModal: string;
-    save: string;
-    saving: string;
-    saveFailed: string;
-    nameRequired: string;
-    nameLabel: string;
-    slugLabel: string;
-    descLabel: string;
-    statusLabel: string;
-    parentLabel: string;
-    parentPlaceholder: string;
-    parentNone: string;
-    sortOrderLabel: string;
-    sortOrderDesc: string;
-  }
-> = {
-  "zh-CN": {
-    pageTitle: "分类管理",
-    pageDesc: "管理博客分类，包括创建、编辑、删除和状态控制",
-    totalLabel: "总分类",
-    activeLabel: "激活",
-    inactiveLabel: "停用",
-    searchPlaceholder: "搜索分类名称...",
-    all: "全部",
-    active: "激活",
-    inactive: "停用",
-    createCategory: "创建分类",
-    listTitle: "分类列表",
-    totalCount: (count) => `共 ${count} 个分类`,
-    noData: "暂无分类",
-    noDataDesc: "开始创建你的第一个分类吧",
-    tableInfo: "分类信息",
-    tableDesc: "描述",
-    tablePostCount: "文章数量",
-    tableStatus: "状态",
-    tableCreatedAt: "创建时间",
-    tableActions: "操作",
-    noDesc: "无描述",
-    postUnit: "篇",
-    edit: "编辑",
-    del: "删除",
-    deleting: "删除中...",
-    deleteConfirmTitle: "确认删除",
-    deleteConfirmDesc: (name) => `确定要删除分类 ${name || ""} 吗？`,
-    deleteWarning: "注意：如果该分类下还有文章或子分类，将无法删除。",
-    cancel: "取消",
-    deleteFailed: "删除分类失败",
-    updateFailed: "更新分类状态失败",
-    editCategory: "编辑分类",
-    createCategoryModal: "新建分类",
-    save: "保存",
-    saving: "保存中...",
-    saveFailed: "保存分类失败",
-    nameRequired: "分类名称不能为空",
-    nameLabel: "分类名称",
-    slugLabel: "分类标识",
-    descLabel: "分类描述",
-    statusLabel: "启用状态",
-    parentLabel: "父分类",
-    parentPlaceholder: "选择父分类（可选）",
-    parentNone: "无（顶级分类）",
-    sortOrderLabel: "排序顺序",
-    sortOrderDesc: "数字越小排序越靠前",
-  },
-  "en-US": {
-    pageTitle: "Category Management",
-    pageDesc: "Manage blog categories including create, edit, delete and status",
-    totalLabel: "Total",
-    activeLabel: "Active",
-    inactiveLabel: "Inactive",
-    searchPlaceholder: "Search categories...",
-    all: "All",
-    active: "Active",
-    inactive: "Inactive",
-    createCategory: "Create Category",
-    listTitle: "Category List",
-    totalCount: (count) => `${count} categories`,
-    noData: "No categories",
-    noDataDesc: "Create your first category",
-    tableInfo: "Category",
-    tableDesc: "Description",
-    tablePostCount: "Posts",
-    tableStatus: "Status",
-    tableCreatedAt: "Created At",
-    tableActions: "Actions",
-    noDesc: "No description",
-    postUnit: "posts",
-    edit: "Edit",
-    del: "Delete",
-    deleting: "Deleting...",
-    deleteConfirmTitle: "Confirm Delete",
-    deleteConfirmDesc: (name) => `Are you sure you want to delete ${name || "this category"}?`,
-    deleteWarning: "If this category has posts or children, it cannot be deleted.",
-    cancel: "Cancel",
-    deleteFailed: "Failed to delete category",
-    updateFailed: "Failed to update category status",
-    editCategory: "Edit Category",
-    createCategoryModal: "Create Category",
-    save: "Save",
-    saving: "Saving...",
-    saveFailed: "Failed to save category",
-    nameRequired: "Category name is required",
-    nameLabel: "Category Name",
-    slugLabel: "Slug",
-    descLabel: "Description",
-    statusLabel: "Active",
-    parentLabel: "Parent Category",
-    parentPlaceholder: "Select parent (optional)",
-    parentNone: "None (top-level)",
-    sortOrderLabel: "Sort Order",
-    sortOrderDesc: "Smaller number appears first",
-  },
-  "ja-JP": {
-    pageTitle: "カテゴリー管理",
-    pageDesc: "カテゴリの作成・編集・削除と状態管理",
-    totalLabel: "総数",
-    activeLabel: "有効",
-    inactiveLabel: "無効",
-    searchPlaceholder: "カテゴリー名を検索...",
-    all: "すべて",
-    active: "有効",
-    inactive: "無効",
-    createCategory: "カテゴリー作成",
-    listTitle: "カテゴリー一覧",
-    totalCount: (count) => `${count} 件`,
-    noData: "カテゴリーがありません",
-    noDataDesc: "最初のカテゴリーを作成しましょう",
-    tableInfo: "カテゴリー",
-    tableDesc: "説明",
-    tablePostCount: "記事数",
-    tableStatus: "状態",
-    tableCreatedAt: "作成日",
-    tableActions: "操作",
-    noDesc: "説明なし",
-    postUnit: "件",
-    edit: "編集",
-    del: "削除",
-    deleting: "削除中...",
-    deleteConfirmTitle: "削除確認",
-    deleteConfirmDesc: (name) => `${name || "このカテゴリー"} を削除しますか？`,
-    deleteWarning: "記事や子カテゴリーがある場合は削除できません。",
-    cancel: "キャンセル",
-    deleteFailed: "カテゴリーの削除に失敗しました",
-    updateFailed: "状態更新に失敗しました",
-    editCategory: "カテゴリー編集",
-    createCategoryModal: "カテゴリー作成",
-    save: "保存",
-    saving: "保存中...",
-    saveFailed: "カテゴリーの保存に失敗しました",
-    nameRequired: "カテゴリー名は必須です",
-    nameLabel: "カテゴリー名",
-    slugLabel: "スラッグ",
-    descLabel: "説明",
-    statusLabel: "有効状態",
-    parentLabel: "親カテゴリー",
-    parentPlaceholder: "親カテゴリーを選択（任意）",
-    parentNone: "なし（トップレベル）",
-    sortOrderLabel: "並び順",
-    sortOrderDesc: "小さい数字ほど先頭に表示",
-  },
+/** 词典占位符替换，如 {count}、{name} */
+function fmt(template: string, params: Record<string, string | number>) {
+  return template.replace(/\{(\w+)\}/g, (_, key: string) => String(params[key] ?? `{${key}}`));
+}
+
+type CategoryDict = Record<string, string> & {
+  create?: Record<string, string>;
+  edit?: Record<string, string>;
 };
 
 /**
@@ -264,7 +78,10 @@ const MANAGE_TEXT: Record<
 export default function CategoriesManagePage() {
   const params = useParams<{ lang: string }>();
   const locale = resolveLocale(params.lang);
-  const t = MANAGE_TEXT[locale];
+  const dict = useClientDictionary(params.lang);
+  const t = dict?.category as CategoryDict | undefined;
+  const c = dict?.common as Record<string, string> | undefined;
+  const tc = t?.create;
 
   // 状态管理
   const [categories, setCategories] = useState<Category[]>([]);
@@ -453,11 +270,11 @@ export default function CategoriesManagePage() {
         fetchCategories();
         fetchSummary();
       } else {
-        message.error(result.message || t.deleteFailed);
+        message.error(result.message || t!.deleteFailed);
       }
     } catch (error) {
       console.error("删除分类失败:", error);
-      message.error(t.deleteFailed);
+      message.error(t!.deleteFailed);
     } finally {
       setDeleteLoading(false);
     }
@@ -499,7 +316,7 @@ export default function CategoriesManagePage() {
 
   const handleSaveCategory = async () => {
     if (!formData.name.trim()) {
-      message.warning(t.nameRequired);
+      message.warning(t!.nameRequired);
       return;
     }
     try {
@@ -520,7 +337,7 @@ export default function CategoriesManagePage() {
       });
       const result: ApiResponse<Category> = await response.json();
       if (!result.success) {
-        message.error(result.message || t.saveFailed);
+        message.error(result.message || t!.saveFailed);
         return;
       }
       setIsEditModalOpen(false);
@@ -528,7 +345,7 @@ export default function CategoriesManagePage() {
       fetchSummary();
     } catch (error) {
       console.error("保存分类失败:", error);
-      message.error(t.saveFailed);
+      message.error(t!.saveFailed);
     } finally {
       setSaveLoading(false);
     }
@@ -552,11 +369,11 @@ export default function CategoriesManagePage() {
         fetchCategories();
         fetchSummary();
       } else {
-        message.error(result.message || t.updateFailed);
+        message.error(result.message || t!.updateFailed);
       }
     } catch (error) {
       console.error("更新分类状态失败:", error);
-      message.error(t.updateFailed);
+      message.error(t!.updateFailed);
     }
   };
 
@@ -578,15 +395,23 @@ export default function CategoriesManagePage() {
     };
   }, []);
 
+  if (!t || !c || !tc) {
+    return (
+      <div className="flex justify-center py-12">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* 页面标题和统计 */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
         <div>
           <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-            {t.pageTitle}
+            {t.categoryManagement}
           </h1>
-          <p className="text-default-600 mt-2 text-lg">{t.pageDesc}</p>
+          <p className="text-default-600 mt-2 text-lg">{t.manageCategories}</p>
         </div>
 
         {/* 统计卡片 */}
@@ -596,7 +421,7 @@ export default function CategoriesManagePage() {
               <BarChart3 className="w-5 h-5 text-primary" />
               <div>
                 <p className="text-2xl font-bold text-foreground">{summary.total}</p>
-                <p className="text-sm text-default-500">{t.totalLabel}</p>
+                <p className="text-sm text-default-500">{t.statsTotal}</p>
               </div>
             </div>
           </Card>
@@ -605,7 +430,7 @@ export default function CategoriesManagePage() {
               <Eye className="w-5 h-5 text-success" />
               <div>
                 <p className="text-2xl font-bold text-success">{summary.active}</p>
-                <p className="text-sm text-default-500">{t.activeLabel}</p>
+                <p className="text-sm text-default-500">{t.statsActive}</p>
               </div>
             </div>
           </Card>
@@ -614,7 +439,7 @@ export default function CategoriesManagePage() {
               <EyeOff className="w-5 h-5 text-warning" />
               <div>
                 <p className="text-2xl font-bold text-warning">{summary.inactive}</p>
-                <p className="text-sm text-default-500">{t.inactiveLabel}</p>
+                <p className="text-sm text-default-500">{t.statsInactive}</p>
               </div>
             </div>
           </Card>
@@ -627,7 +452,7 @@ export default function CategoriesManagePage() {
           <div className="flex flex-col lg:flex-row gap-4">
             {/* 搜索框 */}
             <Input
-              placeholder={t.searchPlaceholder}
+              placeholder={t.searchCategories}
               value={searchQuery}
               onValueChange={handleSearch}
               startContent={<Search className="w-4 h-4 text-default-400" />}
@@ -642,7 +467,7 @@ export default function CategoriesManagePage() {
                 onPress={() => handleStatusFilter(undefined)}
                 startContent={<Filter className="w-4 h-4" />}
               >
-                {t.all}
+                {t.filterAll}
               </Button>
               <Button
                 variant={statusFilter === true ? "solid" : "bordered"}
@@ -680,10 +505,10 @@ export default function CategoriesManagePage() {
         <CardHeader>
           <div className="flex items-center gap-2">
             <Folder className="w-5 h-5" />
-            <span className="text-lg font-semibold">{t.listTitle}</span>
+            <span className="text-lg font-semibold">{t.categoryList}</span>
             <Badge color="primary" variant="flat">
               <Chip size="sm" variant="flat">
-                {t.totalCount(total)}
+                {fmt(t.totalCategories, { count: total })}
               </Chip>
             </Badge>
           </div>
@@ -704,14 +529,14 @@ export default function CategoriesManagePage() {
             </div>
           ) : (
             <>
-              <Table aria-label={t.listTitle} className="min-h-[400px]">
+              <Table aria-label={t.categoryList} className="min-h-[400px]">
                 <TableHeader>
                   <TableColumn>{t.tableInfo}</TableColumn>
-                  <TableColumn>{t.tableDesc}</TableColumn>
-                  <TableColumn>{t.tablePostCount}</TableColumn>
-                  <TableColumn>{t.tableStatus}</TableColumn>
-                  <TableColumn>{t.tableCreatedAt}</TableColumn>
-                  <TableColumn>{t.tableActions}</TableColumn>
+                  <TableColumn>{t.description}</TableColumn>
+                  <TableColumn>{t.postCount}</TableColumn>
+                  <TableColumn>{t.status}</TableColumn>
+                  <TableColumn>{t.createdAt}</TableColumn>
+                  <TableColumn>{t.actions}</TableColumn>
                 </TableHeader>
                 <TableBody>
                   {categories.map((category) => (
@@ -734,7 +559,7 @@ export default function CategoriesManagePage() {
                           {category.description ? (
                             <p className="truncate text-default-700">{category.description}</p>
                           ) : (
-                            <span className="text-default-400 italic">{t.noDesc}</span>
+                            <span className="text-default-400 italic">{t.noDescription}</span>
                           )}
                         </div>
                       </TableCell>
@@ -777,7 +602,7 @@ export default function CategoriesManagePage() {
                               startContent={<Edit className="w-4 h-4" />}
                               onPress={() => openEditModal(category)}
                             >
-                              {t.edit}
+                              {c.edit}
                             </DropdownItem>
                             <DropdownItem
                               key="delete"
@@ -786,7 +611,7 @@ export default function CategoriesManagePage() {
                               startContent={<Trash2 className="w-4 h-4" />}
                               onPress={() => openDeleteModal(category)}
                             >
-                              {t.del}
+                              {c.delete}
                             </DropdownItem>
                           </DropdownMenu>
                         </Dropdown>
@@ -820,28 +645,28 @@ export default function CategoriesManagePage() {
           <ModalBody>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Input
-                label={t.nameLabel}
+                label={t.name}
                 value={formData.name}
                 onValueChange={(value) => setFormData((prev) => ({ ...prev, name: value }))}
                 isRequired
               />
               <Input
-                label={t.slugLabel}
+                label={t.slug}
                 value={formData.slug}
                 onValueChange={(value) => setFormData((prev) => ({ ...prev, slug: value }))}
               />
             </div>
             <Textarea
-              label={t.descLabel}
+              label={t.description}
               value={formData.description}
               onValueChange={(value) => setFormData((prev) => ({ ...prev, description: value }))}
               minRows={3}
             />
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <CategoryTreeSelect
-                label={t.parentLabel}
-                placeholder={t.parentPlaceholder}
-                noneLabel={t.parentNone}
+                label={t.parentCategory}
+                placeholder={tc.parentPlaceholder}
+                noneLabel={tc.none}
                 categories={treeCategories}
                 value={formData.parentId}
                 disabledIds={disabledParentIds}
@@ -849,8 +674,8 @@ export default function CategoriesManagePage() {
               />
               <Input
                 type="number"
-                label={t.sortOrderLabel}
-                description={t.sortOrderDesc}
+                label={t.sortOrder}
+                description={tc.sortDesc}
                 value={String(formData.sortOrder)}
                 onValueChange={(value) => setFormData((prev) => ({ ...prev, sortOrder: parseInt(value, 10) || 0 }))}
               />
@@ -859,15 +684,15 @@ export default function CategoriesManagePage() {
               isSelected={formData.isActive}
               onValueChange={(checked) => setFormData((prev) => ({ ...prev, isActive: checked }))}
             >
-              {t.statusLabel}
+              {t.activeStatusLabel}
             </Switch>
           </ModalBody>
           <ModalFooter>
             <Button variant="light" onPress={() => setIsEditModalOpen(false)}>
-              {t.cancel}
+              {c.cancel}
             </Button>
             <Button color="primary" onPress={handleSaveCategory} isLoading={saveLoading}>
-              {saveLoading ? t.saving : t.save}
+              {saveLoading ? t.saving : c.save}
             </Button>
           </ModalFooter>
         </ModalContent>
@@ -879,23 +704,23 @@ export default function CategoriesManagePage() {
           <ModalHeader className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
               <Trash2 className="w-5 h-5 text-danger" />
-              {t.deleteConfirmTitle}
+              {t.confirmDeleteTitle}
             </div>
           </ModalHeader>
           <ModalBody>
             <div className="space-y-3">
-              <p>{t.deleteConfirmDesc(selectedCategory?.name)}</p>
+              <p>{fmt(t.confirmDeleteNamed, { name: selectedCategory?.name || "" })}</p>
               <div className="p-3 bg-warning-50 border border-warning-200 rounded-lg">
                 <p className="text-sm text-warning-700 flex items-center gap-2">
                   <EyeOff className="w-4 h-4" />
-                  {t.deleteWarning}
+                  {t.deleteWarningExtended}
                 </p>
               </div>
             </div>
           </ModalBody>
           <ModalFooter>
             <Button variant="light" onPress={() => setIsDeleteModalOpen(false)}>
-              {t.cancel}
+              {c.cancel}
             </Button>
             <Button
               color="danger"
@@ -903,7 +728,7 @@ export default function CategoriesManagePage() {
               isLoading={deleteLoading}
               startContent={!deleteLoading && <Trash2 className="w-4 h-4" />}
             >
-              {deleteLoading ? t.deleting : t.del}
+              {deleteLoading ? t.deleting : c.delete}
             </Button>
           </ModalFooter>
         </ModalContent>

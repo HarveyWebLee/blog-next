@@ -1,50 +1,21 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
-import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, useDraggable } from "@heroui/modal";
-import { Search, X } from "lucide-react";
+import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader } from "@heroui/modal";
+import { Search } from "lucide-react";
 
-import { Locale } from "@/types";
-
-const resolveLocale = (lang?: string): Locale => {
-  if (lang === "en-US" || lang === "ja-JP") return lang;
-  return "zh-CN";
-};
-
-const SEARCH_TEXT: Record<
-  Locale,
-  { openAria: string; title: string; placeholder: string; cancel: string; confirm: string }
-> = {
-  "zh-CN": {
-    openAria: "搜索",
-    title: "搜索",
-    placeholder: "请输入搜索内容",
-    cancel: "取消",
-    confirm: "确认",
-  },
-  "en-US": {
-    openAria: "Search",
-    title: "Search",
-    placeholder: "Enter search keywords",
-    cancel: "Cancel",
-    confirm: "Confirm",
-  },
-  "ja-JP": {
-    openAria: "検索",
-    title: "検索",
-    placeholder: "検索キーワードを入力",
-    cancel: "キャンセル",
-    confirm: "確認",
-  },
-};
+import { useClientDictionary } from "@/lib/hooks/use-client-dictionary";
 
 export function SearchBar({ lang }: { lang: string }) {
-  const locale = resolveLocale(lang);
-  const t = SEARCH_TEXT[locale];
+  const dict = useClientDictionary(lang);
+  const t = (dict as { layout?: { searchBar?: Record<string, string> } })?.layout?.searchBar;
   const [isOpen, setIsOpen] = useState(false);
   const onClose = () => setIsOpen(false);
+
+  if (!t) return null;
+
   return (
     <>
       <Button
@@ -60,17 +31,22 @@ export function SearchBar({ lang }: { lang: string }) {
 
       <Modal isOpen={isOpen} size={"4xl"} onClose={onClose} backdrop="blur" placement="top">
         <ModalContent>
-          {(onClose) => (
+          {(onCloseModal) => (
             <>
               <ModalHeader className="flex flex-col gap-1">{t.title}</ModalHeader>
               <ModalBody>
                 <Input type="text" placeholder={t.placeholder} />
               </ModalBody>
               <ModalFooter>
-                <Button color="danger" variant="bordered" onPress={onClose} className="font-semibold tracking-wide">
+                <Button
+                  color="danger"
+                  variant="bordered"
+                  onPress={onCloseModal}
+                  className="font-semibold tracking-wide"
+                >
                   {t.cancel}
                 </Button>
-                <Button color="primary" variant="shadow" onPress={onClose} className="font-semibold tracking-wide">
+                <Button color="primary" variant="shadow" onPress={onCloseModal} className="font-semibold tracking-wide">
                   {t.confirm}
                 </Button>
               </ModalFooter>

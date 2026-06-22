@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import mysql from "mysql2/promise";
 
+import { apiMessage } from "@/lib/i18n/api-response";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { requireInMemorySuperRoot } from "@/lib/utils/authz";
 
 /**
  * 测试数据库连接
  */
-async function testDatabaseConnection() {
+async function testDatabaseConnection(request: NextRequest) {
   const config = {
     host: process.env.DB_HOST || "localhost",
     port: parseInt(process.env.DB_PORT || "3306"),
@@ -74,7 +75,7 @@ async function testDatabaseConnection() {
 
     return {
       success: true,
-      message: "数据库连接测试成功",
+      message: apiMessage(request, "ops.dbTestSuccess"),
       details: {
         version,
         tableCount,
@@ -157,7 +158,7 @@ async function handleTestDbGET(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: "缺少必要的环境变量",
+          message: apiMessage(request, "common.missingEnvVars"),
           missingVariables: envCheck.missing,
           suggestions: ["请检查 .env.local 文件配置", "确保所有必要的环境变量都已设置"],
         },
@@ -166,7 +167,7 @@ async function handleTestDbGET(request: NextRequest) {
     }
 
     // 测试数据库连接
-    const result = await testDatabaseConnection();
+    const result = await testDatabaseConnection(request);
 
     if (result.success) {
       console.log("\n🎉 数据库连接测试成功！");
@@ -183,7 +184,7 @@ async function handleTestDbGET(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        message: "数据库连接测试执行失败",
+        message: apiMessage(request, "ops.dbTestFailed"),
         error: error instanceof Error ? error.message : "未知错误",
       },
       { status: 500 }

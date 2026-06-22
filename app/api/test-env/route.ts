@@ -2,6 +2,12 @@ import * as fs from "fs";
 import { NextRequest, NextResponse } from "next/server";
 
 import { isPasswordTransportConfigured } from "@/lib/crypto/password-transport/server";
+import {
+  apiMessage,
+  jsonRateLimitError,
+  localizedErrorResponse,
+  localizedSuccessResponse,
+} from "@/lib/i18n/api-response";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { requireInMemorySuperRoot } from "@/lib/utils/authz";
 
@@ -210,7 +216,7 @@ async function handleTestEnvGET(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        message: "环境配置检查失败",
+        message: apiMessage(request, "ops.envCheckFailed"),
         error: error instanceof Error ? error.message : "未知错误",
       },
       { status: 500 }

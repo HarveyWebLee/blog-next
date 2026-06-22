@@ -25,7 +25,9 @@ import {
   PROFILE_NATIVE_CONTROL,
 } from "@/components/profile/profile-ui-presets";
 import { useAuth } from "@/lib/contexts/auth-context";
+import { useProfileDict } from "@/lib/contexts/profile-dict-context";
 import { sealPasswordInRequestBody } from "@/lib/crypto/password-transport/body";
+import { isTextReady, pickText } from "@/lib/i18n/pick-text";
 import { message } from "@/lib/utils";
 import { clientBearerHeaders } from "@/lib/utils/client-bearer-auth";
 import { stripMarkdownForExcerpt } from "@/lib/utils/markdown-plain";
@@ -39,83 +41,10 @@ export default function ProfileFavorites({ lang }: ProfileFavoritesProps) {
   const params = useParams();
   const router = useRouter();
   const routeLang = typeof params?.lang === "string" ? params.lang : "zh-CN";
+  const t = pickText(useProfileDict("favorites")) as Record<string, string> & { labels?: Record<string, string> };
+
   const { user } = useAuth();
 
-  const t =
-    lang === "en-US"
-      ? {
-          title: "My Favorites",
-          subtitle: "Posts you have favorited",
-          loadFailed: "Failed to load favorites",
-          removeFailed: "Failed to unfavorite",
-          total: "posts",
-          search: "Search favorite posts...",
-          allCategories: "All Categories",
-          readPost: "Read",
-          remove: "Unfavorite",
-          favoritedAt: "Favorited at",
-          emptyMatch: "No matching favorites",
-          empty: "No favorites yet",
-          emptyMatchDesc: "Try adjusting filters",
-          emptyDesc: "Start saving posts you like",
-          browse: "Browse Posts",
-          passwordTitle: "Password Required",
-          passwordHint: "This post is protected. Enter password to continue.",
-          passwordPlaceholder: "Enter post password",
-          passwordConfirm: "Unlock & Read",
-          passwordCancel: "Cancel",
-          passwordInvalid: "Wrong password",
-          passwordTag: "Password",
-        }
-      : lang === "ja-JP"
-        ? {
-            title: "お気に入り",
-            subtitle: "お気に入りの記事一覧",
-            loadFailed: "お気に入りの取得に失敗しました",
-            removeFailed: "お気に入り解除に失敗しました",
-            total: "件",
-            search: "お気に入り記事を検索...",
-            allCategories: "すべてのカテゴリー",
-            readPost: "記事を読む",
-            remove: "お気に入り解除",
-            favoritedAt: "お気に入り登録",
-            emptyMatch: "一致するお気に入りがありません",
-            empty: "お気に入りがありません",
-            emptyMatchDesc: "条件を調整してください",
-            emptyDesc: "気に入った記事を保存しましょう",
-            browse: "記事を見る",
-            passwordTitle: "パスワードが必要です",
-            passwordHint: "この記事はパスワード保護されています。入力後に閲覧できます。",
-            passwordPlaceholder: "記事パスワードを入力",
-            passwordConfirm: "解除して読む",
-            passwordCancel: "キャンセル",
-            passwordInvalid: "パスワードが正しくありません",
-            passwordTag: "パスワード保護",
-          }
-        : {
-            title: "我的收藏",
-            subtitle: "您收藏的文章列表",
-            loadFailed: "获取收藏列表失败",
-            removeFailed: "取消收藏失败",
-            total: "篇文章",
-            search: "搜索收藏的文章...",
-            allCategories: "全部分类",
-            readPost: "阅读文章",
-            remove: "取消收藏",
-            favoritedAt: "收藏于",
-            emptyMatch: "没有找到匹配的收藏",
-            empty: "还没有收藏任何文章",
-            emptyMatchDesc: "尝试调整搜索条件或筛选器",
-            emptyDesc: "开始收藏您喜欢的文章吧",
-            browse: "浏览文章",
-            passwordTitle: "需要文章密码",
-            passwordHint: "该文章已开启密码保护，请先输入密码后再阅读。",
-            passwordPlaceholder: "请输入文章密码",
-            passwordConfirm: "解锁并阅读",
-            passwordCancel: "取消",
-            passwordInvalid: "密码错误，请重试",
-            passwordTag: "密码保护",
-          };
   const [favorites, setFavorites] = useState<UserFavorite[]>([]);
   const [loading, setLoading] = useState(true);
   /** 输入框即时展示的关键词 */

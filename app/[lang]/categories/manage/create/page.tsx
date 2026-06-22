@@ -10,132 +10,18 @@ import { Button, Card, CardBody, CardHeader, Chip, Divider, Input, Switch, Texta
 import { ArrowLeft, Eye, FileText, Folder, Plus } from "lucide-react";
 
 import { CategoryTreeSelect } from "@/components/ui/category-tree-select";
+import { useClientDictionary } from "@/lib/hooks/use-client-dictionary";
 import { generateRandomUrlAlias, message } from "@/lib/utils";
 import { clientBearerHeaders } from "@/lib/utils/client-bearer-auth";
-import { Locale } from "@/types";
 import { ApiResponse, Category, CreateCategoryRequest } from "@/types/blog";
-
-const resolveLocale = (lang: string): Locale => {
-  if (lang === "en-US" || lang === "ja-JP") return lang;
-  return "zh-CN";
-};
-
-const CREATE_TEXT: Record<Locale, Record<string, string>> = {
-  "zh-CN": {
-    title: "创建分类",
-    subtitle: "创建新的博客分类",
-    info: "分类信息",
-    name: "分类名称",
-    namePlaceholder: "请输入分类名称",
-    nameDesc: "分类的显示名称",
-    slug: "分类标识 (Slug)",
-    slugPlaceholder: "默认 8 位随机码，可手动修改",
-    slugAuto: "默认自动生成 8 位英文数字随机码",
-    description: "分类描述",
-    descriptionPlaceholder: "请输入分类描述",
-    descriptionDesc: "可选的分类描述信息",
-    parent: "父分类",
-    parentPlaceholder: "选择父分类（可选）",
-    parentDesc: "选择父分类以创建层级结构",
-    sortOrder: "排序顺序",
-    sortDesc: "数字越小排序越靠前",
-    status: "状态",
-    active: "激活",
-    inactive: "停用",
-    activeDesc: "分类将显示在网站上",
-    inactiveDesc: "分类将隐藏",
-    cancel: "取消",
-    creating: "创建中...",
-    create: "创建分类",
-    preview: "预览",
-    notSet: "未设置",
-    autoGenerate: "将自动生成",
-    unknown: "未知",
-    none: "无",
-    childCategory: "子分类",
-    requiredName: "分类名称是必填项",
-    createSuccess: "分类创建成功",
-    createFailed: "创建分类失败",
-  },
-  "en-US": {
-    title: "Create Category",
-    subtitle: "Create a new blog category",
-    info: "Category Info",
-    name: "Category Name",
-    namePlaceholder: "Enter category name",
-    nameDesc: "Display name of category",
-    slug: "Category Slug",
-    slugPlaceholder: "8-char random code by default; editable",
-    slugAuto: "Auto-generated 8-char alphanumeric code",
-    description: "Description",
-    descriptionPlaceholder: "Enter category description",
-    descriptionDesc: "Optional category description",
-    parent: "Parent Category",
-    parentPlaceholder: "Select parent (optional)",
-    parentDesc: "Choose parent to create hierarchy",
-    sortOrder: "Sort Order",
-    sortDesc: "Smaller number appears first",
-    status: "Status",
-    active: "Active",
-    inactive: "Inactive",
-    activeDesc: "Category will be visible on site",
-    inactiveDesc: "Category will be hidden",
-    cancel: "Cancel",
-    creating: "Creating...",
-    create: "Create Category",
-    preview: "Preview",
-    notSet: "Not set",
-    autoGenerate: "Will be auto-generated",
-    unknown: "Unknown",
-    none: "None",
-    childCategory: "Child",
-    requiredName: "Category name is required",
-    createSuccess: "Category created successfully",
-    createFailed: "Failed to create category",
-  },
-  "ja-JP": {
-    title: "カテゴリー作成",
-    subtitle: "新しいブログカテゴリーを作成",
-    info: "カテゴリー情報",
-    name: "カテゴリー名",
-    namePlaceholder: "カテゴリー名を入力",
-    nameDesc: "表示用のカテゴリー名",
-    slug: "カテゴリースラッグ",
-    slugPlaceholder: "既定は8文字のランダムコード（編集可）",
-    slugAuto: "英数字8文字のランダムコードを自動生成",
-    description: "説明",
-    descriptionPlaceholder: "カテゴリー説明を入力",
-    descriptionDesc: "任意の説明",
-    parent: "親カテゴリー",
-    parentPlaceholder: "親カテゴリーを選択（任意）",
-    parentDesc: "階層構造を作成します",
-    sortOrder: "並び順",
-    sortDesc: "小さい数字ほど先頭に表示",
-    status: "状態",
-    active: "有効",
-    inactive: "無効",
-    activeDesc: "サイト上に表示されます",
-    inactiveDesc: "サイト上で非表示になります",
-    cancel: "キャンセル",
-    creating: "作成中...",
-    create: "カテゴリー作成",
-    preview: "プレビュー",
-    notSet: "未設定",
-    autoGenerate: "自動生成されます",
-    unknown: "不明",
-    none: "なし",
-    childCategory: "子カテゴリー",
-    requiredName: "カテゴリー名は必須です",
-    createSuccess: "カテゴリーを作成しました",
-    createFailed: "カテゴリー作成に失敗しました",
-  },
-};
 
 export default function CreateCategoryPage() {
   const router = useRouter();
   const params = useParams<{ lang: string }>();
-  const locale = resolveLocale(params.lang);
-  const t = CREATE_TEXT[locale];
+  const dict = useClientDictionary(params.lang);
+  const t = dict?.category as Record<string, string> | undefined;
+  const tc = (dict?.category as { create?: Record<string, string> } | undefined)?.create;
+  const c = dict?.common as Record<string, string> | undefined;
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   /** 创建分类：默认生成 8 位英文数字随机标识，用户可手动修改 */
@@ -177,7 +63,7 @@ export default function CreateCategoryPage() {
     e.preventDefault();
 
     if (!formData.name.trim()) {
-      message.warning(t.requiredName);
+      message.warning(t!.nameRequired);
       return;
     }
 
@@ -200,15 +86,15 @@ export default function CreateCategoryPage() {
       const result: ApiResponse = await response.json();
 
       if (result.success) {
-        message.success(t.createSuccess);
+        message.success(t!.categoryCreated);
         router.push(`/${params.lang}/categories/manage`);
         router.refresh();
       } else {
-        message.error(result.message || t.createFailed);
+        message.error(result.message || tc!.createFailed);
       }
     } catch (error) {
       console.error("创建分类失败:", error);
-      message.error(t.createFailed);
+      message.error(tc!.createFailed);
     } finally {
       setLoading(false);
     }
@@ -219,6 +105,8 @@ export default function CreateCategoryPage() {
     fetchCategories();
   }, []);
 
+  if (!t || !tc || !c) return null;
+
   return (
     <div className="space-y-6">
       {/* 页面标题 */}
@@ -228,9 +116,9 @@ export default function CreateCategoryPage() {
         </Button>
         <div>
           <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-            {t.title}
+            {tc.title}
           </h1>
-          <p className="text-default-600 mt-2 text-lg">{t.subtitle}</p>
+          <p className="text-default-600 mt-2 text-lg">{tc.subtitle}</p>
         </div>
       </div>
 
@@ -241,7 +129,7 @@ export default function CreateCategoryPage() {
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Folder className="w-5 h-5" />
-                <span className="text-lg font-semibold">{t.info}</span>
+                <span className="text-lg font-semibold">{tc.info}</span>
               </div>
             </CardHeader>
             <CardBody>
@@ -249,20 +137,20 @@ export default function CreateCategoryPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <Input
                     label={t.name}
-                    placeholder={t.namePlaceholder}
+                    placeholder={tc.namePlaceholder}
                     value={formData.name}
                     onValueChange={handleNameChange}
                     isRequired
-                    description={t.nameDesc}
+                    description={tc.nameDesc}
                     startContent={<Folder className="w-4 h-4 text-default-400" />}
                     className="w-full"
                   />
                   <Input
-                    label={t.slug}
-                    placeholder={t.slugPlaceholder}
+                    label={tc.slugLabel}
+                    placeholder={tc.slugPlaceholder}
                     value={formData.slug}
                     onValueChange={(value) => setFormData({ ...formData, slug: value })}
-                    description={t.slugAuto}
+                    description={tc.slugAuto}
                     startContent={<FileText className="w-4 h-4 text-default-400" />}
                     className="w-full"
                   />
@@ -270,10 +158,10 @@ export default function CreateCategoryPage() {
 
                 <Textarea
                   label={t.description}
-                  placeholder={t.descriptionPlaceholder}
+                  placeholder={tc.descriptionPlaceholder}
                   value={formData.description}
                   onValueChange={(value) => setFormData({ ...formData, description: value })}
-                  description={t.descriptionDesc}
+                  description={tc.descriptionDesc}
                   minRows={3}
                   startContent={<FileText className="w-4 h-4 text-default-400" />}
                 />
@@ -281,14 +169,14 @@ export default function CreateCategoryPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-3">
                     <CategoryTreeSelect
-                      label={t.parent}
-                      placeholder={t.parentPlaceholder}
-                      noneLabel={t.none}
+                      label={t.parentCategory}
+                      placeholder={tc.parentPlaceholder}
+                      noneLabel={tc.none}
                       categories={categories}
                       value={formData.parentId}
                       onChange={(parentId) => setFormData({ ...formData, parentId })}
                     />
-                    <p className="text-xs text-default-500">{t.parentDesc}</p>
+                    <p className="text-xs text-default-500">{tc.parentDesc}</p>
                   </div>
 
                   <div className="space-y-3">
@@ -298,7 +186,7 @@ export default function CreateCategoryPage() {
                       placeholder="0"
                       value={formData.sortOrder?.toString() || "0"}
                       onValueChange={(value) => setFormData({ ...formData, sortOrder: parseInt(value) || 0 })}
-                      description={t.sortDesc}
+                      description={tc.sortDesc}
                     />
                   </div>
                 </div>
@@ -314,7 +202,7 @@ export default function CreateCategoryPage() {
                     />
                     <div>
                       <p className="font-medium text-foreground">{formData.isActive ? t.active : t.inactive}</p>
-                      <p className="text-sm text-default-500">{formData.isActive ? t.activeDesc : t.inactiveDesc}</p>
+                      <p className="text-sm text-default-500">{formData.isActive ? tc.activeDesc : tc.inactiveDesc}</p>
                     </div>
                   </div>
                 </div>
@@ -323,7 +211,7 @@ export default function CreateCategoryPage() {
 
                 <div className="flex gap-4 pt-4">
                   <Button variant="light" onPress={() => router.back()} className="flex-1">
-                    {t.cancel}
+                    {c.cancel}
                   </Button>
                   <Button
                     type="submit"
@@ -332,7 +220,7 @@ export default function CreateCategoryPage() {
                     isLoading={loading}
                     className="flex-1"
                   >
-                    {loading ? t.creating : t.create}
+                    {loading ? tc.creating : t.createCategory}
                   </Button>
                 </div>
               </form>
@@ -346,7 +234,7 @@ export default function CreateCategoryPage() {
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Eye className="w-5 h-5" />
-                <span className="text-lg font-semibold">{t.preview}</span>
+                <span className="text-lg font-semibold">{tc.preview}</span>
               </div>
             </CardHeader>
             <CardBody>
@@ -370,7 +258,7 @@ export default function CreateCategoryPage() {
                     </Chip>
                     {formData.parentId && (
                       <Chip size="sm" color="primary" variant="flat">
-                        {t.childCategory}
+                        {tc.childCategory}
                       </Chip>
                     )}
                   </div>
@@ -378,14 +266,16 @@ export default function CreateCategoryPage() {
 
                 <div className="space-y-2 text-sm text-default-500">
                   <p>
-                    • {t.name}: {formData.name || t.notSet}
+                    • {t.name}: {formData.name || tc.notSet}
                   </p>
                   <p>
-                    • {t.slug}: {formData.slug || t.autoGenerate}
+                    • {t.slug}: {formData.slug || t.autoSlugGenerate}
                   </p>
                   <p>
-                    • {t.parent}:{" "}
-                    {formData.parentId ? categories.find((c) => c.id === formData.parentId)?.name || t.unknown : t.none}
+                    • {t.parentCategory}:{" "}
+                    {formData.parentId
+                      ? categories.find((cat) => cat.id === formData.parentId)?.name || tc.unknown
+                      : tc.none}
                   </p>
                   <p>
                     • {t.sortOrder}: {formData.sortOrder}
