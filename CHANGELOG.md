@@ -1,3 +1,9 @@
+## [1.8.3](https://github.com/HarveyWebLee/blog-next/compare/v1.8.2...v1.8.3) (2026-07-14)
+
+### Bug Fixes
+
+- **root:** 修复导致 pre-push typecheck 失败的类型错误 ([4e9f43b](https://github.com/HarveyWebLee/blog-next/commit/4e9f43b999dbfeb14aa22875a78ed7e166950f0e))
+
 ## [1.8.2](https://github.com/HarveyWebLee/blog-next/compare/v1.8.1...v1.8.2) (2026-06-22)
 
 ### Bug Fixes
