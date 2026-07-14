@@ -1,3 +1,9 @@
+## [1.8.4](https://github.com/HarveyWebLee/blog-next/compare/v1.8.3...v1.8.4) (2026-07-14)
+
+### Bug Fixes
+
+- **auth/docker:** 解决 Docker 构建阶段 JWT 密钥强校验问题 ([4d8a7b1](https://github.com/HarveyWebLee/blog-next/commit/4d8a7b12b6461995f4f845a3c714d2652cbcf0e4))
+
 ## [1.8.3](https://github.com/HarveyWebLee/blog-next/compare/v1.8.2...v1.8.3) (2026-07-14)
 
 ### Bug Fixes
