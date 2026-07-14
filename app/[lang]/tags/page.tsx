@@ -42,6 +42,7 @@ import { TagCloud } from "@/components/ui/tag-cloud";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { useTags } from "@/lib/hooks/useTags";
 import { generateRandomUrlAlias, message } from "@/lib/utils";
+import { canManageTaxonomyClient } from "@/lib/utils/authz";
 import { clientBearerHeaders } from "@/lib/utils/client-bearer-auth";
 import { Locale } from "@/types";
 import { ApiResponse, Tag } from "@/types/blog";
@@ -131,7 +132,7 @@ const TAG_PAGE_TEXT: Record<
     nextPage: "下一页",
     pageInfo: (page, totalPages) => `第 ${page} 页，共 ${totalPages} 页`,
     manageTitle: "标签管理",
-    manageDesc: "登录后可管理标签的创建、编辑、删除和状态",
+    manageDesc: "作者或管理员可管理标签的创建、编辑、删除和状态",
     enterManage: "进入管理",
     manageTagsInline: "标签管理",
     createTag: "新建标签",
@@ -185,7 +186,7 @@ const TAG_PAGE_TEXT: Record<
     nextPage: "Next",
     pageInfo: (page, totalPages) => `Page ${page} of ${totalPages}`,
     manageTitle: "Tag Management",
-    manageDesc: "Sign in to create, edit, delete, and control tag status",
+    manageDesc: "Authors or admins can create, edit, delete, and control tag status",
     enterManage: "Manage Tags",
     manageTagsInline: "Tag Management",
     createTag: "Create Tag",
@@ -239,7 +240,7 @@ const TAG_PAGE_TEXT: Record<
     nextPage: "次へ",
     pageInfo: (page, totalPages) => `${page} / ${totalPages} ページ`,
     manageTitle: "タグ管理",
-    manageDesc: "ログイン後にタグの作成・編集・削除・状態管理ができます",
+    manageDesc: "著者または管理者がタグの作成・編集・削除・状態管理を行えます",
     enterManage: "管理へ",
     manageTagsInline: "タグ管理",
     createTag: "タグ作成",
@@ -450,6 +451,7 @@ function SearchAndFilter({
   loading,
   onRefresh,
   onCreateTag,
+  canManage,
   t,
 }: {
   searchQuery: string;
@@ -465,6 +467,7 @@ function SearchAndFilter({
   loading: boolean;
   onRefresh: () => void;
   onCreateTag: () => void;
+  canManage: boolean;
   t: (typeof TAG_PAGE_TEXT)[Locale];
 }) {
   const sortOptions = [
@@ -567,15 +570,17 @@ function SearchAndFilter({
 
             {/* 视图模式切换 */}
             <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                color="primary"
-                onPress={onCreateTag}
-                startContent={<TagIcon className="w-4 h-4" />}
-                className="border-0 bg-gradient-to-r from-primary to-secondary text-white shadow-lg shadow-primary/25 transition-all duration-300 hover:from-primary-600 hover:to-secondary-600 hover:shadow-xl hover:shadow-primary/35 dark:from-primary-500 dark:to-secondary-500 dark:hover:from-primary-400 dark:hover:to-secondary-400"
-              >
-                {t.createTag}
-              </Button>
+              {canManage ? (
+                <Button
+                  size="sm"
+                  color="primary"
+                  onPress={onCreateTag}
+                  startContent={<TagIcon className="w-4 h-4" />}
+                  className="border-0 bg-gradient-to-r from-primary to-secondary text-white shadow-lg shadow-primary/25 transition-all duration-300 hover:from-primary-600 hover:to-secondary-600 hover:shadow-xl hover:shadow-primary/35 dark:from-primary-500 dark:to-secondary-500 dark:hover:from-primary-400 dark:hover:to-secondary-400"
+                >
+                  {t.createTag}
+                </Button>
+              ) : null}
               <Button
                 size="sm"
                 variant={viewMode === "grid" ? "solid" : "bordered"}
@@ -744,7 +749,8 @@ function ErrorAlert({ error, onRetry, t }: { error: string; onRetry: () => void;
 export default function TagsPage() {
   const router = useRouter();
   const params = useParams<{ lang: string }>();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const canManageTaxonomy = canManageTaxonomyClient(user);
   const locale = resolveLocale(params.lang);
   const t = TAG_PAGE_TEXT[locale];
   // 使用自定义 Hook 管理标签数据
@@ -880,6 +886,10 @@ export default function TagsPage() {
       router.push(`/${locale}/auth/login`);
       return;
     }
+    if (!canManageTaxonomy) {
+      message.warning(t.manageDesc);
+      return;
+    }
     setEditingTag(null);
     setFormData({
       name: "",
@@ -896,6 +906,10 @@ export default function TagsPage() {
       router.push(`/${locale}/auth/login`);
       return;
     }
+    if (!canManageTaxonomy) {
+      message.warning(t.manageDesc);
+      return;
+    }
     setEditingTag(tag);
     setFormData({
       name: tag.name || "",
@@ -910,6 +924,10 @@ export default function TagsPage() {
   const openDeleteModal = (tag: Tag) => {
     if (!isAuthenticated) {
       router.push(`/${locale}/auth/login`);
+      return;
+    }
+    if (!canManageTaxonomy) {
+      message.warning(t.manageDesc);
       return;
     }
     setDeletingTag(tag);
@@ -1024,6 +1042,7 @@ export default function TagsPage() {
                 size="sm"
                 startContent={<TagIcon className="w-4 h-4" />}
                 onPress={openCreateModal}
+                className={canManageTaxonomy ? undefined : "hidden"}
               >
                 {t.createTag}
               </Button>
@@ -1062,6 +1081,7 @@ export default function TagsPage() {
         loading={loading}
         onRefresh={handleRefresh}
         onCreateTag={openCreateModal}
+        canManage={canManageTaxonomy}
         t={t}
       />
 
@@ -1085,8 +1105,8 @@ export default function TagsPage() {
               tag={tag}
               index={index}
               onOpenTag={handleOpenTagPosts}
-              onEdit={openEditModal}
-              onDelete={openDeleteModal}
+              onEdit={canManageTaxonomy ? openEditModal : undefined}
+              onDelete={canManageTaxonomy ? openDeleteModal : undefined}
               locale={locale}
               t={t}
             />

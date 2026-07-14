@@ -120,7 +120,7 @@ async function handlePostsPOST(request: NextRequest) {
     // 获取请求体数据（密码字段支持 passwordTransport）
     const raw = (await request.json()) as Record<string, unknown>;
     const locale = getRequestLocale(request);
-    const pwdPart = await resolveOptionalPasswordForPostBody(raw, locale);
+    const pwdPart = await resolveOptionalPasswordForPostBody(raw, locale, request);
     if (!pwdPart.ok) {
       return NextResponse.json(localizedErrorFromRaw(request, pwdPart.message), { status: pwdPart.status });
     }

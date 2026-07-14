@@ -1,6 +1,6 @@
 /**
  * 浏览器端全局 fetch 401 处理：在「响应阶段」拦截本域 /api 返回的 401，
- * 执行登出并跳转登录页（效果上接近 axios 的 response interceptor）。
+ * 先尝试 Cookie 刷新并重试一次，仍失败再登出并跳转登录页。
  *
  * 注意：
  * - 仅替换 window.fetch；服务端 Node fetch 不受影响。
@@ -8,6 +8,8 @@
  */
 
 import { getClientPageLocale } from "@/lib/i18n/locale";
+import { refreshClientAccessToken } from "@/lib/utils/client-api-fetch";
+import { getClientAccessToken } from "@/lib/utils/client-bearer-auth";
 import type { Locale } from "@/types/common";
 
 /** 与 middleware 中 locales、默认语言保持一致 */
@@ -49,8 +51,18 @@ function resolveRequestUrl(input: RequestInfo | URL): string {
   return String(input);
 }
 
+function withUpdatedBearer(init: RequestInit | undefined, token: string | null): RequestInit {
+  const headers = new Headers(init?.headers);
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  } else {
+    headers.delete("Authorization");
+  }
+  return { ...init, headers };
+}
+
 /**
- * 包装 window.fetch：若响应为 401 且命中规则则调用 onUnauthorized（登出 + 跳转等）。
+ * 包装 window.fetch：若响应为 401 且命中规则则先刷新重试，仍失败再 onUnauthorized。
  * @returns 卸载函数，用于 React useEffect 清理或 HMR，恢复原生 fetch。
  */
 export function installClientApi401Interceptor(onUnauthorized: () => void): () => void {
@@ -59,11 +71,11 @@ export function installClientApi401Interceptor(onUnauthorized: () => void): () =
   }
 
   const originalFetch = window.fetch.bind(window);
-  let inFlight401 = false;
+  let inFlightUnauthorized = false;
 
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     // 在请求发出前记录是否曾持有 accessToken，用于区分「登录态失效」与「未登录访问受保护资源」
-    const hadAccessTokenBefore = Boolean(localStorage.getItem("accessToken"));
+    const hadAccessTokenBefore = Boolean(getClientAccessToken());
 
     // 同源 /api 请求自动附加当前页面语言，供后端 apiMessage 解析
     let patchedInit = init;
@@ -76,7 +88,7 @@ export function installClientApi401Interceptor(onUnauthorized: () => void): () =
         if (!headers.has("X-Locale")) {
           headers.set("X-Locale", locale);
         }
-        patchedInit = { ...init, headers };
+        patchedInit = { ...init, credentials: init?.credentials ?? "include", headers };
       }
     } catch {
       // 忽略 URL 解析失败，走原始 fetch
@@ -111,15 +123,41 @@ export function installClientApi401Interceptor(onUnauthorized: () => void): () =
       return response;
     }
 
-    if (inFlight401) {
+    // refresh 自身 401：直接视为会话失效
+    if (pathname === "/api/auth/refresh" || pathname.startsWith("/api/auth/refresh/")) {
+      if (!inFlightUnauthorized) {
+        inFlightUnauthorized = true;
+        try {
+          onUnauthorized();
+        } finally {
+          queueMicrotask(() => {
+            inFlightUnauthorized = false;
+          });
+        }
+      }
       return response;
     }
-    inFlight401 = true;
+
+    // 先尝试 Cookie 刷新并重试一次（使用原始 fetch，避免递归）
+    const refreshed = await refreshClientAccessToken(originalFetch);
+    if (refreshed) {
+      const token = getClientAccessToken();
+      const retryInit = withUpdatedBearer(patchedInit, token);
+      const retryResponse = await originalFetch(input, retryInit);
+      if (retryResponse.status !== 401) {
+        return retryResponse;
+      }
+    }
+
+    if (inFlightUnauthorized) {
+      return response;
+    }
+    inFlightUnauthorized = true;
     try {
       onUnauthorized();
     } finally {
       queueMicrotask(() => {
-        inFlight401 = false;
+        inFlightUnauthorized = false;
       });
     }
 

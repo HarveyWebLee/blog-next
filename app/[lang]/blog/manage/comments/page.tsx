@@ -23,9 +23,10 @@ import { useAuth } from "@/lib/contexts/auth-context";
 import { useClientDictionary } from "@/lib/hooks/use-client-dictionary";
 import { pickText } from "@/lib/i18n/pick-text";
 import { message } from "@/lib/utils";
+import { clientApiFetch } from "@/lib/utils/client-api-fetch";
 import type { AdminManagedUserRow, ApiResponse, PaginatedResponseData } from "@/types/blog";
 
-type ReviewStatus = "pending" | "approved" | "spam";
+type ReviewStatus = "pending" | "approved" | "spam" | "deleted";
 type AdminCommentItem = {
   id: number;
   postId: number;
@@ -37,10 +38,11 @@ type AdminCommentItem = {
   createdAt: string | Date;
 };
 
-const statusColorMap: Record<ReviewStatus, "warning" | "success" | "danger"> = {
+const statusColorMap: Record<ReviewStatus, "warning" | "success" | "danger" | "default"> = {
   pending: "warning",
   approved: "success",
   spam: "danger",
+  deleted: "default",
 };
 
 export default function BlogCommentsReviewPage() {
@@ -86,13 +88,6 @@ export default function BlogCommentsReviewPage() {
     return "";
   };
 
-  const buildAuthHeaders = useCallback((): Record<string, string> => {
-    if (typeof window === "undefined") return {};
-    const token = localStorage.getItem("accessToken");
-    if (!token) return {};
-    return { Authorization: `Bearer ${token}` };
-  }, []);
-
   const loadComments = useCallback(async () => {
     setLoading(true);
     try {
@@ -103,7 +98,7 @@ export default function BlogCommentsReviewPage() {
       if (dateFrom.trim()) qs.set("dateFrom", dateFrom.trim());
       if (dateTo.trim()) qs.set("dateTo", dateTo.trim());
 
-      const res = await fetch(`/api/admin/comments?${qs.toString()}`, { headers: buildAuthHeaders() });
+      const res = await clientApiFetch(`/api/admin/comments?${qs.toString()}`);
       const json = (await res.json()) as ApiResponse<PaginatedResponseData<AdminCommentItem>>;
       if (!json.success || !json.data) {
         throw new Error(json.message || "加载失败");
@@ -130,11 +125,11 @@ export default function BlogCommentsReviewPage() {
     } finally {
       setLoading(false);
     }
-  }, [authorId, buildAuthHeaders, dateFrom, dateTo, page, q, status, unknownLabel]);
+  }, [authorId, dateFrom, dateTo, page, q, status, unknownLabel]);
 
   const loadPlatformUsers = useCallback(async () => {
     try {
-      const res = await fetch("/api/admin/users?page=1&limit=50", { headers: buildAuthHeaders() });
+      const res = await clientApiFetch("/api/admin/users?page=1&limit=50");
       const json = (await res.json()) as ApiResponse<PaginatedResponseData<AdminManagedUserRow>>;
       if (!json.success || !json.data) return;
       setAuthorFilterOptions((prev) => {
@@ -148,7 +143,7 @@ export default function BlogCommentsReviewPage() {
     } catch (error) {
       console.error("加载平台用户列表失败:", error);
     }
-  }, [buildAuthHeaders, unknownLabel]);
+  }, [unknownLabel]);
 
   useEffect(() => {
     if (isAuthLoading) return;
@@ -160,13 +155,13 @@ export default function BlogCommentsReviewPage() {
     void loadComments();
   }, [isAuthLoading, isAuthenticated, user?.role, router, lang, loadComments, loadPlatformUsers]);
 
-  const updateStatus = async (id: number, nextStatus: ReviewStatus) => {
+  const updateStatus = async (id: number, nextStatus: Exclude<ReviewStatus, "deleted">) => {
     setUpdatingId(id);
     try {
       const reason = window.prompt(t.moderationReasonPrompt ?? "", "");
-      const res = await fetch(`/api/admin/comments/${id}`, {
+      const res = await clientApiFetch(`/api/admin/comments/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", ...buildAuthHeaders() },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: nextStatus, reason: reason || undefined }),
       });
       const json = (await res.json()) as ApiResponse;
@@ -201,17 +196,15 @@ export default function BlogCommentsReviewPage() {
     if (!ok) return;
     setDeletingId(id);
     try {
-      const res = await fetch(`/api/admin/comments/${id}`, {
+      const res = await clientApiFetch(`/api/admin/comments/${id}`, {
         method: "DELETE",
-        headers: buildAuthHeaders(),
       });
-      const json = (await res.json()) as ApiResponse;
+      const json = (await res.json()) as ApiResponse<{ mode?: string }>;
       if (!json.success) {
         throw new Error(json.message || (t.deleteFailed ?? ""));
       }
-      message.success(t.deleted);
-      setItems((prev) => prev.filter((it) => it.id !== id));
-      setSelectedIds((prev) => prev.filter((it) => it !== id));
+      message.success(json.data?.mode === "soft" ? (t.softDeleted ?? t.deleted) : t.deleted);
+      await loadComments();
     } catch (error) {
       console.error("删除评论失败:", error);
       message.error(error instanceof Error ? error.message : t.deleteFailed);
@@ -220,14 +213,14 @@ export default function BlogCommentsReviewPage() {
     }
   };
 
-  const batchUpdateStatus = async (nextStatus: ReviewStatus) => {
+  const batchUpdateStatus = async (nextStatus: Exclude<ReviewStatus, "deleted">) => {
     if (selectedIds.length === 0) return;
     setBatchLoading(true);
     try {
       const reason = window.prompt(t.batchModerationReasonPrompt ?? "", "");
-      const res = await fetch("/api/admin/comments", {
+      const res = await clientApiFetch("/api/admin/comments", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", ...buildAuthHeaders() },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids: selectedIds, status: nextStatus, reason: reason || undefined }),
       });
       const json = (await res.json()) as ApiResponse;
@@ -251,9 +244,9 @@ export default function BlogCommentsReviewPage() {
     if (!ok) return;
     setBatchLoading(true);
     try {
-      const res = await fetch("/api/admin/comments", {
+      const res = await clientApiFetch("/api/admin/comments", {
         method: "DELETE",
-        headers: { "Content-Type": "application/json", ...buildAuthHeaders() },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids: selectedIds }),
       });
       const json = (await res.json()) as ApiResponse;
@@ -261,9 +254,8 @@ export default function BlogCommentsReviewPage() {
         throw new Error(json.message || t.deleteFailed);
       }
       message.success(t.deleted);
-      const selectedSet = new Set(selectedIds);
-      setItems((prev) => prev.filter((it) => !selectedSet.has(it.id)));
       setSelectedIds([]);
+      await loadComments();
     } catch (error) {
       console.error("批量删除评论失败:", error);
       message.error(error instanceof Error ? error.message : t.deleteFailed);
@@ -382,6 +374,9 @@ export default function BlogCommentsReviewPage() {
                 <SelectItem key="spam" textValue={t.statusSpam ?? "spam"}>
                   {t.statusSpam}
                 </SelectItem>
+                <SelectItem key="deleted" textValue={t.statusDeleted ?? "deleted"}>
+                  {t.statusDeleted}
+                </SelectItem>
               </Select>
               <Button
                 color="primary"
@@ -490,7 +485,9 @@ export default function BlogCommentsReviewPage() {
                             ? t.statusPending
                             : item.status === "approved"
                               ? t.statusApproved
-                              : t.statusSpam}
+                              : item.status === "deleted"
+                                ? t.statusDeleted
+                                : t.statusSpam}
                         </Chip>
                         <span className="truncate text-sm text-default-500">
                           {t.post}：{item.postTitle || `${t.unknown} #${item.postId}`}
@@ -501,9 +498,11 @@ export default function BlogCommentsReviewPage() {
                         {new Date(item.createdAt).toLocaleString()}
                       </span>
                     </div>
-                    <p className="whitespace-pre-wrap break-words text-sm text-default-700">{item.content}</p>
+                    <p className="whitespace-pre-wrap break-words text-sm text-default-700">
+                      {item.status === "deleted" ? (t.deletedPlaceholder ?? "原评论已删除") : item.content}
+                    </p>
                     <div className="flex flex-wrap gap-2">
-                      {item.status !== "approved" ? (
+                      {item.status !== "deleted" && item.status !== "approved" ? (
                         <Button
                           size="sm"
                           color="success"
@@ -514,7 +513,7 @@ export default function BlogCommentsReviewPage() {
                           {t.approve}
                         </Button>
                       ) : null}
-                      {item.status !== "spam" ? (
+                      {item.status !== "deleted" && item.status !== "spam" ? (
                         <Button
                           size="sm"
                           color="danger"
@@ -525,7 +524,7 @@ export default function BlogCommentsReviewPage() {
                           {t.markSpam}
                         </Button>
                       ) : null}
-                      {item.status !== "pending" ? (
+                      {item.status !== "deleted" && item.status !== "pending" ? (
                         <Button
                           size="sm"
                           variant="flat"

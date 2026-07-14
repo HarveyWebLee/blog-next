@@ -168,7 +168,8 @@ export const comments = mysqlTable(
     authorEmail: varchar("author_email", { length: 100 }), // 作者邮箱
     authorWebsite: varchar("author_website", { length: 255 }), // 作者网站
     content: text("content").notNull(), // 评论内容
-    status: mysqlEnum("status", ["pending", "approved", "spam"]).default("pending"), // 评论状态
+    // deleted：父评论软删占位（保留子树）；前台展示「原评论已删除」
+    status: mysqlEnum("status", ["pending", "approved", "spam", "deleted"]).default("pending"),
     ipAddress: varchar("ip_address", { length: 45 }), // IP地址（IPv6支持）
     userAgent: text("user_agent"), // 用户代理
     createdAt: timestamp("created_at").defaultNow().notNull(),

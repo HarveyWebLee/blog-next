@@ -15,6 +15,7 @@ import { useNewsletterGuestSubscription } from "@/lib/hooks/useNewsletterGuestSu
 import { usePosts } from "@/lib/hooks/usePosts";
 import { isTextReady, pickText } from "@/lib/i18n/pick-text";
 import { message } from "@/lib/utils";
+import { clientApiFetch } from "@/lib/utils/client-api-fetch";
 
 export function BlogSidebar({ lang = "zh-CN" }: { lang?: string }) {
   const dict = useClientDictionary(lang);
@@ -80,12 +81,10 @@ export function BlogSidebar({ lang = "zh-CN" }: { lang?: string }) {
 
     try {
       setSubmitting(true);
-      const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : "";
-      const response = await fetch("/api/subscriptions", {
+      const response = await clientApiFetch("/api/subscriptions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
           email: targetEmail,
@@ -112,12 +111,10 @@ export function BlogSidebar({ lang = "zh-CN" }: { lang?: string }) {
     if (!loginEmail) return;
     try {
       setSubmitting(true);
-      const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : "";
-      const response = await fetch("/api/subscriptions", {
+      const response = await clientApiFetch("/api/subscriptions", {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({ email: loginEmail.trim().toLowerCase() }),
       });

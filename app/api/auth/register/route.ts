@@ -25,7 +25,7 @@ async function handleAuthRegisterPOST(request: NextRequest) {
 
     const body = (await request.json()) as Record<string, unknown>;
     const locale = getRequestLocale(request);
-    const resolved = await resolveSecretFromBody({ body, plainField: "password", locale });
+    const resolved = await resolveSecretFromBody({ body, plainField: "password", locale, request });
     if (!resolved.ok) {
       return NextResponse.json<ApiResponse>(
         {

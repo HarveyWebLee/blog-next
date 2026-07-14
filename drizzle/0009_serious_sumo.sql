@@ -1,0 +1,1 @@
+ALTER TABLE `comments` MODIFY COLUMN `status` enum('pending','approved','spam','deleted') DEFAULT 'pending';

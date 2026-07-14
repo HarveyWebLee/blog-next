@@ -2,8 +2,9 @@
  * 单个标签API路由
  * 提供单个标签的增删改查接口
  *
- * 鉴权要求：所有接口均需 Authorization: Bearer。
- * 数据范围：仅允许访问与操作当前登录用户 ownerId 下的标签数据。
+ * 鉴权要求：
+ * - GET：Authorization: Bearer（任意登录用户，按 ownerId 隔离）
+ * - PUT / DELETE：须 author / admin / super_admin，并按 ownerId 隔离
  *
  * GET /api/tags/[id] - 获取单个标签（返回标签信息与文章使用次数）
  * PUT /api/tags/[id] - 更新标签（校验名称/slug 在 owner 范围内唯一）
@@ -23,7 +24,7 @@ import {
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { logger } from "@/lib/server/logger";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
-import { isJwtInMemorySuperRoot } from "@/lib/utils/authz";
+import { isJwtInMemorySuperRoot, requireTaxonomyManager } from "@/lib/utils/authz";
 import { requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, Tag, UpdateTagRequest } from "@/types/blog";
 
@@ -102,15 +103,15 @@ async function handleTagByIdGET(request: NextRequest, { params }: { params: Prom
  */
 async function handleTagByIdPUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const auth = requireAuthUser(request);
+    const auth = requireTaxonomyManager(request);
     if (!auth.ok) {
       return NextResponse.json(
         {
           success: false,
-          message: auth.reason === "missing" ? "请先登录后更新标签" : "登录状态无效，请重新登录",
+          message: auth.message,
           timestamp: new Date().toISOString(),
         },
-        { status: 401 }
+        { status: auth.status }
       );
     }
     const { id } = await params;
@@ -229,15 +230,15 @@ async function handleTagByIdPUT(request: NextRequest, { params }: { params: Prom
  */
 async function handleTagByIdDELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    const auth = requireAuthUser(request);
+    const auth = requireTaxonomyManager(request);
     if (!auth.ok) {
       return NextResponse.json(
         {
           success: false,
-          message: auth.reason === "missing" ? "请先登录后删除标签" : "登录状态无效，请重新登录",
+          message: auth.message,
           timestamp: new Date().toISOString(),
         },
-        { status: 401 }
+        { status: auth.status }
       );
     }
     const { id } = await context.params;

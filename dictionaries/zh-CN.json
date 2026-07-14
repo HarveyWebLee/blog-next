@@ -354,7 +354,14 @@
       "authorBadge": "作者",
       "allComments": "全部评论",
       "noComments": "暂无评论",
-      "beFirstComment": "成为第一个评论的人，分享您的想法！"
+      "beFirstComment": "成为第一个评论的人，分享您的想法！",
+      "reply": "回复",
+      "replyTo": "回复 {name}",
+      "cancelReply": "取消回复",
+      "replyPlaceholder": "写下您的回复...",
+      "deletedCommentPlaceholder": "原评论已删除",
+      "deletedCommentAuthor": "已删除",
+      "deletedCommentBadge": "已删除"
     },
     "listPage": {
       "loadFailed": "加载失败",
@@ -1350,6 +1357,7 @@
       "statusPending": "待审核",
       "statusApproved": "已通过",
       "statusSpam": "垃圾评论",
+      "statusDeleted": "已删除占位",
       "searchPh": "搜索评论内容或文章标题...",
       "filter": "筛选",
       "noData": "暂无评论",
@@ -1364,6 +1372,8 @@
       "updateFailed": "更新失败",
       "delete": "删除",
       "deleted": "删除成功",
+      "softDeleted": "已软删并保留子评论占位",
+      "deletedPlaceholder": "原评论已删除",
       "deleteFailed": "删除失败",
       "selectAllCurrent": "全选当前页",
       "clearSelection": "清空选择",

@@ -37,6 +37,8 @@ export const UserActivityAction = {
   PASSWORD_RESET_COMPLETED: "password_reset_completed",
   COMMENT_MODERATED: "comment_moderated",
   COMMENT_BATCH_MODERATED: "comment_batch_moderated",
+  COMMENT_DELETED: "comment_deleted",
+  COMMENT_BATCH_DELETED: "comment_batch_deleted",
 } as const;
 
 export type UserActivityActionType = (typeof UserActivityAction)[keyof typeof UserActivityAction];

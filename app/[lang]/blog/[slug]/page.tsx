@@ -8,18 +8,18 @@ import { Avatar } from "@heroui/avatar";
 import { Button } from "@heroui/button";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Chip } from "@heroui/chip";
-import { Divider } from "@heroui/divider";
 import { Input } from "@heroui/input";
-import { Textarea } from "@heroui/react";
 import { Spinner } from "@heroui/spinner";
-import { ArrowLeft, BookOpen, Calendar, Edit, Eye, Heart, MessageCircle, Share2, Star, ThumbsUp } from "lucide-react";
+import { ArrowLeft, BookOpen, Calendar, Edit, Eye, Heart, MessageCircle, Share2, Star } from "lucide-react";
 
 import MarkdownRenderer from "@/components/blog/markdown-renderer";
+import PostComments from "@/components/blog/post-comments";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { sealPasswordInRequestBody } from "@/lib/crypto/password-transport/body";
 import { useClientDictionary } from "@/lib/hooks/use-client-dictionary";
 import { message } from "@/lib/utils";
-import { clientBearerHeaders } from "@/lib/utils/client-bearer-auth";
+import { clientApiFetch, hasClientAccessToken } from "@/lib/utils/client-api-fetch";
+import { countCommentTree } from "@/lib/utils/comment-tree";
 import { stripMarkdownForExcerpt } from "@/lib/utils/markdown-plain";
 import { PostData } from "@/types/blog";
 
@@ -38,8 +38,6 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [password, setPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
-  const [comment, setComment] = useState("");
-  const [submittingComment, setSubmittingComment] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const [isFavorited, setIsFavorited] = useState(false);
   const [likeLoading, setLikeLoading] = useState(false);
@@ -67,11 +65,9 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
         setLoading(true);
         const unlockParam = searchParams.get("unlock");
         const unlockQuery = unlockParam ? `&unlock=${encodeURIComponent(unlockParam)}` : "";
-        const response = await fetch(`/api/posts/slug/${resolvedParams.slug}?includeRelations=true${unlockQuery}`, {
-          headers: {
-            ...clientBearerHeaders(),
-          },
-        });
+        const response = await clientApiFetch(
+          `/api/posts/slug/${resolvedParams.slug}?includeRelations=true${unlockQuery}`
+        );
         const result = await response.json();
 
         if (result.success) {
@@ -109,12 +105,7 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
     let cancelled = false;
     const loadEngagement = async () => {
       try {
-        const res = await fetch(`/api/posts/engagement?ids=${post.id}`, {
-          headers:
-            typeof window !== "undefined" && localStorage.getItem("accessToken")
-              ? { Authorization: `Bearer ${localStorage.getItem("accessToken")}` }
-              : undefined,
-        });
+        const res = await clientApiFetch(`/api/posts/engagement?ids=${post.id}`);
         const json = await res.json();
         const state = (json?.data || [])[0];
         if (!cancelled && state) {
@@ -149,16 +140,12 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
     let cancelled = false;
     const loadFollowState = async () => {
       try {
-        const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-        if (!token) {
+        if (!hasClientAccessToken()) {
           if (!cancelled) setIsFollowingAuthor(false);
           return;
         }
-        const response = await fetch(`/api/profile/public/${authorId}?page=1&limit=1&_ts=${Date.now()}`, {
+        const response = await clientApiFetch(`/api/profile/public/${authorId}?page=1&limit=1&_ts=${Date.now()}`, {
           cache: "no-store",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
         });
         const result = await response.json();
         if (!cancelled) {
@@ -228,76 +215,17 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
     }
   };
 
-  // 提交评论
-  const handleCommentSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!comment.trim()) {
-      message.warning(t.commentRequired);
-      return;
-    }
-
-    try {
-      setSubmittingComment(true);
-      const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-      const isLoggedIn = Boolean(isAuthenticated && token);
-      // 登录用户优先显示个人昵称，其次用户名；仅未登录时回退为“访客”。
-      const commentAuthorName = isLoggedIn
-        ? user?.displayName?.trim() || user?.username?.trim() || t.anonymous
-        : t.guest;
-
-      const response = await fetch("/api/comments", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          postId: post?.id,
-          content: comment,
-          authorName: commentAuthorName,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        setComment("");
-        message.success(t.commentSuccess);
-        // 重新获取博客数据以显示新评论
-        const postResponse = await fetch(`/api/posts/slug/${resolvedParams?.slug}?includeRelations=true`, {
-          headers: {
-            ...clientBearerHeaders(),
-          },
-        });
-        const postResult = await postResponse.json();
-        if (postResult.success) {
-          setPost(postResult.data);
-        }
-      } else {
-        message.error(t.commentFailedWithReason.replace("{reason}", result.message));
-      }
-    } catch (error) {
-      console.error("提交评论失败:", error);
-      message.error(t.commentFailed);
-    } finally {
-      setSubmittingComment(false);
-    }
-  };
-
   // 点赞功能
   const handleLike = async () => {
     if (!post?.id) return;
-    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-    if (!token) {
+    if (!hasClientAccessToken()) {
       router.push(`/${lang}/auth/login`);
       return;
     }
     try {
       setLikeLoading(true);
-      const response = await fetch(`/api/posts/${post.id}/like`, {
+      const response = await clientApiFetch(`/api/posts/${post.id}/like`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
       });
       const result = await response.json();
       if (!result.success) {
@@ -316,16 +244,14 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
 
   const handleFavorite = async () => {
     if (!post?.id) return;
-    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-    if (!token) {
+    if (!hasClientAccessToken()) {
       router.push(`/${lang}/auth/login`);
       return;
     }
     try {
       setFavoriteLoading(true);
-      const response = await fetch(`/api/posts/${post.id}/favorite`, {
+      const response = await clientApiFetch(`/api/posts/${post.id}/favorite`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
       });
       const result = await response.json();
       if (!result.success) {
@@ -347,19 +273,17 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
     const authorId = Number(post?.authorId || post?.author?.id);
     if (!Number.isInteger(authorId) || authorId <= 0) return;
     if (user != null && authorId === user.id) return;
-    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-    if (!token) {
+    if (!hasClientAccessToken()) {
       message.warning(t.loginToFollow);
       router.push(`/${lang}/auth/login`);
       return;
     }
     try {
       setFollowLoading(true);
-      const response = await fetch("/api/profile/follow", {
+      const response = await clientApiFetch("/api/profile/follow", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ followingId: authorId }),
       });
@@ -386,11 +310,9 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
   /** 记录分享打点（可选登录），并优先使用系统分享或复制链接 */
   const handleShare = async () => {
     if (!post?.id) return;
-    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
     try {
-      await fetch(`/api/posts/${post.id}/share`, {
+      await clientApiFetch(`/api/posts/${post.id}/share`, {
         method: "POST",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
     } catch {
       // 打点失败不阻断后续分享
@@ -620,7 +542,9 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
                 </div>
                 <div className="meta-item flex items-center gap-2">
                   <MessageCircle className="w-4 h-4" />
-                  <span>{formatCountLabel(t.commentsCount, post.comments?.length || 0)}</span>
+                  <span>
+                    {formatCountLabel(t.commentsCount, post.commentCount ?? countCommentTree(post.comments || []))}
+                  </span>
                 </div>
                 <div className="meta-item flex items-center gap-2">
                   <Heart className="w-4 h-4" />
@@ -756,108 +680,20 @@ export default function BlogDetailPage({ params }: { params: Promise<{ lang: str
             </Card>
           </div>
 
-          {/* 评论区域 - 使用渐变色样式 */}
+          {/* 评论区域：已通过列表 + 最多两层嵌套回复 */}
           {post.allowComments && (
             <div className="animate-blog-fade-in-up delay-400 mt-4">
-              <Card className="card-hover-effect glass-enhanced">
-                <CardHeader className="pb-6">
-                  <div className="flex items-center gap-3">
-                    <p className="text-2xl font-bold blog-title-gradient">{t.commentsSection}</p>
-                    <Chip variant="flat" color="primary" size="sm">
-                      {formatCountLabel(t.commentsCount, post.comments?.length || 0)}
-                    </Chip>
-                  </div>
-                </CardHeader>
-                <CardBody className="space-y-8 pt-0">
-                  {/* 发表评论表单 - 使用渐变色样式 */}
-                  <div className="animate-blog-slide-in-right delay-100">
-                    <form onSubmit={handleCommentSubmit} className="space-y-6">
-                      <Textarea
-                        label={t.commentLabel}
-                        placeholder={t.commentPlaceholder}
-                        value={comment}
-                        onValueChange={setComment}
-                        variant="bordered"
-                        minRows={4}
-                        isRequired
-                        className="hover-lift mt-4"
-                        classNames={{
-                          input: "text-base",
-                          inputWrapper: "border-2 hover:border-primary transition-colors",
-                        }}
-                      />
-                      <Button
-                        type="submit"
-                        color="primary"
-                        size="lg"
-                        isLoading={submittingComment}
-                        className="button-hover-effect gradient-button-primary"
-                        startContent={!submittingComment && <ThumbsUp className="w-5 h-5" />}
-                      >
-                        {submittingComment ? t.submitting : t.submitComment}
-                      </Button>
-                    </form>
-                  </div>
-
-                  <Divider className="my-8" />
-
-                  {/* 评论列表 - 使用渐变色样式 */}
-                  {post.comments && post.comments.length > 0 ? (
-                    <div className="space-y-6">
-                      <h3 className="text-xl font-bold flex items-center gap-2">
-                        <MessageCircle className="w-5 h-5 text-secondary" />
-                        {t.allComments}
-                      </h3>
-                      <div className="space-y-4">
-                        {post.comments.map((comment, index) => (
-                          <div key={comment.id} className={`animate-blog-slide-in-right delay-${200 + index * 100}`}>
-                            <Card className="comment-card hover-lift card-hover-effect">
-                              <CardBody className="p-6">
-                                <div className="flex items-center gap-3 mb-4">
-                                  <Avatar
-                                    size="md"
-                                    src={comment.author?.avatar || undefined}
-                                    name={comment.author?.displayName || comment.authorName || t.anonymous}
-                                    className="hover-lift"
-                                  />
-                                  <div className="flex-1">
-                                    <div className="flex flex-wrap items-center gap-2 text-lg font-semibold">
-                                      <span>{comment.author?.displayName || comment.authorName || t.anonymous}</span>
-                                      {comment.authorId != null && comment.authorId === post.authorId && (
-                                        <Chip size="sm" color="warning" variant="flat" className="font-medium">
-                                          {t.authorBadge}
-                                        </Chip>
-                                      )}
-                                    </div>
-                                    <p className="text-sm text-default-400">
-                                      {new Date(comment.createdAt).toLocaleDateString(lang, {
-                                        year: "numeric",
-                                        month: "long",
-                                        day: "numeric",
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                      })}
-                                    </p>
-                                  </div>
-                                </div>
-                                <p className="text-base leading-relaxed">{comment.content}</p>
-                              </CardBody>
-                            </Card>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-center py-16 animate-blog-scale-in delay-200">
-                      <div className="animate-blog-float">
-                        <MessageCircle className="w-20 h-20 mx-auto mb-6 text-default-300" />
-                      </div>
-                      <p className="text-xl text-default-500 mb-4">{t.noComments}</p>
-                      <p className="text-default-400">{t.beFirstComment}</p>
-                    </div>
-                  )}
-                </CardBody>
-              </Card>
+              <PostComments
+                key={post.id}
+                postId={post.id}
+                postAuthorId={post.authorId}
+                lang={lang}
+                t={t}
+                isAuthenticated={isAuthenticated}
+                userDisplayName={user?.displayName}
+                userUsername={user?.username}
+                initialComments={post.comments || []}
+              />
             </div>
           )}
         </div>

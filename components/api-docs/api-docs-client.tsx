@@ -14,6 +14,7 @@ import { useAuth } from "@/lib/contexts/auth-context";
 import { message } from "@/lib/utils";
 import { ApiGroup } from "@/lib/utils/api-scanner";
 import { isInMemorySuperRootClientUser } from "@/lib/utils/authz";
+import { getClientAccessToken } from "@/lib/utils/client-bearer-auth";
 import { ApiFilterTabs } from "./api-filter-tabs";
 import { ApiGroupCard } from "./api-group-card";
 import { ApiSearchBar } from "./api-search-bar";
@@ -78,7 +79,7 @@ function ApiDocsMain({ lang }: { lang: string }) {
         setLoading(true);
         setLoadError(null);
         const fromCtx = bearerToken.trim();
-        const fromStorage = typeof window !== "undefined" ? (localStorage.getItem("accessToken") ?? "").trim() : "";
+        const fromStorage = (getClientAccessToken() ?? "").trim();
         const token = fromCtx || fromStorage;
         if (!token) {
           setLoadError("未找到可用 Token：请在下方「登录鉴权测试」登录，或先全站登录超级管理员后再打开本页。");
@@ -193,7 +194,7 @@ function ApiDocsMain({ lang }: { lang: string }) {
   const handleExportOpenApi = () => {
     if (typeof window === "undefined") return;
     const fromCtx = bearerToken.trim();
-    const fromStorage = typeof window !== "undefined" ? (localStorage.getItem("accessToken") ?? "").trim() : "";
+    const fromStorage = (getClientAccessToken() ?? "").trim();
     const token = fromCtx || fromStorage;
     if (!token) {
       message.warning("请先登录并获取 Token");

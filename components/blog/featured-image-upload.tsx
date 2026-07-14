@@ -7,6 +7,7 @@ import clsx from "clsx";
 import { Image as ImageIcon, ImagePlus, Trash2, Upload } from "lucide-react";
 
 import { message } from "@/lib/utils";
+import { clientApiFetch, hasClientAccessToken } from "@/lib/utils/client-api-fetch";
 import { extractObjectKeyFromPathStyleUrl } from "@/lib/utils/public-object-url";
 
 export type FeaturedImageUploadLabels = {
@@ -193,8 +194,6 @@ export function FeaturedImageUpload({ value, onChange, scope = "article", labels
     });
   }, []);
 
-  const getToken = () => (typeof window !== "undefined" ? localStorage.getItem("accessToken") : null);
-
   const resolvePreviousKeyForUpload = () => trackedKeyRef.current || "";
 
   const processUploadFile = useCallback(
@@ -204,8 +203,7 @@ export function FeaturedImageUpload({ value, onChange, scope = "article", labels
         return;
       }
 
-      const token = getToken();
-      if (!token) {
+      if (!hasClientAccessToken()) {
         message.warning(labels.needLogin);
         return;
       }
@@ -218,9 +216,8 @@ export function FeaturedImageUpload({ value, onChange, scope = "article", labels
 
       setUploading(true);
       try {
-        const res = await fetch("/api/uploads/image", {
+        const res = await clientApiFetch("/api/uploads/image", {
           method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
           body: fd,
         });
         const json = await res.json();
@@ -379,13 +376,11 @@ export function FeaturedImageUpload({ value, onChange, scope = "article", labels
 
   const handleRemove = async () => {
     const key = trackedKeyRef.current;
-    const token = getToken();
-    if (key && token) {
+    if (key && hasClientAccessToken()) {
       try {
-        await fetch("/api/uploads/image", {
+        await clientApiFetch("/api/uploads/image", {
           method: "DELETE",
           headers: {
-            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ key }),

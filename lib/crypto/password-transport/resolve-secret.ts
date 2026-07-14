@@ -1,5 +1,8 @@
+import type { NextRequest } from "next/server";
+
 import { DEFAULT_LOCALE } from "@/lib/i18n/locale";
 import { tApi, type ApiMessageKey } from "@/lib/i18n/messages";
+import { isHttpsRequest } from "@/lib/server/request-protocol";
 import type { Locale } from "@/types/common";
 import { decryptPasswordTransportV1, isPasswordTransportConfigured } from "./server";
 import type { PasswordTransportEnvelopeV1 } from "./types";
@@ -32,6 +35,8 @@ export type ResolveSecretOptions = {
   treatMissingAsEmpty?: boolean;
   /** 响应文案语言（来自 X-Locale / Accept-Language 等） */
   locale?: Locale;
+  /** 传入请求时：明文 HTTP 自动关闭强制 passwordTransport（浏览器无 Web Crypto） */
+  request?: NextRequest;
 };
 
 function msg(locale: Locale, key: ApiMessageKey): string {
@@ -40,13 +45,20 @@ function msg(locale: Locale, key: ApiMessageKey): string {
 
 /**
  * 强制策略：
- * - 显式配置 PASSWORD_TRANSPORT_REQUIRED=true 时始终强制；
- * - 未显式配置时，生产环境默认强制，开发/测试默认非强制（便于灰度与联调）。
+ * - 显式 `PASSWORD_TRANSPORT_REQUIRED=false` 时永不强制；
+ * - 请求为明文 HTTP（含反代声明 http）时不强制——无 SSL 场景浏览器无法 Web Crypto；
+ * - 显式 `true` 时在 HTTPS 下强制；
+ * - 未显式配置时：生产 HTTPS 默认强制，开发/测试默认非强制。
  */
-export function isPasswordTransportRequired(): boolean {
+export function isPasswordTransportRequired(request?: NextRequest): boolean {
   const raw = process.env.PASSWORD_TRANSPORT_REQUIRED?.trim().toLowerCase();
-  if (raw === "true") return true;
   if (raw === "false") return false;
+
+  if (request && !isHttpsRequest(request)) {
+    return false;
+  }
+
+  if (raw === "true") return true;
   return process.env.NODE_ENV === "production";
 }
 
@@ -74,11 +86,18 @@ function checkRequiredButMissingKey(required: boolean, configured: boolean): boo
 export async function resolveSecretFromBody(
   options: ResolveSecretOptions
 ): Promise<{ ok: true; plaintext: string } | { ok: false; message: string; status: number }> {
-  const { body, plainField, allowPlaintext = true, treatMissingAsEmpty = false, locale = DEFAULT_LOCALE } = options;
+  const {
+    body,
+    plainField,
+    allowPlaintext = true,
+    treatMissingAsEmpty = false,
+    locale = DEFAULT_LOCALE,
+    request,
+  } = options;
   const transportRaw = body.passwordTransport;
   const plainRaw = body[plainField];
 
-  const requireTransport = isPasswordTransportRequired();
+  const requireTransport = isPasswordTransportRequired(request);
   const configured = isPasswordTransportConfigured();
   const misconfigured = checkRequiredButMissingKey(requireTransport, configured);
 
@@ -125,9 +144,10 @@ export async function resolveSecretFromBody(
  */
 export async function resolveOptionalPasswordForPostBody(
   raw: Record<string, unknown>,
-  locale: Locale = DEFAULT_LOCALE
+  locale: Locale = DEFAULT_LOCALE,
+  request?: NextRequest
 ): Promise<{ ok: true; password?: string } | { ok: false; message: string; status: number }> {
-  const requireTransport = isPasswordTransportRequired();
+  const requireTransport = isPasswordTransportRequired(request);
   const configured = isPasswordTransportConfigured();
   const misconfigured = checkRequiredButMissingKey(requireTransport, configured);
   const hasTransport = isEnvelopeV1(raw.passwordTransport);

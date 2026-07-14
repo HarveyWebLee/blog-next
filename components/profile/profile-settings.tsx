@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/contexts/auth-context";
 import { useProfileDict } from "@/lib/contexts/profile-dict-context";
 import { isTextReady, pickText } from "@/lib/i18n/pick-text";
 import { message } from "@/lib/utils";
+import { clientApiFetch, hasClientAccessToken } from "@/lib/utils/client-api-fetch";
 import { isValidEmailFormat } from "@/lib/utils/email-format";
 import type { ApiResponse, UpdateProfileRequest, UserProfile } from "@/types/blog";
 
@@ -157,8 +158,8 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
         return;
       }
 
-      const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-      if (!token) {
+      const tokenOk = hasClientAccessToken();
+      if (!tokenOk) {
         setLoading(false);
         setProfile(null);
         setFetchFailed(false);
@@ -168,9 +169,7 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
       setLoading(true);
       setFetchFailed(false);
       try {
-        const res = await fetch("/api/profile", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await clientApiFetch("/api/profile");
         const json = (await res.json()) as ApiResponse<UserProfile>;
         if (!json.success || !json.data) {
           message.error(json.message || t.loadFailed);
@@ -211,8 +210,7 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
   };
 
   const handleSave = async () => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-    if (!token || !isAuthenticated) {
+    if (!hasClientAccessToken() || !isAuthenticated) {
       message.warning(t.needLogin);
       return;
     }
@@ -263,10 +261,9 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
     try {
       // GET 在无 user_profiles 行时 id 为 0，需 POST 创建后再用 PUT 更新
       const isNew = !profile || profile.id === 0;
-      const res = await fetch("/api/profile", {
+      const res = await clientApiFetch("/api/profile", {
         method: isNew ? "POST" : "PUT",
         headers: {
-          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(body),
@@ -307,8 +304,7 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
   };
 
   const handleSendEmailCode = async () => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-    if (!token || !isAuthenticated) {
+    if (!hasClientAccessToken() || !isAuthenticated) {
       message.warning(t.needLogin);
       return;
     }
@@ -321,10 +317,9 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
 
     setSendingEmailCode(true);
     try {
-      const res = await fetch("/api/auth/send-verification-code", {
+      const res = await clientApiFetch("/api/auth/send-verification-code", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ email, type: "change_email" }),

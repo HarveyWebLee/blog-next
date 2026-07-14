@@ -9,6 +9,15 @@ import {
 } from "@/lib/crypto/password-transport/client";
 import { getDictionaryForLang } from "@/lib/dictionaries";
 import { getClientPageLocale } from "@/lib/i18n/locale";
+import { refreshClientAccessToken } from "@/lib/utils/client-api-fetch";
+import {
+  clearClientAuthStorage,
+  clearLegacyRefreshTokenStorage,
+  getClientAccessToken,
+  getStoredClientUserJson,
+  setClientAccessToken,
+  setStoredClientUserJson,
+} from "@/lib/utils/client-bearer-auth";
 import { extractResponseErrorMessage, extractUnknownErrorMessage } from "@/lib/utils/client-error";
 import { LoginRequest, LoginResponse, User } from "@/types/blog";
 
@@ -19,7 +28,7 @@ interface AuthContextType {
   login: (credentials: LoginRequest) => Promise<{ success: boolean; message: string }>;
   logout: () => void;
   refreshToken: () => Promise<boolean>;
-  /** 个人资料等更新后同步本地 user（如邮箱变更），避免仅 localStorage 与界面不一致 */
+  /** 个人资料等更新后同步本地 user（如邮箱变更），避免仅本地存储与界面不一致 */
   patchUser: (partial: Partial<User>) => void;
 }
 
@@ -34,24 +43,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 从localStorage恢复用户状态
+  // 从统一存储恢复 accessToken + user；refresh 仅走 HttpOnly Cookie
   useEffect(() => {
     const initializeAuth = () => {
       try {
-        const storedUser = localStorage.getItem("user");
-        const storedToken = localStorage.getItem("accessToken");
+        const storedUser = getStoredClientUserJson();
+        const storedToken = getClientAccessToken();
 
         if (storedUser && storedToken) {
           const userData = JSON.parse(storedUser);
           setUser(userData as User);
           setIsAuthenticated(true);
         }
+
+        // 启动时清掉遗留的明文 refreshToken
+        clearLegacyRefreshTokenStorage();
       } catch (error) {
         console.error("恢复用户状态失败:", error);
-        // 清除可能损坏的数据
-        localStorage.removeItem("user");
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
+        clearClientAuthStorage();
       } finally {
         setIsLoading(false);
       }
@@ -64,15 +73,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setUser((prev) => {
       if (!prev) return prev;
       const next = { ...prev, ...partial };
-      localStorage.setItem("user", JSON.stringify(next));
+      setStoredClientUserJson(JSON.stringify(next));
       return next;
     });
   }, []);
 
   const logout = useCallback(() => {
-    localStorage.removeItem("user");
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
+    void fetch("/api/auth/logout", {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }).catch((error) => {
+      console.error("清除刷新会话失败:", extractUnknownErrorMessage(error, "登出请求异常"));
+    });
+
+    clearClientAuthStorage();
     setUser(null);
     setIsAuthenticated(false);
   }, []);
@@ -99,6 +116,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       const response = await fetch("/api/auth/login", {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
@@ -108,12 +126,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const data = await response.json();
 
       if (data.success && data.data) {
-        const { user: userData, token, refreshToken } = data.data as LoginResponse;
+        const { user: userData, token } = data.data as LoginResponse;
 
-        // 存储用户信息和令牌
-        localStorage.setItem("user", JSON.stringify(userData));
-        localStorage.setItem("accessToken", token);
-        localStorage.setItem("refreshToken", refreshToken);
+        setStoredClientUserJson(JSON.stringify(userData));
+        setClientAccessToken(token);
+        clearLegacyRefreshTokenStorage();
 
         setUser(userData as User);
         setIsAuthenticated(true);
@@ -148,40 +165,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, []);
 
   const refreshToken = useCallback(async (): Promise<boolean> => {
-    try {
-      const storedRefreshToken = localStorage.getItem("refreshToken");
-      if (!storedRefreshToken) {
-        return false;
-      }
-
-      const response = await fetch("/api/auth/refresh", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ refreshToken: storedRefreshToken }),
-      });
-
-      const data = await response.json();
-
-      if (data.success && data.data) {
-        const { token, refreshToken: newRefreshToken } = data.data;
-
-        localStorage.setItem("accessToken", token);
-        localStorage.setItem("refreshToken", newRefreshToken);
-
-        return true;
-      } else {
-        console.error("刷新令牌失败:", data?.message || `HTTP ${response.status}`);
-        // 刷新失败，清除认证状态
-        logout();
-        return false;
-      }
-    } catch (error) {
-      console.error("刷新令牌失败:", extractUnknownErrorMessage(error, "刷新令牌异常"));
+    const ok = await refreshClientAccessToken();
+    if (!ok) {
       logout();
       return false;
     }
+    return true;
   }, [logout]);
 
   const value: AuthContextType = {

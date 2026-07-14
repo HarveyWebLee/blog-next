@@ -23,6 +23,7 @@ import {
 } from "@/components/profile/profile-ui-presets";
 import ProfileRelationsAPI from "@/lib/api/profile-relations";
 import { message } from "@/lib/utils";
+import { clientBearerHeaders } from "@/lib/utils/client-bearer-auth";
 import type { ApiResponse, PaginatedResponseData, UserNotification } from "@/types/blog";
 
 interface ProfileNotificationsProps {
@@ -101,12 +102,7 @@ export default function ProfileNotifications({ lang, initialReadFilter = "all", 
   const [currentPage, setCurrentPage] = useState(1);
   const [hasNextPage, setHasNextPage] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
-  const buildAuthHeaders = useCallback((): Record<string, string> => {
-    if (typeof window === "undefined") return {};
-    const token = localStorage.getItem("accessToken");
-    if (!token) return {};
-    return { Authorization: `Bearer ${token}` };
-  }, []);
+  const buildAuthHeaders = useCallback((): Record<string, string> => clientBearerHeaders(), []);
 
   useEffect(() => {
     setReadFilter(initialReadFilter);

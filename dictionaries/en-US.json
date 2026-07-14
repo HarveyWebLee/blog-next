@@ -354,7 +354,14 @@
       "authorBadge": "Author",
       "allComments": "All comments",
       "noComments": "No comments yet",
-      "beFirstComment": "Be the first to comment and share your thoughts!"
+      "beFirstComment": "Be the first to comment and share your thoughts!",
+      "reply": "Reply",
+      "replyTo": "Reply to {name}",
+      "cancelReply": "Cancel reply",
+      "replyPlaceholder": "Write your reply...",
+      "deletedCommentPlaceholder": "This comment was deleted",
+      "deletedCommentAuthor": "Deleted",
+      "deletedCommentBadge": "Deleted"
     },
     "listPage": {
       "loadFailed": "Load failed",
@@ -1012,6 +1019,7 @@
       "statusPending": "Pending",
       "statusApproved": "Approved",
       "statusSpam": "Spam",
+      "statusDeleted": "Deleted placeholder",
       "searchPh": "Search comment content or post title...",
       "filter": "Filter",
       "noData": "No comments",
@@ -1026,6 +1034,8 @@
       "updateFailed": "Update failed",
       "delete": "Delete",
       "deleted": "Deleted",
+      "softDeleted": "Soft-deleted; replies kept under a placeholder",
+      "deletedPlaceholder": "This comment was deleted",
       "deleteFailed": "Delete failed",
       "selectAllCurrent": "Select current page",
       "clearSelection": "Clear selection",

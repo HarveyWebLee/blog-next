@@ -2,7 +2,9 @@
  * 分类API路由
  * 提供分类的增删改查接口
  *
- * 鉴权要求：所有接口均需 Authorization: Bearer。
+ * 鉴权要求：
+ * - GET：Authorization: Bearer（任意登录用户，按 ownerId 隔离）
+ * - POST：须 author / admin / super_admin，并按 ownerId 隔离
  * 数据范围：仅允许访问与操作当前登录用户 ownerId 下的分类数据。
  *
  * GET /api/categories - 获取分类列表（支持分页、搜索、状态与父分类过滤）
@@ -22,7 +24,7 @@ import {
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { logger } from "@/lib/server/logger";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
-import { isJwtInMemorySuperRoot } from "@/lib/utils/authz";
+import { isJwtInMemorySuperRoot, requireTaxonomyManager } from "@/lib/utils/authz";
 import { requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, Category, CategoryQueryParams, CreateCategoryRequest, PaginatedResponseData } from "@/types/blog";
 
@@ -147,15 +149,15 @@ async function handleCategoriesGET(request: NextRequest) {
  */
 async function handleCategoriesPOST(request: NextRequest) {
   try {
-    const auth = requireAuthUser(request);
+    const auth = requireTaxonomyManager(request);
     if (!auth.ok) {
       return NextResponse.json(
         {
           success: false,
-          message: auth.reason === "missing" ? "请先登录后创建分类" : "登录状态无效，请重新登录",
+          message: auth.message,
           timestamp: new Date().toISOString(),
         },
-        { status: 401 }
+        { status: auth.status }
       );
     }
     const body = (await request.json()) as CreateCategoryRequest & { ownerId?: number };

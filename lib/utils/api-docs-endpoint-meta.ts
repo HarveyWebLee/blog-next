@@ -9,7 +9,7 @@ export const API_DOCS_GROUP_DESCRIPTIONS: Record<string, string> = {
   admin: "超级管理员专用：数据库用户列表与单用户详情/部分更新（非站点 admin 角色；见各接口）",
   profile: "当前登录用户个人资料、统计、动态、收藏与通知",
   posts: "文章 CRUD、按 slug 查询、浏览量",
-  comments: "前台博客评论提交（匿名或登录）",
+  comments: "前台博客评论读取与提交（仅展示已通过；支持两层回复）",
   categories: "分类 CRUD",
   tags: "标签 CRUD",
   subscriptions: "邮件订阅查询、订阅、退订（访客须验证码）",
@@ -31,13 +31,16 @@ export const API_DOCS_ENDPOINT_DESCRIPTIONS: Record<string, Partial<Record<strin
     GET: "获取扫描后的全站 API 分组与端点元数据；支持 format=openapi 导出",
   },
   "/api/auth/login": {
-    POST: "用户登录（含超级管理员应急通道），返回 access / refresh token",
+    POST: "用户登录（含超级管理员应急通道），签发 accessToken，并写入 HttpOnly refresh Cookie",
   },
   "/api/auth/register": {
     POST: "用户注册（通常需先收邮箱验证码）",
   },
   "/api/auth/refresh": {
-    POST: "使用 refreshToken 换取新的 accessToken",
+    POST: "使用 HttpOnly Cookie 换取新的 accessToken，并轮换 refresh Cookie",
+  },
+  "/api/auth/logout": {
+    POST: "清除 HttpOnly refresh token Cookie",
   },
   "/api/auth/send-verification-code": {
     POST: "发送邮箱验证码（register / reset_password / change_email / subscription / subscription_unsubscribe）",
@@ -108,13 +111,14 @@ export const API_DOCS_ENDPOINT_DESCRIPTIONS: Record<string, Partial<Record<strin
     PATCH: "超级管理员：更新角色与账号状态等（不可修改当前登录根账户本人）",
   },
   "/api/admin/comments": {
-    GET: "超级管理员：评论审核列表（支持状态、关键词、authorId、postId、时间区间筛选）",
-    PATCH: "超级管理员：批量更新评论审核状态（pending/approved/spam，支持审核理由）",
-    DELETE: "超级管理员：批量删除评论",
+    GET: "超级管理员：评论审核列表（支持状态含 deleted、关键词、authorId、postId、时间区间筛选）",
+    PATCH: "超级管理员：批量更新评论审核状态（pending/approved/spam，支持审核理由）；approved/spam 时通知评论作者",
+    DELETE:
+      "超级管理员：批量删除评论（有子评论则软删 deleted 占位并擦除隐私字段，否则硬删；写 COMMENT_BATCH_DELETED 审计）",
   },
   "/api/admin/comments/{id}": {
-    PATCH: "超级管理员：更新评论审核状态（pending/approved/spam，支持审核理由）",
-    DELETE: "超级管理员：删除单条评论",
+    PATCH: "超级管理员：更新评论审核状态（pending/approved/spam，支持审核理由）；approved/spam 时通知评论作者",
+    DELETE: "超级管理员：删除单条评论（有子评论则软删占位，否则硬删；写 COMMENT_DELETED 审计）",
   },
   "/api/posts": {
     GET: "文章列表（默认仅 public；includePasswordProtected=true 返回 public+password；includePrivate=true（鉴权通过）放开 private；authorId 管理查询默认返回该作者全部可见性，列表不返回 content 字段）",
@@ -141,7 +145,8 @@ export const API_DOCS_ENDPOINT_DESCRIPTIONS: Record<string, Partial<Record<strin
     POST: "记录分享打点（匿名或 Bearer；含频率限制，仅已发布且非 private 文章）",
   },
   "/api/comments": {
-    POST: "提交博客评论（匿名或登录；按文章/IP 限流防刷）",
+    GET: "按文章读取前台可见评论（Query: postId；含已通过与「有回复的软删父评论」占位；树形最多两层；不含邮箱/IP）",
+    POST: "提交博客评论（匿名或登录；按文章/IP 限流防刷；可选 parentId 回复根评论；不可回复已软删父评论；非 spam 时通知文章作者，回复额外通知被回复者）",
   },
   "/api/posts/engagement": {
     GET: "批量查询多篇文章的点赞/收藏状态（Query: ids）；登录用户返回真实状态",
@@ -152,21 +157,21 @@ export const API_DOCS_ENDPOINT_DESCRIPTIONS: Record<string, Partial<Record<strin
   },
   "/api/categories": {
     GET: "分类列表（分页/搜索/状态/父分类过滤；超级管理员可按 ownerId 指定租户）",
-    POST: "创建分类（普通用户写入本人 ownerId；超级管理员可指定 ownerId）",
+    POST: "创建分类（须 author/admin/super_admin；默认本人 ownerId，超管可指定）",
   },
   "/api/categories/{id}": {
     GET: "分类详情（附带该分类文章数量；本人可见，超级管理员可跨 ownerId 查看）",
-    PUT: "更新分类（名称/slug 在所属 ownerId 内去重；超级管理员可跨 ownerId）",
-    DELETE: "删除分类（若仍被文章或子分类引用则拒绝；超级管理员可跨 ownerId）",
+    PUT: "更新分类（须 author/admin/super_admin；名称/slug 在所属 ownerId 内去重）",
+    DELETE: "删除分类（须 author/admin/super_admin；若仍被文章或子分类引用则拒绝）",
   },
   "/api/tags": {
     GET: "标签列表（分页/搜索/状态过滤，含 postCount；超级管理员可按 ownerId 指定租户）",
-    POST: "创建标签（普通用户写入本人 ownerId；超级管理员可指定 ownerId）",
+    POST: "创建标签（须 author/admin/super_admin；默认本人 ownerId，超管可指定）",
   },
   "/api/tags/{id}": {
     GET: "标签详情（附带标签被文章使用次数；本人可见，超级管理员可跨 ownerId 查看）",
-    PUT: "更新标签（名称/slug 在所属 ownerId 内去重；超级管理员可跨 ownerId）",
-    DELETE: "删除标签（若仍有关联文章则拒绝；超级管理员可跨 ownerId）",
+    PUT: "更新标签（须 author/admin/super_admin；名称/slug 在所属 ownerId 内去重）",
+    DELETE: "删除标签（须 author/admin/super_admin；若仍有关联文章则拒绝）",
   },
   "/api/notifications": {
     GET: "通知列表（本人可读；超级管理员可按 userId 查询）",
@@ -209,13 +214,16 @@ export const API_DOCS_AUTH_HINTS: Record<string, Partial<Record<string, string>>
     GET: "必须：Authorization: Bearer + 超级管理员 accessToken（JWT：role=super_admin、isRoot=true）。支持 query: refresh=true 强制重扫、version=<x>|none 版本过滤、format=openapi 返回 OpenAPI 3.0 JSON、download=true 触发下载头。",
   },
   "/api/auth/login": {
-    POST: "无需 Bearer。Body：{ username, password } 或 { username, passwordTransport }（优先；生产环境默认强制后者，可由 PASSWORD_TRANSPORT_REQUIRED 覆盖）。",
+    POST: "无需 Bearer。Body：{ username, password } 或 { username, passwordTransport }（优先；生产环境默认强制后者，可由 PASSWORD_TRANSPORT_REQUIRED 覆盖）。成功后 Set-Cookie: blog_refresh_token（HttpOnly、SameSite=Lax、Path=/api/auth）；响应体仅含 user 与 accessToken（token）。",
   },
   "/api/auth/register": {
     POST: "无需 Bearer。Body 支持 password 或 passwordTransport；常配合先发验证码。",
   },
   "/api/auth/refresh": {
-    POST: "无需 Bearer。Body：{ refreshToken }。",
+    POST: "无需 Bearer。仅接受 Cookie blog_refresh_token（不再接受 Body.refreshToken）。须同站 Origin/Referer 或 CORS_ORIGIN 白名单。credentials: include。成功响应 data 仅含 token。",
+  },
+  "/api/auth/logout": {
+    POST: "无需 Bearer。清除 blog_refresh_token Cookie；携带 Cookie 时校验 Origin/Referer。credentials: include。",
   },
   "/api/auth/send-verification-code": {
     POST: "无需 Bearer。Body：{ email, type }。",
@@ -287,14 +295,16 @@ export const API_DOCS_AUTH_HINTS: Record<string, Partial<Record<string, string>>
       "必须：Authorization: Bearer + 超级管理员 accessToken。路径 id 为当前登录根账户 userId 时 **403**（不可改本人角色/状态）。",
   },
   "/api/admin/comments": {
-    GET: "必须：Authorization: Bearer + 超级管理员 accessToken。支持 page/limit/status/q/authorId/postId/dateFrom/dateTo。",
+    GET: "必须：Authorization: Bearer + 超级管理员 accessToken。支持 page/limit/status(含 deleted)/q/authorId/postId/dateFrom/dateTo。",
     PATCH:
-      "必须：Authorization: Bearer + 超级管理员 accessToken。Body：{ ids: number[], status: pending|approved|spam, reason? }。",
-    DELETE: "必须：Authorization: Bearer + 超级管理员 accessToken。Body：{ ids: number[] }。",
+      "必须：Authorization: Bearer + 超级管理员 accessToken。Body：{ ids: number[], status: pending|approved|spam, reason? }。状态变为 approved/spam 时写入评论作者站内通知（须有 authorId）。",
+    DELETE:
+      "必须：Authorization: Bearer + 超级管理员 accessToken。Body：{ ids: number[] }。根评论仍有未删子评论时软删为 deleted 占位，否则硬删；返回 softDeletedIds/hardDeletedIds；写入活动审计。",
   },
   "/api/admin/comments/{id}": {
-    PATCH: "必须：Authorization: Bearer + 超级管理员 accessToken。Body：{ status, reason? }。",
-    DELETE: "必须：Authorization: Bearer + 超级管理员 accessToken。",
+    PATCH:
+      "必须：Authorization: Bearer + 超级管理员 accessToken。Body：{ status, reason? }。状态变为 approved/spam 时通知评论作者（须有 authorId）。",
+    DELETE: "必须：Authorization: Bearer + 超级管理员 accessToken。有子评论则软删占位，否则硬删；返回 mode=soft|hard。",
   },
   "/api/posts": {
     GET: "公开列表通常无需 Bearer。默认仅返回 public；query.includePasswordProtected=true 返回 public+password（不含 private）；query.includePrivate=true 需登录（不带 authorId 时仅超级管理员），可放开 private。按 authorId 且通过权限校验后默认返回该作者全部可见性。列表均不含 content 字段。",
@@ -325,29 +335,31 @@ export const API_DOCS_AUTH_HINTS: Record<string, Partial<Record<string, string>>
     PATCH: "无需 Bearer。Body：{ password } 或 { passwordTransport }，用于密码保护文章解锁验证。",
   },
   "/api/comments": {
-    POST: "可选 Bearer（匿名亦可）。Body：postId、content；匿名可带 authorName/authorEmail；登录写入 authorId。含限流防刷（429 + Retry-After）。",
+    GET: "公开。Query：postId（必填）。返回 approved，以及仍有可见子回复的 deleted 父评论占位（isDeleted）；树形最多两层；响应不含 authorEmail/ipAddress/userAgent；total 不计软删占位。",
+    POST: "可选 Bearer（匿名亦可）。Body：postId、content；可选 parentId（须同文章且父评论为已通过的根；deleted 父评论不可再回复）。含反垃圾（高风险词/多链接/刷屏/链接占比等）与限流。非 spam 时写入站内通知：根评论→文章作者；回复→被回复者+文章作者（去重、排除自身）。",
   },
   "/api/posts/{id}/share": {
     POST: "可选 Bearer。匿名亦可调用；按 IP/用户+文章限流，且仅已发布非 private 文章允许打点。",
   },
   "/api/categories": {
     GET: "必须：Authorization: Bearer。支持 page/limit/sortBy/sortOrder/search/isActive/parentId。超级管理员可用 ownerId 指定租户，否则仅本人 ownerId。",
-    POST: "必须：Authorization: Bearer。Body 至少包含 name、slug；普通用户固定本人 ownerId，超级管理员可传 ownerId。",
+    POST: "必须：Authorization: Bearer，且 role 为 author / admin / super_admin。Body 至少包含 name、slug；普通作者固定本人 ownerId，超级管理员可传 ownerId。",
   },
   "/api/categories/{id}": {
     GET: "必须：Authorization: Bearer。普通用户仅可访问本人 ownerId；超级管理员可跨 ownerId。",
-    PUT: "必须：Authorization: Bearer。普通用户仅可改本人 ownerId；超级管理员可跨 ownerId，name/slug 在所属 ownerId 内校验 409。",
+    PUT: "必须：Authorization: Bearer，且 role 为 author / admin / super_admin。普通作者仅可改本人 ownerId；超级管理员可跨 ownerId，name/slug 在所属 ownerId 内校验 409。",
     DELETE:
-      "必须：Authorization: Bearer。普通用户仅可删本人 ownerId；超级管理员可跨 ownerId；若存在子分类或关联文章返回 409。",
+      "必须：Authorization: Bearer，且 role 为 author / admin / super_admin。普通作者仅可删本人 ownerId；超级管理员可跨 ownerId；若存在子分类或关联文章返回 409。",
   },
   "/api/tags": {
     GET: "必须：Authorization: Bearer。支持 page/limit/sortBy/sortOrder/search/isActive。超级管理员可用 ownerId 指定租户，否则仅本人 ownerId。",
-    POST: "必须：Authorization: Bearer。Body 至少包含 name、slug；普通用户固定本人 ownerId，超级管理员可传 ownerId。",
+    POST: "必须：Authorization: Bearer，且 role 为 author / admin / super_admin。Body 至少包含 name、slug；普通作者固定本人 ownerId，超级管理员可传 ownerId。",
   },
   "/api/tags/{id}": {
     GET: "必须：Authorization: Bearer。普通用户仅可访问本人 ownerId；超级管理员可跨 ownerId。",
-    PUT: "必须：Authorization: Bearer。普通用户仅可改本人 ownerId；超级管理员可跨 ownerId，name/slug 在所属 ownerId 内校验 409。",
-    DELETE: "必须：Authorization: Bearer。普通用户仅可删本人 ownerId；超级管理员可跨 ownerId；若存在关联文章返回 409。",
+    PUT: "必须：Authorization: Bearer，且 role 为 author / admin / super_admin。普通作者仅可改本人 ownerId；超级管理员可跨 ownerId，name/slug 在所属 ownerId 内校验 409。",
+    DELETE:
+      "必须：Authorization: Bearer，且 role 为 author / admin / super_admin。普通作者仅可删本人 ownerId；超级管理员可跨 ownerId；若存在关联文章返回 409。",
   },
   "/api/notifications": {
     GET: "必须：Authorization: Bearer。普通用户仅可读本人通知；超级管理员可用 query.userId 跨用户查询。",

@@ -12,6 +12,7 @@ import { useAuth } from "@/lib/contexts/auth-context";
 import { useProfileDict } from "@/lib/contexts/profile-dict-context";
 import { isTextReady, pickText } from "@/lib/i18n/pick-text";
 import { message } from "@/lib/utils";
+import { clientApiFetch, hasClientAccessToken } from "@/lib/utils/client-api-fetch";
 import type { ApiResponse, UserProfile } from "@/types/blog";
 
 interface ProfileOverviewProps {
@@ -55,8 +56,7 @@ export default function ProfileOverview({ lang }: ProfileOverviewProps) {
       setFailed(false);
       return;
     }
-    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-    if (!token) {
+    if (!hasClientAccessToken()) {
       setProfile(null);
       setLoading(false);
       setFailed(false);
@@ -65,9 +65,7 @@ export default function ProfileOverview({ lang }: ProfileOverviewProps) {
     setLoading(true);
     setFailed(false);
     try {
-      const res = await fetch("/api/profile", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await clientApiFetch("/api/profile");
       const json = (await res.json()) as ApiResponse<UserProfile>;
       if (!json.success || !json.data) {
         message.error(json.message || t.loadFailed);

@@ -112,7 +112,7 @@ export function ApiDocsAuthPanel({
             startContent={<RefreshCw className="h-4 w-4" />}
             onPress={() => {
               syncBearerFromStorage();
-              message.success("已从 localStorage 同步 accessToken");
+              message.success("已从会话同步 accessToken");
             }}
           >
             同步全站已登录 Token

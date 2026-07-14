@@ -5,7 +5,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { clientBearerHeaders } from "@/lib/utils/client-bearer-auth";
+import { clientApiFetch } from "@/lib/utils/client-api-fetch";
 import {
   ApiResponse,
   CreateTagRequest,
@@ -101,9 +101,7 @@ export function useTags(options: UseTagsOptions = {}): UseTagsReturn {
           queryParams.set("isActive", currentIsActive.toString());
         }
 
-        const response = await fetch(`/api/tags?${queryParams.toString()}`, {
-          headers: { ...clientBearerHeaders() },
-        });
+        const response = await clientApiFetch(`/api/tags?${queryParams.toString()}`);
         const result: ApiResponse<PaginatedResponseData<Tag>> = await response.json();
 
         if (!response.ok || !result.success) {
@@ -132,12 +130,9 @@ export function useTags(options: UseTagsOptions = {}): UseTagsReturn {
       setError(null);
 
       try {
-        const response = await fetch("/api/tags", {
+        const response = await clientApiFetch("/api/tags", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...clientBearerHeaders(),
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(data),
         });
 
@@ -171,12 +166,9 @@ export function useTags(options: UseTagsOptions = {}): UseTagsReturn {
       setError(null);
 
       try {
-        const response = await fetch(`/api/tags/${id}`, {
+        const response = await clientApiFetch(`/api/tags/${id}`, {
           method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            ...clientBearerHeaders(),
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(data),
         });
 
@@ -210,10 +202,7 @@ export function useTags(options: UseTagsOptions = {}): UseTagsReturn {
       setError(null);
 
       try {
-        const response = await fetch(`/api/tags/${id}`, {
-          method: "DELETE",
-          headers: { ...clientBearerHeaders() },
-        });
+        const response = await clientApiFetch(`/api/tags/${id}`, { method: "DELETE" });
 
         const result: ApiResponse<null> = await response.json();
 

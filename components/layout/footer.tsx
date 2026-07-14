@@ -13,6 +13,7 @@ import { useAuth } from "@/lib/contexts/auth-context";
 import { useClientDictionary } from "@/lib/hooks/use-client-dictionary";
 import { useNewsletterGuestSubscription } from "@/lib/hooks/useNewsletterGuestSubscription";
 import { message } from "@/lib/utils";
+import { clientApiFetch } from "@/lib/utils/client-api-fetch";
 
 /** 与 middleware 默认语言保持一致，避免在非 [lang] 段误用 Footer 时链接无效 */
 const FALLBACK_LANG = "zh-CN";
@@ -107,12 +108,10 @@ export function Footer() {
 
     try {
       setSubmitting(true);
-      const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : "";
-      const response = await fetch("/api/subscriptions", {
+      const response = await clientApiFetch("/api/subscriptions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
           email: targetEmail,
@@ -139,12 +138,10 @@ export function Footer() {
     if (!loginEmail) return;
     try {
       setSubmitting(true);
-      const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : "";
-      const response = await fetch("/api/subscriptions", {
+      const response = await clientApiFetch("/api/subscriptions", {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({ email: loginEmail.trim().toLowerCase() }),
       });

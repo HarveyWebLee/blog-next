@@ -3,14 +3,11 @@ import { and, count, desc, eq, gte, inArray, like, lte, or } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { comments, posts, users } from "@/lib/db/schema";
-import {
-  apiMessage,
-  jsonRateLimitError,
-  localizedErrorResponse,
-  localizedSuccessResponse,
-} from "@/lib/i18n/api-response";
+import { apiMessage } from "@/lib/i18n/api-response";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { notifyRouteUnhandledError } from "@/lib/server/route-alert";
+import { deleteCommentsPreferSoftParent } from "@/lib/services/comment.service";
+import { notifyOnCommentModeration } from "@/lib/services/notification.service";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
 import { requireInMemorySuperRoot } from "@/lib/utils/authz";
 import type { ApiResponse, CommentStatus, PaginatedResponseData } from "@/types/blog";
@@ -50,7 +47,7 @@ async function handleAdminCommentsGET(request: NextRequest) {
     const postId = Number(searchParams.get("postId") || "");
     const dateFrom = (searchParams.get("dateFrom") || "").trim();
     const dateTo = (searchParams.get("dateTo") || "").trim();
-    const validStatuses: CommentStatus[] = ["pending", "approved", "spam"];
+    const validStatuses: CommentStatus[] = ["pending", "approved", "spam", "deleted"];
 
     const whereConditions = [];
     if (validStatuses.includes(status as CommentStatus)) {
@@ -141,6 +138,7 @@ async function handleAdminCommentsGET(request: NextRequest) {
  * PATCH /api/admin/comments
  * 批量更新评论审核状态（仅超级管理员可访问）
  * Body: { ids: number[]; status: "pending" | "approved" | "spam"; reason?: string }
+ * approved/spam 时对有 authorId 的评论作者写入站内通知。
  */
 async function handleAdminCommentsPATCH(request: NextRequest) {
   const gate = requireInMemorySuperRoot(request);
@@ -174,7 +172,18 @@ async function handleAdminCommentsPATCH(request: NextRequest) {
   }
 
   try {
-    const exists = await db.select({ id: comments.id }).from(comments).where(inArray(comments.id, ids));
+    const exists = await db
+      .select({
+        id: comments.id,
+        postId: comments.postId,
+        authorId: comments.authorId,
+        status: comments.status,
+        postSlug: posts.slug,
+        postTitle: posts.title,
+      })
+      .from(comments)
+      .leftJoin(posts, eq(comments.postId, posts.id))
+      .where(inArray(comments.id, ids));
     if (exists.length === 0) {
       return NextResponse.json<ApiResponse>(
         { success: false, message: apiMessage(request, "admin.commentNotFound"), timestamp: new Date().toISOString() },
@@ -182,6 +191,8 @@ async function handleAdminCommentsPATCH(request: NextRequest) {
       );
     }
     const existingIds = exists.map((item) => item.id);
+    const reason = typeof body.reason === "string" ? body.reason.trim().slice(0, 200) : undefined;
+
     await db
       .update(comments)
       .set({ status: nextStatus, updatedAt: new Date() })
@@ -194,10 +205,26 @@ async function handleAdminCommentsPATCH(request: NextRequest) {
       metadata: {
         ids: existingIds,
         status: nextStatus,
-        reason: typeof body.reason === "string" ? body.reason.trim().slice(0, 200) : undefined,
+        reason,
       },
       request,
     });
+
+    await Promise.all(
+      exists.map((row) =>
+        notifyOnCommentModeration({
+          commentId: row.id,
+          postId: row.postId,
+          postSlug: row.postSlug || "",
+          postTitle: row.postTitle || "",
+          commentAuthorId: row.authorId,
+          nextStatus,
+          previousStatus: row.status as CommentStatus,
+          reason,
+        })
+      )
+    );
+
     return NextResponse.json<ApiResponse>({
       success: true,
       data: { ids: existingIds, status: nextStatus, updatedCount: existingIds.length },
@@ -213,6 +240,7 @@ async function handleAdminCommentsPATCH(request: NextRequest) {
  * DELETE /api/admin/comments
  * 批量删除评论（仅超级管理员可访问）
  * Body: { ids: number[] }
+ * 若根评论仍有未删除子评论则软删为 deleted 占位；否则硬删。写入 COMMENT_BATCH_DELETED 审计。
  */
 async function handleAdminCommentsDELETE(request: NextRequest) {
   const gate = requireInMemorySuperRoot(request);
@@ -235,18 +263,31 @@ async function handleAdminCommentsDELETE(request: NextRequest) {
   }
 
   try {
-    const exists = await db.select({ id: comments.id }).from(comments).where(inArray(comments.id, ids));
-    if (exists.length === 0) {
+    const { softDeletedIds, hardDeletedIds } = await deleteCommentsPreferSoftParent(ids);
+    if (softDeletedIds.length === 0 && hardDeletedIds.length === 0) {
       return NextResponse.json<ApiResponse>(
         { success: false, message: apiMessage(request, "admin.commentNotFound"), timestamp: new Date().toISOString() },
         { status: 404 }
       );
     }
-    const existingIds = exists.map((item) => item.id);
-    await db.delete(comments).where(inArray(comments.id, existingIds));
+
+    const allIds = [...softDeletedIds, ...hardDeletedIds];
+    logUserActivity({
+      userId: gate.user.userId,
+      action: UserActivityAction.COMMENT_BATCH_DELETED,
+      description: `批量删除评论（硬删 ${hardDeletedIds.length} / 软删占位 ${softDeletedIds.length}）`,
+      metadata: { ids: allIds, softDeletedIds, hardDeletedIds },
+      request,
+    });
+
     return NextResponse.json<ApiResponse>({
       success: true,
-      data: { ids: existingIds, deletedCount: existingIds.length },
+      data: {
+        ids: allIds,
+        deletedCount: allIds.length,
+        softDeletedIds,
+        hardDeletedIds,
+      },
       message: apiMessage(request, "admin.batchCommentDeleteSuccess"),
       timestamp: new Date().toISOString(),
     });

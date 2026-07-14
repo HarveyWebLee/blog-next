@@ -14,10 +14,12 @@
 
 import { NextResponse, type NextRequest } from "next/server";
 
-import { defaultServiceUnavailableMessage } from "@/lib/i18n/api-response";
+import { defaultServiceUnavailableMessage, jsonRateLimitError } from "@/lib/i18n/api-response";
 import { getRequestLocale } from "@/lib/i18n/locale";
+import { getApiRateLimitConfig } from "@/lib/server/api-rate-limit";
 import { sanitizeLogMessage, sanitizeLogMeta } from "@/lib/server/log-redaction";
 import { logger } from "@/lib/server/logger";
+import { checkRateLimit, getClientIp } from "@/lib/utils/request-rate-limit";
 
 /** 兼容动态路由的 `context`（Next 15：`params` 为 Promise） */
 export type AppRouteHandler = (request: NextRequest, context?: any) => Promise<Response>;
@@ -70,7 +72,10 @@ export type DefineApiHandlersOptions = {
   }) => Response | void | Promise<Response | void>;
 };
 
-function defaultRedactError(input: ErrorLogInput): { message: string; meta: Record<string, unknown> } {
+function defaultRedactError(input: ErrorLogInput): {
+  message: string;
+  meta: Record<string, unknown>;
+} {
   const baseMessage = input.error instanceof Error ? input.error.message : String(input.error);
   return {
     message: sanitizeLogMessage(baseMessage),
@@ -89,6 +94,18 @@ function wrapHandler(method: string, fn: AppRouteHandler, options?: DefineApiHan
     const path = request.nextUrl.pathname;
     const t0 = Date.now();
 
+    const rateLimitConfig = getApiRateLimitConfig();
+    const globalLimiter = checkRateLimit(
+      `api:ip:${getClientIp(request)}`,
+      rateLimitConfig.maxRequests,
+      rateLimitConfig.windowMs
+    );
+    if (!globalLimiter.allowed) {
+      const response = jsonRateLimitError(request, globalLimiter.retryAfterSeconds);
+      logger.httpAccess(method, path, response.status, Date.now() - t0);
+      return response;
+    }
+
     try {
       const response = await fn(request, context);
       logger.httpAccess(method, path, response.status, Date.now() - t0);
@@ -98,13 +115,24 @@ function wrapHandler(method: string, fn: AppRouteHandler, options?: DefineApiHan
       const redacted = defaultRedactError({ method, path, ms, error });
       const custom = options?.redactError?.({ method, path, ms, error });
       const message = custom?.message ? sanitizeLogMessage(custom.message) : redacted.message;
-      const meta = sanitizeLogMeta({ ...redacted.meta, ...(custom?.meta || {}) });
+      const meta = sanitizeLogMeta({
+        ...redacted.meta,
+        ...(custom?.meta || {}),
+      });
 
       logger.error("http", message, meta);
 
       if (options?.onError) {
         try {
-          await options.onError({ method, path, ms, status: 500, message, meta, error });
+          await options.onError({
+            method,
+            path,
+            ms,
+            status: 500,
+            message,
+            meta,
+            error,
+          });
         } catch (hookError) {
           logger.warn("http", "onError hook failed", {
             method,

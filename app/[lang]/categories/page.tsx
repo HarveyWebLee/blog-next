@@ -43,6 +43,7 @@ import { CategoryTreeSelect } from "@/components/ui/category-tree-select";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { useCategories } from "@/lib/hooks/useCategories";
 import { generateRandomUrlAlias, message } from "@/lib/utils";
+import { canManageTaxonomyClient } from "@/lib/utils/authz";
 import { clientBearerHeaders } from "@/lib/utils/client-bearer-auth";
 import { Locale } from "@/types";
 import { ApiResponse, Category } from "@/types/blog";
@@ -109,7 +110,7 @@ const CATEGORY_PAGE_TEXT: Record<
 > = {
   "zh-CN": {
     manageTitle: "分类管理",
-    manageDesc: "管理分类的创建、编辑、删除和状态控制",
+    manageDesc: "作者或管理员可管理分类的创建、编辑、删除和状态控制",
     enterManage: "进入管理",
     totalCategories: "总分类数",
     totalPosts: "总文章数",
@@ -163,7 +164,7 @@ const CATEGORY_PAGE_TEXT: Record<
   },
   "en-US": {
     manageTitle: "Category Management",
-    manageDesc: "Manage category create, edit, delete, and status",
+    manageDesc: "Authors or admins can create, edit, delete, and control category status",
     enterManage: "Manage",
     totalCategories: "Total Categories",
     totalPosts: "Total Posts",
@@ -217,7 +218,7 @@ const CATEGORY_PAGE_TEXT: Record<
   },
   "ja-JP": {
     manageTitle: "カテゴリー管理",
-    manageDesc: "カテゴリーの作成・編集・削除と状態管理",
+    manageDesc: "著者または管理者がカテゴリーの作成・編集・削除と状態管理を行えます",
     enterManage: "管理へ",
     totalCategories: "カテゴリー総数",
     totalPosts: "記事総数",
@@ -547,6 +548,7 @@ function SearchAndFilter({
   showOnlyActive,
   onToggleActive,
   onCreateCategory,
+  canManage,
   t,
 }: {
   searchQuery: string;
@@ -554,6 +556,7 @@ function SearchAndFilter({
   showOnlyActive: boolean;
   onToggleActive: (show: boolean) => void;
   onCreateCategory: () => void;
+  canManage: boolean;
   t: (typeof CATEGORY_PAGE_TEXT)[Locale];
 }) {
   return (
@@ -587,9 +590,11 @@ function SearchAndFilter({
             >
               {t.onlyActive}
             </Button>
-            <Button size="sm" color="primary" startContent={<Plus className="w-4 h-4" />} onPress={onCreateCategory}>
-              {t.createCategory}
-            </Button>
+            {canManage ? (
+              <Button size="sm" color="primary" startContent={<Plus className="w-4 h-4" />} onPress={onCreateCategory}>
+                {t.createCategory}
+              </Button>
+            ) : null}
           </div>
         </div>
       </CardBody>
@@ -604,7 +609,8 @@ export default function CategoriesPage() {
   const router = useRouter();
   const params = useParams<{ lang: string }>();
   const locale = resolveLocale(params.lang);
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const canManageTaxonomy = canManageTaxonomyClient(user);
   const t = CATEGORY_PAGE_TEXT[locale];
   // 使用分类数据管理 Hook
   const {
@@ -691,6 +697,7 @@ export default function CategoriesPage() {
 
   const openCreateModal = () => {
     if (!isAuthenticated) return void router.push(`/${locale}/auth/login`);
+    if (!canManageTaxonomy) return void message.warning(t.manageDesc);
     setEditingCategory(null);
     setFormData({
       name: "",
@@ -703,6 +710,7 @@ export default function CategoriesPage() {
   };
   const openEditModal = (category: Category) => {
     if (!isAuthenticated) return void router.push(`/${locale}/auth/login`);
+    if (!canManageTaxonomy) return void message.warning(t.manageDesc);
     setEditingCategory(category);
     setFormData({
       name: category.name || "",
@@ -715,6 +723,7 @@ export default function CategoriesPage() {
   };
   const openDeleteModal = (category: Category) => {
     if (!isAuthenticated) return void router.push(`/${locale}/auth/login`);
+    if (!canManageTaxonomy) return void message.warning(t.manageDesc);
     setDeletingCategory(category);
     setIsDeleteOpen(true);
   };
@@ -785,6 +794,7 @@ export default function CategoriesPage() {
         showOnlyActive={showOnlyActive}
         onToggleActive={setShowOnlyActive}
         onCreateCategory={openCreateModal}
+        canManage={canManageTaxonomy}
         t={t}
       />
 
@@ -815,8 +825,8 @@ export default function CategoriesPage() {
                   category={category}
                   locale={locale}
                   t={t}
-                  onEdit={openEditModal}
-                  onDelete={openDeleteModal}
+                  onEdit={canManageTaxonomy ? openEditModal : undefined}
+                  onDelete={canManageTaxonomy ? openDeleteModal : undefined}
                 />
               ))}
             </div>

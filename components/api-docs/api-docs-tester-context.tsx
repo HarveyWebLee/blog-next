@@ -2,11 +2,13 @@
 
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 
+import { getClientAccessToken } from "@/lib/utils/client-bearer-auth";
+
 type ApiDocsTesterContextValue = {
   /** 供「测试接口」模态框默认填入 Authorization: Bearer … */
   bearerToken: string;
   setBearerToken: (token: string) => void;
-  /** 用当前 localStorage 的 accessToken 覆盖（与全站登录态同步） */
+  /** 用当前会话 accessToken 覆盖（与全站登录态同步） */
   syncBearerFromStorage: () => void;
 };
 
@@ -14,13 +16,10 @@ type ApiDocsTesterContextValue = {
 export const ApiDocsTesterContext = createContext<ApiDocsTesterContextValue | null>(null);
 
 export function ApiDocsTesterProvider({ children }: { children: ReactNode }) {
-  const [bearerToken, setBearerTokenState] = useState(() =>
-    typeof window !== "undefined" ? (localStorage.getItem("accessToken") ?? "") : ""
-  );
+  const [bearerToken, setBearerTokenState] = useState(() => getClientAccessToken() ?? "");
 
   const syncBearerFromStorage = useCallback(() => {
-    if (typeof window === "undefined") return;
-    setBearerTokenState(localStorage.getItem("accessToken") ?? "");
+    setBearerTokenState(getClientAccessToken() ?? "");
   }, []);
 
   const setBearerToken = useCallback((token: string) => {
@@ -40,9 +39,9 @@ export function useApiDocsTesterOptional(): ApiDocsTesterContextValue | null {
 }
 
 export function useApiDocsTester(): ApiDocsTesterContextValue {
-  const ctx = useApiDocsTesterOptional();
+  const ctx = useContext(ApiDocsTesterContext);
   if (!ctx) {
-    throw new Error("useApiDocsTester 须在 ApiDocsTesterProvider 内使用");
+    throw new Error("useApiDocsTester must be used within ApiDocsTesterProvider");
   }
   return ctx;
 }

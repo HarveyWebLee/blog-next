@@ -19,7 +19,7 @@
 | **blog-edge**（**`--profile edge`**） | **80** / **443**（`EDGE_HTTP_PORT` / `EDGE_HTTPS_PORT`） | 80 / 443   | 与 `APP_PORT` 独立           |
 
 应用在容器内始终监听 **3000**；本地无网关时浏览器访问 **`http://localhost:13001`**（前台路由带语言前缀，如 `/zh-CN`）。  
-**`NEXT_PUBLIC_APP_URL`** 在模板中默认与 **13001** 对齐；**`CORS_ORIGIN`** 亦出现在部署模板中，但**当前 Next 应用代码尚未读取该变量**（预留/文档对齐用，见 [项目TODO.md](./项目TODO.md) §八）。**生产启用 `edge` 且走域名 HTTPS 时**，须将 **`NEXT_PUBLIC_APP_URL`**（及后续若接入 CORS 时的 **`CORS_ORIGIN`**）改为 **`https://你的域名`**（与浏览器地址栏一致，见 **§7.7**）。
+**`NEXT_PUBLIC_APP_URL`** 在模板中默认与 **13001** 对齐。**`CORS_ORIGIN`** 已作为 API CORS 白名单生效：仅在浏览器前端与 API 为**不同 Origin**时填写实际前端 Origin，可用逗号分隔多个完整 Origin，不支持 `*` 或路径；同源部署可留空。**生产启用 `edge` 且走域名 HTTPS 时**，须将 **`NEXT_PUBLIC_APP_URL`** 改为 **`https://你的域名`**（与浏览器地址栏一致，见 **§7.7**）。
 
 **生产建议**：公网仅暴露 **80 / 443**（**`blog-edge`**）；**`blog-web` 的 `APP_PORT`** 可不映射到公网，由 **`blog-edge`** 在 **`blog-net`** 内反代至 **`http://blog-next-app:3000`**（与 `blog-web` 的 **`container_name`** 一致，见 **`deploy/secrets/edge.example/app_upstream`**）。
 
@@ -63,7 +63,7 @@ cp deploy/env.docker.example deploy/.env.docker
 用编辑器修改 **`deploy/.env.docker`**：
 
 - **`MYSQL_ROOT_PASSWORD`**、**`JWT_SECRET`**、**`JWT_REFRESH_SECRET`**：生产必须改为强随机值。
-- **`NEXT_PUBLIC_APP_URL`**、**`CORS_ORIGIN`**：与对外访问 URL 一致（默认本地 **13001**）。
+- **`NEXT_PUBLIC_APP_URL`**：与对外访问 URL 一致（默认本地 **13001**）；若独立前端调用 API，再将 **`CORS_ORIGIN`** 设为该前端的完整 Origin（同源留空）。
 - **`DB_USER`** / **`DB_PASSWORD`** / **`DB_NAME`**：需与 MySQL 初始化一致。
 - **`MINIO_ROOT_USER`** / **`MINIO_ROOT_PASSWORD`** / **`MINIO_BUCKET`**：MinIO 必填；合并本仓库 MinIO 相关改动后，若服务器上已有旧版 `.env.docker`，需**手工补全**上述键，否则 `compose up` 会报错。
 - 启用 **`blog-edge`** 时：在 **`deploy/.env.docker`** 设置 **`EDGE_SECRETS_DIR=./deploy/secrets/edge`**，并自 **`deploy/secrets/edge.example/`** 复制出 **`deploy/secrets/edge/`** 后填入真实域名与邮箱（见 **§9.1b**）。
@@ -362,7 +362,7 @@ chown -R deployer:deployer /home/deployer/.ssh
 
 启用 **`blog-edge`** 后，服务器上的 **`deploy/.env.docker`** 须与浏览器访问方式一致，至少：
 
-- **`NEXT_PUBLIC_APP_URL`**、**`CORS_ORIGIN`**：`https://你的主域名`（或含路径前缀的正式对外 URL）。
+- **`NEXT_PUBLIC_APP_URL`**：`https://你的主域名`（或含路径前缀的正式对外 URL）；仅独立前端调用 API 时设置 **`CORS_ORIGIN`**，值为该前端 Origin，不能包含路径。
 - **MinIO 浏览器可访问的公网地址**：**`MINIO_PUBLIC_BASE_URL`** / **`NEXT_PUBLIC_MINIO_PUBLIC_BASE_URL`** 若为外链图片，须为 **HTTPS** 可达地址（子域或同域反代路径需与 Nginx 路由设计一致）。
 
 修改后需 **`docker compose ... up -d --build blog-web`**（或流水线等价步骤）使 Next 构建期/运行期读取到新值。
@@ -400,13 +400,14 @@ chown -R deployer:deployer /home/deployer/.ssh
 #### 7.8.3 回退时环境变量调整
 
 1. 主站：
-   - `NEXT_PUBLIC_APP_URL`、`CORS_ORIGIN` 在 L1 改为 `http://<domain>`；
+   - `NEXT_PUBLIC_APP_URL` 在 L1 改为 `http://<domain>`；若存在独立前端，其 `CORS_ORIGIN` 同步改为该前端的 HTTP Origin；
    - L2 改为 `http://<server-ip>:${APP_PORT}`。
 2. MinIO 对外地址：
    - L1 改为 HTTP 域名地址；
    - L2 改为 `http://<server-ip>:${MINIO_API_PUBLISH_PORT}`。
 3. 将 **`deploy/secrets/edge/tls_mode`** 改为 **`http_only`** 后执行 **`docker compose ... restart blog-edge`**（或 **`up -d blog-edge`**），强制仅 HTTP；恢复 **`auto`** 并重启 **`blog-edge`** 后，若磁盘上已有有效证书则入口会加载 HTTPS 配置。
-4. 完成后执行：
+4. **登录可用性**：应用侧 refresh Cookie 的 `Secure` 默认跟随协议；明文 HTTP 下不加 `Secure`，且密码传输强制在 HTTP 请求上自动放宽（无需改 `PASSWORD_TRANSPORT_REQUIRED`）。若反代未传 `X-Forwarded-Proto` 却误判，可设 `AUTH_COOKIE_SECURE=false`。
+5. 完成后执行：
    - `docker compose --env-file deploy/.env.docker up -d --build blog-web`
    - `docker compose --env-file deploy/.env.docker --profile edge up -d blog-edge`
 
@@ -414,7 +415,7 @@ chown -R deployer:deployer /home/deployer/.ssh
 
 1. 先恢复域名与 DNS（确认 A/AAAA 生效、80/443 可达）。
 2. 再恢复证书链路（**`blog-edge`** 日志确认签发/续期成功）。
-3. 将 `NEXT_PUBLIC_APP_URL`、`CORS_ORIGIN`、MinIO 对外 URL 改回 HTTPS 域名。
+3. 将 `NEXT_PUBLIC_APP_URL`、独立前端的 `CORS_ORIGIN`（若配置）与 MinIO 对外 URL 改回 HTTPS 地址。
 4. 重建 **`blog-web`** 并重启 **`blog-edge`**。
 5. 按 **§9.11 故障演练清单**做完整验证。
 
@@ -441,7 +442,7 @@ cp deploy/env.docker.example deploy/.env.docker
 编辑 `deploy/.env.docker`，至少确认以下键：
 
 - 基础：`MYSQL_ROOT_PASSWORD`、`REDIS_PASSWORD`、`JWT_SECRET`、`JWT_REFRESH_SECRET`
-- 对外地址：`NEXT_PUBLIC_APP_URL`、`CORS_ORIGIN`
+- 对外地址：`NEXT_PUBLIC_APP_URL`；独立前端场景另配 `CORS_ORIGIN`
 - MinIO：`MINIO_ROOT_USER`、`MINIO_ROOT_PASSWORD`、`MINIO_BUCKET`、`MINIO_PUBLIC_BASE_URL`、`NEXT_PUBLIC_MINIO_PUBLIC_BASE_URL`
 - 密码传输加固（生产）：
   - `PASSWORD_TRANSPORT_REQUIRED=true`
@@ -535,8 +536,9 @@ curl -sS -H "Authorization: Bearer <SUPER_ADMIN_ACCESS_TOKEN>" \
 ### 9.7 验证密码加固链路（建议）
 
 1. 打开登录页，正常输入账号密码应可登录。
-2. 浏览器 DevTools 网络面板确认登录请求 body 为 `passwordTransport`（而非明文 `password`）。
-3. 访问密码保护文章，解锁后 URL 参数应为 `?unlock=...`（不应再出现 `?password=...`）。
+2. **HTTPS**：浏览器 DevTools 网络面板确认登录请求 body 为 `passwordTransport`（而非明文 `password`）。
+3. **明文 HTTP（无证书）**：允许明文 `password`；Set-Cookie `blog_refresh_token` **不含** `Secure`。
+4. 访问密码保护文章，解锁后 URL 参数应为 `?unlock=...`（不应再出现 `?password=...`）。
 
 ### 9.8 常用回滚/重启命令
 
@@ -625,7 +627,7 @@ SUPER_ADMIN_TOKEN=<TOKEN> CHECK_URL=http://127.0.0.1:13001 bash scripts/deploy-p
 | MinIO 数据目录                                | 在 **`deploy/.env.docker`** 设置 **`MINIO_HOST_DATA_DIR`**（默认 **`./data/minio`**，相对路径相对于 **`docker-compose.yml`** 所在目录即仓库根）。已 **`.gitignore` `/data/minio/`**。Linux 注意目录权限与容器 UID。                                                                   |
 | macOS `mounts denied`（MinIO）                | 勿将 **`MINIO_HOST_DATA_DIR`** 设为 **`/data/minio`** 等根路径；Docker Desktop 未共享该路径。改为 **`./data/minio`**（仓库下）或 **`/Users/…/…`**，或在 Docker Desktop → Settings → Resources → File Sharing 添加允许路径（不推荐随意开放根目录）。                                   |
 | **`blog-edge` 首次签发证书失败**              | 核对 DNS 已指向本机、**80** 未被其他进程占用、安全组放通 **80/443**；`docker compose ... logs blog-edge`；确认 **`deploy/secrets/edge/`** 内域名、邮箱等文件无多余换行；站点仍可通过 **HTTP** 访问（Bootstrap）。                                                                     |
-| **证书失败后仍希望可用**                      | 按 **§7.8 / §9.8b**：**`tls_mode=http_only`** 或保持 **`auto`**（首次失败不落 HTTPS）；`NEXT_PUBLIC_APP_URL`、`CORS_ORIGIN` 与 MinIO 对外地址临时改 **HTTP**；随后 **`up -d --build blog-web`**。                                                                                     |
+| **证书失败后仍希望可用**                      | 按 **§7.8 / §9.8b**：**`tls_mode=http_only`** 或保持 **`auto`**（首次失败不落 HTTPS）；将 `NEXT_PUBLIC_APP_URL`、独立前端的 `CORS_ORIGIN`（若配置）与 MinIO 对外地址临时改为 **HTTP**；随后 **`up -d --build blog-web`**。                                                            |
 | **域名到期/不可用需要兜底**                   | 将主站与 MinIO 对外地址切至 `http://<server-ip>:<port>`（`APP_PORT`、`MINIO_API_PUBLISH_PORT`），并重建 **`blog-web`**；域名恢复后再切回 **HTTPS**。                                                                                                                                  |
 | **502 / 反代不到应用**（`blog-edge`）         | 确认 **`blog-web`** 已启动且与 **`blog-edge`** 同属 **`blog-net`**；默认上游为 **`http://blog-next-app:3000`**（见 **`app_upstream`** secret）。                                                                                                                                      |
 

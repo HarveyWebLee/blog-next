@@ -23,6 +23,7 @@ import { useAuth } from "@/lib/contexts/auth-context";
 import { useProfileDict } from "@/lib/contexts/profile-dict-context";
 import { isTextReady, pickText } from "@/lib/i18n/pick-text";
 import { message } from "@/lib/utils";
+import { clientApiFetch, hasClientAccessToken } from "@/lib/utils/client-api-fetch";
 import type { ApiResponse, PaginatedResponseData, UserActivity } from "@/types/blog";
 
 interface ProfileActivitiesProps {
@@ -99,17 +100,14 @@ export default function ProfileActivities({ lang }: ProfileActivitiesProps) {
     }
 
     const fetchActivities = async () => {
-      const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-      if (!token) {
+      if (!hasClientAccessToken()) {
         setActivities([]);
         setHasMore(false);
         setLoading(false);
         return;
       }
       try {
-        const response = await fetch(`/api/profile/activities?page=${page}&limit=5`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const response = await clientApiFetch(`/api/profile/activities?page=${page}&limit=5`);
         const json = (await response.json()) as ApiResponse<PaginatedResponseData<UserActivity>>;
         if (!json.success || !json.data) {
           message.error(json.message || t.empty);

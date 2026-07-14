@@ -1,5 +1,6 @@
 /**
- * 刷新访问令牌：支持数据库用户与超级管理员 root 会话。
+ * 刷新访问令牌：仅读取 HttpOnly Cookie `blog_refresh_token`。
+ * 须带 Cookie 且通过 Origin/Referer 校验；成功后轮换 Cookie。响应体只返回新的 accessToken。
  */
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
@@ -7,35 +8,58 @@ import { eq } from "drizzle-orm";
 import { ensureSuperAdminDbIdentity, isSuperAdminEnabled } from "@/lib/config/super-admin";
 import { db } from "@/lib/db/config";
 import { users } from "@/lib/db/schema";
+import { apiMessage } from "@/lib/i18n/api-response";
 import {
-  apiMessage,
-  jsonRateLimitError,
-  localizedErrorResponse,
-  localizedSuccessResponse,
-} from "@/lib/i18n/api-response";
+  attachRefreshTokenCookie,
+  clearRefreshTokenCookie,
+  readRefreshTokenCookie,
+} from "@/lib/server/auth-session-cookie";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
-import { logger } from "@/lib/server/logger";
+import { rejectIfMutationOriginDenied } from "@/lib/server/request-origin-guard";
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from "@/lib/utils/auth";
 import { ApiResponse } from "@/types/blog";
 
-type RefreshBody = {
-  refreshToken?: string;
-};
+function jsonRefreshFailure(
+  request: NextRequest,
+  messageKey: "auth.refreshTokenMissing" | "auth.invalidRefreshToken",
+  status: number
+): NextResponse {
+  const response = NextResponse.json<ApiResponse>(
+    {
+      success: false,
+      message: apiMessage(request, messageKey),
+      timestamp: new Date().toISOString(),
+    },
+    { status }
+  );
+  if (messageKey === "auth.invalidRefreshToken") {
+    clearRefreshTokenCookie(response, request);
+  }
+  return response;
+}
+
+function jsonAccessTokenResponse(request: NextRequest, token: string, newRefresh: string): NextResponse {
+  return attachRefreshTokenCookie(
+    NextResponse.json({
+      success: true,
+      message: apiMessage(request, "auth.refreshSuccess"),
+      data: { token },
+      timestamp: new Date().toISOString(),
+    }),
+    newRefresh,
+    request
+  );
+}
 
 async function handleAuthRefreshPOST(request: NextRequest) {
   try {
-    const body = (await request.json()) as RefreshBody;
-    const refreshToken = body.refreshToken;
-    if (!refreshToken || typeof refreshToken !== "string") {
-      return NextResponse.json<ApiResponse>(
-        {
-          success: false,
-          message: apiMessage(request, "auth.refreshTokenMissing"),
-          timestamp: new Date().toISOString(),
-        },
-        { status: 400 }
-      );
+    const refreshToken = readRefreshTokenCookie(request);
+    if (!refreshToken) {
+      return jsonRefreshFailure(request, "auth.refreshTokenMissing", 400);
     }
+
+    const denied = rejectIfMutationOriginDenied(request);
+    if (denied) return denied;
 
     let decoded: {
       userId: number;
@@ -46,25 +70,11 @@ async function handleAuthRefreshPOST(request: NextRequest) {
     try {
       decoded = verifyRefreshToken(refreshToken) as typeof decoded;
     } catch {
-      return NextResponse.json<ApiResponse>(
-        {
-          success: false,
-          message: apiMessage(request, "auth.invalidRefreshToken"),
-          timestamp: new Date().toISOString(),
-        },
-        { status: 401 }
-      );
+      return jsonRefreshFailure(request, "auth.invalidRefreshToken", 401);
     }
 
     if (typeof decoded.userId !== "number") {
-      return NextResponse.json<ApiResponse>(
-        {
-          success: false,
-          message: apiMessage(request, "auth.invalidRefreshToken"),
-          timestamp: new Date().toISOString(),
-        },
-        { status: 401 }
-      );
+      return jsonRefreshFailure(request, "auth.invalidRefreshToken", 401);
     }
 
     // 超级管理员 root 会话：统一使用真实 DB userId 刷新
@@ -103,12 +113,7 @@ async function handleAuthRefreshPOST(request: NextRequest) {
         role: "super_admin",
         isRoot: true,
       });
-      return NextResponse.json({
-        success: true,
-        message: apiMessage(request, "auth.refreshSuccess"),
-        data: { token, refreshToken: newRefresh },
-        timestamp: new Date().toISOString(),
-      });
+      return jsonAccessTokenResponse(request, token, newRefresh);
     }
 
     const rows = await db.select().from(users).where(eq(users.id, decoded.userId)).limit(1);
@@ -145,12 +150,7 @@ async function handleAuthRefreshPOST(request: NextRequest) {
       username: userData.username,
     });
 
-    return NextResponse.json({
-      success: true,
-      message: apiMessage(request, "auth.refreshSuccess"),
-      data: { token: accessToken, refreshToken: newRefresh },
-      timestamp: new Date().toISOString(),
-    });
+    return jsonAccessTokenResponse(request, accessToken, newRefresh);
   } catch (error) {
     throw error;
   }

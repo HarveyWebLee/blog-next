@@ -5,7 +5,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { clientBearerHeaders } from "@/lib/utils/client-bearer-auth";
+import { clientApiFetch } from "@/lib/utils/client-api-fetch";
 import { extractResponseErrorMessage, extractUnknownErrorMessage } from "@/lib/utils/client-error";
 import { ApiResponse, Category, CategoryQueryParams, PaginatedResponseData } from "@/types/blog";
 
@@ -83,8 +83,7 @@ export function useCategories(options: UseCategoriesOptions = {}): UseCategories
           ...(params.isActive !== undefined && { isActive: params.isActive.toString() }),
         });
 
-        const response = await fetch(`/api/categories?${queryParams}`, {
-          headers: { ...clientBearerHeaders() },
+        const response = await clientApiFetch(`/api/categories?${queryParams}`, {
           signal: abortController.signal,
         });
         const result: ApiResponse<PaginatedResponseData<Category>> = await response.json();

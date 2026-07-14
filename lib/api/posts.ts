@@ -3,7 +3,7 @@
  * 封装所有与文章相关的API调用
  */
 
-import { clientBearerHeaders } from "@/lib/utils/client-bearer-auth";
+import { clientApiFetch } from "@/lib/utils/client-api-fetch";
 import { CreatePostRequest, PaginatedResponse, PostData, PostQueryParams, UpdatePostRequest } from "@/types/blog";
 
 const API_BASE = "/api/posts";
@@ -36,11 +36,7 @@ export class PostsAPI {
     if (params.sortBy) searchParams.append("sortBy", params.sortBy);
     if (params.sortOrder) searchParams.append("sortOrder", params.sortOrder);
 
-    const response = await fetch(`${API_BASE}?${searchParams.toString()}`, {
-      headers: {
-        ...clientBearerHeaders(),
-      },
-    });
+    const response = await clientApiFetch(`${API_BASE}?${searchParams.toString()}`);
 
     if (!response.ok) {
       throw new Error(`获取文章列表失败: ${response.statusText}`);
@@ -53,7 +49,7 @@ export class PostsAPI {
    * 根据ID获取文章详情
    */
   static async getPostById(id: number): Promise<PostData> {
-    const response = await fetch(`${API_BASE}/${id}`);
+    const response = await clientApiFetch(`${API_BASE}/${id}`);
 
     if (!response.ok) {
       throw new Error(`获取文章详情失败: ${response.statusText}`);
@@ -66,7 +62,7 @@ export class PostsAPI {
    * 根据slug获取文章详情
    */
   static async getPostBySlug(slug: string): Promise<PostData> {
-    const response = await fetch(`${API_BASE}/slug/${slug}`);
+    const response = await clientApiFetch(`${API_BASE}/slug/${slug}`);
 
     if (!response.ok) {
       throw new Error(`获取文章详情失败: ${response.statusText}`);
@@ -79,12 +75,9 @@ export class PostsAPI {
    * 创建新文章
    */
   static async createPost(data: CreatePostRequest): Promise<PostData> {
-    const response = await fetch(API_BASE, {
+    const response = await clientApiFetch(API_BASE, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...clientBearerHeaders(),
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
 
@@ -99,12 +92,9 @@ export class PostsAPI {
    * 更新文章
    */
   static async updatePost(id: number, data: UpdatePostRequest): Promise<PostData> {
-    const response = await fetch(`${API_BASE}/${id}`, {
+    const response = await clientApiFetch(`${API_BASE}/${id}`, {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        ...clientBearerHeaders(),
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
 
@@ -119,12 +109,7 @@ export class PostsAPI {
    * 删除文章
    */
   static async deletePost(id: number): Promise<boolean> {
-    const response = await fetch(`${API_BASE}/${id}`, {
-      method: "DELETE",
-      headers: {
-        ...clientBearerHeaders(),
-      },
-    });
+    const response = await clientApiFetch(`${API_BASE}/${id}`, { method: "DELETE" });
 
     if (!response.ok) {
       throw new Error(`删除文章失败: ${response.statusText}`);
@@ -137,12 +122,9 @@ export class PostsAPI {
    * 更新文章状态
    */
   static async updatePostStatus(id: number, status: PostData["status"]): Promise<PostData> {
-    const response = await fetch(`${API_BASE}/${id}/status`, {
+    const response = await clientApiFetch(`${API_BASE}/${id}/status`, {
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        ...clientBearerHeaders(),
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
     });
 
@@ -157,9 +139,7 @@ export class PostsAPI {
    * 增加文章浏览次数
    */
   static async incrementViewCount(id: number): Promise<boolean> {
-    const response = await fetch(`${API_BASE}/${id}/view`, {
-      method: "POST",
-    });
+    const response = await clientApiFetch(`${API_BASE}/${id}/view`, { method: "POST" });
 
     if (!response.ok) {
       throw new Error(`增加浏览次数失败: ${response.statusText}`);
@@ -172,9 +152,7 @@ export class PostsAPI {
    * 增加文章点赞次数
    */
   static async incrementLikeCount(id: number): Promise<boolean> {
-    const response = await fetch(`${API_BASE}/${id}/like`, {
-      method: "POST",
-    });
+    const response = await clientApiFetch(`${API_BASE}/${id}/like`, { method: "POST" });
 
     if (!response.ok) {
       throw new Error(`增加点赞次数失败: ${response.statusText}`);
@@ -190,11 +168,7 @@ export class PostsAPI {
     if (!ids.length) return [];
     const uniq = Array.from(new Set(ids.map((n) => Math.floor(n)).filter((n) => Number.isFinite(n) && n > 0)));
     if (!uniq.length) return [];
-    const response = await fetch(`${API_BASE}/engagement?ids=${uniq.join(",")}`, {
-      headers: {
-        ...clientBearerHeaders(),
-      },
-    });
+    const response = await clientApiFetch(`${API_BASE}/engagement?ids=${uniq.join(",")}`, {});
     if (!response.ok) {
       throw new Error(`获取互动状态失败: ${response.statusText}`);
     }
@@ -206,12 +180,7 @@ export class PostsAPI {
    * 切换文章点赞状态（已点赞则取消）
    */
   static async toggleLike(id: number): Promise<{ liked: boolean; likeCount: number }> {
-    const response = await fetch(`${API_BASE}/${id}/like`, {
-      method: "POST",
-      headers: {
-        ...clientBearerHeaders(),
-      },
-    });
+    const response = await clientApiFetch(`${API_BASE}/${id}/like`, { method: "POST" });
     if (!response.ok) {
       throw new Error(`点赞操作失败: ${response.statusText}`);
     }
@@ -223,12 +192,7 @@ export class PostsAPI {
    * 切换文章收藏状态（已收藏则取消）
    */
   static async toggleFavorite(id: number): Promise<{ favorited: boolean; favoriteCount: number }> {
-    const response = await fetch(`${API_BASE}/${id}/favorite`, {
-      method: "POST",
-      headers: {
-        ...clientBearerHeaders(),
-      },
-    });
+    const response = await clientApiFetch(`${API_BASE}/${id}/favorite`, { method: "POST" });
     if (!response.ok) {
       throw new Error(`收藏操作失败: ${response.statusText}`);
     }

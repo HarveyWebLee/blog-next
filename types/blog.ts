@@ -128,11 +128,11 @@ export interface LoginRequest {
 
 /**
  * 用户登录响应接口
+ * refresh 仅通过 HttpOnly Cookie 下发，不再出现在 JSON 体中。
  */
 export interface LoginResponse {
   user: Omit<User, "password">;
   token: string;
-  refreshToken: string;
 }
 
 /** 超级管理员「账户管理」列表行（数据库用户，不含密码） */
@@ -382,7 +382,7 @@ export interface PostQueryParams extends PaginationParams {
 /**
  * 评论状态枚举
  */
-export type CommentStatus = "pending" | "approved" | "spam";
+export type CommentStatus = "pending" | "approved" | "spam" | "deleted";
 
 /**
  * 评论实体接口
@@ -396,6 +396,8 @@ export interface Comment extends BaseEntity {
   authorWebsite?: string;
   content: string;
   status: CommentStatus;
+  /** 父评论软删后的前台占位 */
+  isDeleted?: boolean;
   ipAddress?: string;
   userAgent?: string;
 

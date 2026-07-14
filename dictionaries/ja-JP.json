@@ -354,7 +354,14 @@
       "authorBadge": "作者",
       "allComments": "すべてのコメント",
       "noComments": "コメントはまだありません",
-      "beFirstComment": "最初のコメントを投稿して、あなたの考えを共有しましょう！"
+      "beFirstComment": "最初のコメントを投稿して、あなたの考えを共有しましょう！",
+      "reply": "返信",
+      "replyTo": "{name} に返信",
+      "cancelReply": "返信をキャンセル",
+      "replyPlaceholder": "返信を入力してください...",
+      "deletedCommentPlaceholder": "元のコメントは削除されました",
+      "deletedCommentAuthor": "削除済み",
+      "deletedCommentBadge": "削除済み"
     },
     "listPage": {
       "loadFailed": "読み込み失敗",
@@ -1012,6 +1019,7 @@
       "statusPending": "保留",
       "statusApproved": "承認",
       "statusSpam": "スパム",
+      "statusDeleted": "削除プレースホルダ",
       "searchPh": "コメント内容または記事タイトルで検索...",
       "filter": "絞り込み",
       "noData": "コメントがありません",
@@ -1026,6 +1034,8 @@
       "updateFailed": "更新に失敗しました",
       "delete": "削除",
       "deleted": "削除しました",
+      "softDeleted": "ソフト削除し、返信はプレースホルダ下に保持",
+      "deletedPlaceholder": "元のコメントは削除されました",
       "deleteFailed": "削除に失敗しました",
       "selectAllCurrent": "このページを全選択",
       "clearSelection": "選択解除",

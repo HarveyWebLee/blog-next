@@ -16,12 +16,17 @@ import {
   localizedSuccessResponse,
 } from "@/lib/i18n/api-response";
 import { getRequestLocale } from "@/lib/i18n/locale";
+import { attachRefreshTokenCookie } from "@/lib/server/auth-session-cookie";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { notifyRouteUnhandledError } from "@/lib/server/route-alert";
 import { generateAccessToken, generateRefreshToken, verifyPassword } from "@/lib/utils";
 import { checkRateLimit, getClientIp } from "@/lib/utils/request-rate-limit";
 import { ApiResponse, LoginResponse } from "@/types/blog";
 
+/**
+ * 用户登录（含超级管理员应急通道）。
+ * 成功后写入 HttpOnly `blog_refresh_token` Cookie；响应体仅返回 accessToken（`token`）与用户信息。
+ */
 async function handleAuthLoginPOST(request: NextRequest) {
   try {
     // 速率限制：5 次/15 分钟
@@ -33,7 +38,7 @@ async function handleAuthLoginPOST(request: NextRequest) {
 
     const body = (await request.json()) as Record<string, unknown>;
     const locale = getRequestLocale(request);
-    const secret = await resolveSecretFromBody({ body, plainField: "password", locale });
+    const secret = await resolveSecretFromBody({ body, plainField: "password", locale, request });
     if (!secret.ok) {
       return NextResponse.json<ApiResponse>(
         {
@@ -129,14 +134,17 @@ async function handleAuthLoginPOST(request: NextRequest) {
           ...(mergedAvatar !== undefined ? { avatar: mergedAvatar } : {}),
         },
         token: superAdminResult.accessToken,
-        refreshToken: superAdminResult.refreshToken,
       };
-      return NextResponse.json<ApiResponse<LoginResponse>>({
-        success: true,
-        message: apiMessage(request, "auth.loginSuccess"),
-        data: response,
-        timestamp: new Date().toISOString(),
-      });
+      return attachRefreshTokenCookie(
+        NextResponse.json<ApiResponse<LoginResponse>>({
+          success: true,
+          message: apiMessage(request, "auth.loginSuccess"),
+          data: response,
+          timestamp: new Date().toISOString(),
+        }),
+        superAdminResult.refreshToken,
+        request
+      );
     }
 
     // ② 数据库用户：先按用户名/邮箱命中行，再验密码；非 active 时明确提示（与刷新令牌逻辑一致）
@@ -200,15 +208,18 @@ async function handleAuthLoginPOST(request: NextRequest) {
     const response: LoginResponse = {
       user: userWithoutPassword as any,
       token: accessToken,
-      refreshToken: refreshToken,
     };
 
-    return NextResponse.json<ApiResponse<LoginResponse>>({
-      success: true,
-      message: apiMessage(request, "auth.loginSuccess"),
-      data: response,
-      timestamp: new Date().toISOString(),
-    });
+    return attachRefreshTokenCookie(
+      NextResponse.json<ApiResponse<LoginResponse>>({
+        success: true,
+        message: apiMessage(request, "auth.loginSuccess"),
+        data: response,
+        timestamp: new Date().toISOString(),
+      }),
+      refreshToken,
+      request
+    );
   } catch (error) {
     throw error;
   }

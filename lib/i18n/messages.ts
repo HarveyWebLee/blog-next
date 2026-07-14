@@ -138,6 +138,16 @@ export const API_MESSAGES = {
     "en-US": "Token refreshed successfully",
     "ja-JP": "トークンの更新に成功しました",
   },
+  "auth.logoutSuccess": {
+    "zh-CN": "已退出登录",
+    "en-US": "Signed out successfully",
+    "ja-JP": "ログアウトしました",
+  },
+  "auth.originRejected": {
+    "zh-CN": "请求来源不被允许",
+    "en-US": "Request origin is not allowed",
+    "ja-JP": "リクエスト元は許可されていません",
+  },
   "auth.accountUnavailable": {
     "zh-CN": "账户不可用",
     "en-US": "Account unavailable",
@@ -637,6 +647,88 @@ export const API_MESSAGES = {
     "en-US": "Failed to submit comment",
     "ja-JP": "コメントの送信に失敗しました",
   },
+  "comment.listSuccess": {
+    "zh-CN": "评论列表获取成功",
+    "en-US": "Comments retrieved",
+    "ja-JP": "コメント一覧を取得しました",
+  },
+  "comment.listFailed": {
+    "zh-CN": "评论列表获取失败",
+    "en-US": "Failed to retrieve comments",
+    "ja-JP": "コメント一覧の取得に失敗しました",
+  },
+  "comment.parentInvalid": {
+    "zh-CN": "无效的父评论 ID",
+    "en-US": "Invalid parent comment ID",
+    "ja-JP": "無効な親コメント ID です",
+  },
+  "comment.parentNotFound": {
+    "zh-CN": "父评论不存在",
+    "en-US": "Parent comment not found",
+    "ja-JP": "親コメントが見つかりません",
+  },
+  "comment.parentCrossPost": {
+    "zh-CN": "不能回复其他文章下的评论",
+    "en-US": "Cannot reply to a comment from another post",
+    "ja-JP": "別の記事のコメントには返信できません",
+  },
+  "comment.parentDepthExceeded": {
+    "zh-CN": "仅支持回复顶层评论（最多两层）",
+    "en-US": "Only top-level comments can be replied to (max two levels)",
+    "ja-JP": "トップレベルコメントへの返信のみ可能です（最大2階層）",
+  },
+  "comment.parentDeleted": {
+    "zh-CN": "原评论已删除，无法继续回复",
+    "en-US": "The original comment was deleted and can no longer be replied to",
+    "ja-JP": "元のコメントは削除済みのため返信できません",
+  },
+
+  // --- comment notifications（写入 user_notifications 的标题/正文）---
+  "notification.comment.replyTitle": {
+    "zh-CN": "你的评论收到了回复",
+    "en-US": "Someone replied to your comment",
+    "ja-JP": "あなたのコメントに返信がありました",
+  },
+  "notification.comment.replyContent": {
+    "zh-CN": "{actorName} 回复了你在《{postTitle}》下的评论：{preview}",
+    "en-US": "{actorName} replied to your comment on “{postTitle}”: {preview}",
+    "ja-JP": "{actorName} が「{postTitle}」のコメントに返信しました：{preview}",
+  },
+  "notification.comment.newTitle": {
+    "zh-CN": "文章收到了新评论",
+    "en-US": "New comment on your post",
+    "ja-JP": "記事に新しいコメントがあります",
+  },
+  "notification.comment.newContent": {
+    "zh-CN": "{actorName} 评论了《{postTitle}》：{preview}",
+    "en-US": "{actorName} commented on “{postTitle}”: {preview}",
+    "ja-JP": "{actorName} が「{postTitle}」にコメントしました：{preview}",
+  },
+  "notification.comment.approvedTitle": {
+    "zh-CN": "你的评论已通过审核",
+    "en-US": "Your comment was approved",
+    "ja-JP": "コメントが承認されました",
+  },
+  "notification.comment.approvedContent": {
+    "zh-CN": "你在《{postTitle}》下的评论已通过，现已公开展示。",
+    "en-US": "Your comment on “{postTitle}” was approved and is now public.",
+    "ja-JP": "「{postTitle}」へのコメントが承認され、公開されました。",
+  },
+  "notification.comment.rejectedTitle": {
+    "zh-CN": "你的评论未通过审核",
+    "en-US": "Your comment was not approved",
+    "ja-JP": "コメントは承認されませんでした",
+  },
+  "notification.comment.rejectedContent": {
+    "zh-CN": "你在《{postTitle}》下的评论未通过审核。原因：{reason}",
+    "en-US": "Your comment on “{postTitle}” was not approved. Reason: {reason}",
+    "ja-JP": "「{postTitle}」へのコメントは承認されませんでした。理由：{reason}",
+  },
+  "notification.comment.rejectedDefaultReason": {
+    "zh-CN": "未提供具体原因",
+    "en-US": "No reason provided",
+    "ja-JP": "理由は指定されていません",
+  },
 
   // --- category / tag ---
   "taxonomy.invalidCategoryId": {
@@ -673,6 +765,11 @@ export const API_MESSAGES = {
     "zh-CN": "分类删除成功",
     "en-US": "Category deleted",
     "ja-JP": "カテゴリを削除しました",
+  },
+  "taxonomy.manageForbidden": {
+    "zh-CN": "需要作者或管理员权限才能管理分类与标签",
+    "en-US": "Author or admin role is required to manage categories and tags",
+    "ja-JP": "カテゴリーとタグの管理には著者または管理者権限が必要です",
   },
   "taxonomy.nameSlugRequired": {
     "zh-CN": "分类名称和slug不能为空",

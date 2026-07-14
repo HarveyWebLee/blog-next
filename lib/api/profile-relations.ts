@@ -1,4 +1,4 @@
-import { clientBearerHeaders } from "@/lib/utils/client-bearer-auth";
+import { clientApiFetch } from "@/lib/utils/client-api-fetch";
 import type { ApiResponse, ProfileRelationItem, ProfileRelationListResponse } from "@/types/blog";
 
 export interface ProfileRelationsListResult {
@@ -26,11 +26,7 @@ export class ProfileRelationsAPI {
     if (params?.search) qs.set("search", params.search);
     if (params?.mutualOnly) qs.set("mutualOnly", "true");
 
-    const res = await fetch(`/api/profile/followers${qs.toString() ? `?${qs.toString()}` : ""}`, {
-      headers: {
-        ...clientBearerHeaders(),
-      },
-    });
+    const res = await clientApiFetch(`/api/profile/followers${qs.toString() ? `?${qs.toString()}` : ""}`);
 
     if (!res.ok) {
       throw new Error(`获取粉丝列表失败: ${res.status}`);
@@ -83,11 +79,7 @@ export class ProfileRelationsAPI {
     if (params?.search) qs.set("search", params.search);
     if (params?.mutualOnly) qs.set("mutualOnly", "true");
 
-    const res = await fetch(`/api/profile/following${qs.toString() ? `?${qs.toString()}` : ""}`, {
-      headers: {
-        ...clientBearerHeaders(),
-      },
-    });
+    const res = await clientApiFetch(`/api/profile/following${qs.toString() ? `?${qs.toString()}` : ""}`);
 
     if (!res.ok) {
       throw new Error(`获取关注列表失败: ${res.status}`);
@@ -129,12 +121,9 @@ export class ProfileRelationsAPI {
    * 关注用户
    */
   static async followUser(targetUserId: number): Promise<void> {
-    const res = await fetch("/api/profile/follow", {
+    const res = await clientApiFetch("/api/profile/follow", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...clientBearerHeaders(),
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ followingId: targetUserId }),
     });
     const json = (await res.json()) as ApiResponse<unknown>;
@@ -147,12 +136,7 @@ export class ProfileRelationsAPI {
    * 取消关注用户
    */
   static async unfollowUser(targetUserId: number): Promise<void> {
-    const res = await fetch(`/api/profile/follow/${targetUserId}`, {
-      method: "DELETE",
-      headers: {
-        ...clientBearerHeaders(),
-      },
-    });
+    const res = await clientApiFetch(`/api/profile/follow/${targetUserId}`, { method: "DELETE" });
     const json = (await res.json()) as ApiResponse<unknown>;
     if (!res.ok || !json.success) {
       throw new Error(json.message || "取消关注失败");

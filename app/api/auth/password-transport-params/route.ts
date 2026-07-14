@@ -16,7 +16,7 @@ import type { PasswordTransportPublicParams } from "@/lib/crypto/password-transp
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import type { ApiResponse } from "@/types/blog";
 
-async function handlePasswordTransportParamsGET(_request: NextRequest) {
+async function handlePasswordTransportParamsGET(request: NextRequest) {
   const configured = isPasswordTransportConfigured();
   const spki = getPasswordTransportPublicSpkiB64();
 
@@ -26,7 +26,8 @@ async function handlePasswordTransportParamsGET(_request: NextRequest) {
     keyId: getPasswordTransportKeyId(),
     publicKeySpkiB64: spki ?? "",
     maxClockSkewMs: getPasswordTransportMaxSkewMs(),
-    transportRequired: isPasswordTransportRequired(),
+    // 明文 HTTP 下返回 false，避免客户端误阻断并回退明文
+    transportRequired: isPasswordTransportRequired(request),
     requiresSecureContext: enabled,
   };
 

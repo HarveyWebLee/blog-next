@@ -64,6 +64,13 @@
       "when": 1776780920053,
       "tag": "0008_bright_lyja",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1784027383417,
+      "tag": "0009_serious_sumo",
+      "breakpoints": true
     }
   ]
 }

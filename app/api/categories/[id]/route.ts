@@ -2,8 +2,9 @@
  * 单个分类API路由
  * 提供单个分类的增删改查接口
  *
- * 鉴权要求：所有接口均需 Authorization: Bearer。
- * 数据范围：仅允许访问与操作当前登录用户 ownerId 下的分类数据。
+ * 鉴权要求：
+ * - GET：Authorization: Bearer（任意登录用户，按 ownerId 隔离）
+ * - PUT / DELETE：须 author / admin / super_admin，并按 ownerId 隔离
  *
  * GET /api/categories/[id] - 获取单个分类（返回分类信息与文章数量）
  * PUT /api/categories/[id] - 更新分类（校验名称/slug 在 owner 范围内唯一）
@@ -23,7 +24,7 @@ import {
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { logger } from "@/lib/server/logger";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
-import { isJwtInMemorySuperRoot } from "@/lib/utils/authz";
+import { isJwtInMemorySuperRoot, requireTaxonomyManager } from "@/lib/utils/authz";
 import { requireAuthUser } from "@/lib/utils/request-auth";
 import { ApiResponse, Category, UpdateCategoryRequest } from "@/types/blog";
 
@@ -106,15 +107,15 @@ async function handleCategoryByIdGET(request: NextRequest, { params }: { params:
  */
 async function handleCategoryByIdPUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const auth = requireAuthUser(request);
+    const auth = requireTaxonomyManager(request);
     if (!auth.ok) {
       return NextResponse.json(
         {
           success: false,
-          message: auth.reason === "missing" ? "请先登录后更新分类" : "登录状态无效，请重新登录",
+          message: auth.message,
           timestamp: new Date().toISOString(),
         },
-        { status: 401 }
+        { status: auth.status }
       );
     }
     const { id } = await params;
@@ -254,15 +255,15 @@ async function handleCategoryByIdPUT(request: NextRequest, { params }: { params:
  */
 async function handleCategoryByIdDELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const auth = requireAuthUser(request);
+    const auth = requireTaxonomyManager(request);
     if (!auth.ok) {
       return NextResponse.json(
         {
           success: false,
-          message: auth.reason === "missing" ? "请先登录后删除分类" : "登录状态无效，请重新登录",
+          message: auth.message,
           timestamp: new Date().toISOString(),
         },
-        { status: 401 }
+        { status: auth.status }
       );
     }
     const { id } = await params;

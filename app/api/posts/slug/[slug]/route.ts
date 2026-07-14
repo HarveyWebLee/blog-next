@@ -112,7 +112,7 @@ async function handlePostBySlugPATCH(request: NextRequest, { params }: { params:
     const core = resolvePostCore(post);
     const rawBody = (await request.json()) as Record<string, unknown>;
     const locale = getRequestLocale(request);
-    const secret = await resolveSecretFromBody({ body: rawBody, plainField: "password", locale });
+    const secret = await resolveSecretFromBody({ body: rawBody, plainField: "password", locale, request });
     if (!secret.ok) {
       return NextResponse.json(localizedErrorFromRaw(request, secret.message), { status: secret.status });
     }

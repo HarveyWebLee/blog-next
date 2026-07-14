@@ -32,6 +32,7 @@ import { useAuth } from "@/lib/contexts/auth-context";
 import { useProfileDict } from "@/lib/contexts/profile-dict-context";
 import { isTextReady, pickText } from "@/lib/i18n/pick-text";
 import { message } from "@/lib/utils";
+import { clientBearerHeaders } from "@/lib/utils/client-bearer-auth";
 import type { Locale } from "@/types";
 import type {
   AdminManagedUserRow,
@@ -94,12 +95,7 @@ export default function ProfileAccountsAdmin({ lang }: { lang: string }) {
   }, [authLoading, isAuthenticated, user?.role, router, prefix]);
 
   /** 显式 `Record<string, string>`，避免 `Authorization?: undefined` 不满足 `HeadersInit` */
-  const buildAuthHeaders = useCallback((): Record<string, string> => {
-    if (typeof window === "undefined") return {};
-    const token = localStorage.getItem("accessToken");
-    if (!token) return {};
-    return { Authorization: `Bearer ${token}` };
-  }, []);
+  const buildAuthHeaders = useCallback((): Record<string, string> => clientBearerHeaders(), []);
 
   const loadList = useCallback(async () => {
     setLoading(true);

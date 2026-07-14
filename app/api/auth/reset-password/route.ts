@@ -29,7 +29,7 @@ async function handleAuthResetPasswordPOST(request: NextRequest) {
 
     const body = (await request.json()) as Record<string, unknown>;
     const locale = getRequestLocale(request);
-    const secret = await resolveSecretFromBody({ body, plainField: "newPassword", locale });
+    const secret = await resolveSecretFromBody({ body, plainField: "newPassword", locale, request });
     if (!secret.ok) {
       return NextResponse.json<ApiResponse>(
         {

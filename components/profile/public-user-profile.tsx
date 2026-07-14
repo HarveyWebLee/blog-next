@@ -18,6 +18,7 @@ import { PostCard } from "@/components/blog/post-card";
 import { useProfileDict } from "@/lib/contexts/profile-dict-context";
 import { isTextReady, pickText } from "@/lib/i18n/pick-text";
 import { message } from "@/lib/utils";
+import { clientApiFetch, hasClientAccessToken } from "@/lib/utils/client-api-fetch";
 import type { ApiResponse, PostData, ProfileStats, UserActivity } from "@/types/blog";
 
 type PublicProfileData = {
@@ -116,10 +117,8 @@ export default function PublicUserProfile({ lang, userId }: PublicUserProfilePro
         if (tagId) qs.set("tagId", tagId);
         qs.set("_ts", String(Date.now()));
 
-        const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-        const res = await fetch(`/api/profile/public/${userId}?${qs.toString()}`, {
+        const res = await clientApiFetch(`/api/profile/public/${userId}?${qs.toString()}`, {
           cache: "no-store",
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         });
         const json = (await res.json()) as ApiResponse<PublicProfileData>;
         if (!json.success || !json.data) {
@@ -159,10 +158,7 @@ export default function PublicUserProfile({ lang, userId }: PublicUserProfilePro
     const loadEngagement = async () => {
       try {
         const ids = posts.map((p) => p.id).join(",");
-        const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-        const res = await fetch(`/api/posts/engagement?ids=${ids}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        });
+        const res = await clientApiFetch(`/api/posts/engagement?ids=${ids}`);
         const json = await res.json();
         const list = Array.isArray(json?.data)
           ? (json.data as Array<{ id: number; liked: boolean; favorited: boolean }>)
@@ -186,14 +182,13 @@ export default function PublicUserProfile({ lang, userId }: PublicUserProfilePro
     };
   }, [posts]);
 
-  const requireLoginToken = (): string | null => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-    if (!token) {
+  const requireLogin = (): boolean => {
+    if (!hasClientAccessToken()) {
       message.warning(t.needLogin);
       router.push(`/${lang}/auth/login`);
-      return null;
+      return false;
     }
-    return token;
+    return true;
   };
 
   const handleToggleLike = async (postId: number) => {
@@ -202,13 +197,11 @@ export default function PublicUserProfile({ lang, userId }: PublicUserProfilePro
     const lastAt = lastActionAtRef.current[likeKey] || 0;
     if (now - lastAt < 300) return;
     lastActionAtRef.current[likeKey] = now;
-    const token = requireLoginToken();
-    if (!token) return;
+    if (!requireLogin()) return;
     setLikeLoadingMap((prev) => ({ ...prev, [postId]: true }));
     try {
-      const res = await fetch(`/api/posts/${postId}/like`, {
+      const res = await clientApiFetch(`/api/posts/${postId}/like`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
       });
       const json = (await res.json()) as ApiResponse<{ liked: boolean; likeCount: number }>;
       if (!json.success || !json.data) {
@@ -233,13 +226,11 @@ export default function PublicUserProfile({ lang, userId }: PublicUserProfilePro
     const lastAt = lastActionAtRef.current[favoriteKey] || 0;
     if (now - lastAt < 300) return;
     lastActionAtRef.current[favoriteKey] = now;
-    const token = requireLoginToken();
-    if (!token) return;
+    if (!requireLogin()) return;
     setFavoriteLoadingMap((prev) => ({ ...prev, [postId]: true }));
     try {
-      const res = await fetch(`/api/posts/${postId}/favorite`, {
+      const res = await clientApiFetch(`/api/posts/${postId}/favorite`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
       });
       const json = (await res.json()) as ApiResponse<{ favorited: boolean; favoriteCount: number }>;
       if (!json.success || !json.data) {
@@ -261,19 +252,13 @@ export default function PublicUserProfile({ lang, userId }: PublicUserProfilePro
   };
 
   const handleFollowToggle = async () => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-    if (!token) {
-      message.warning(t.needLogin);
-      router.push(`/${lang}/auth/login`);
-      return;
-    }
+    if (!requireLogin()) return;
     if (!profile || profile.visibility?.isSelf) return;
     try {
       setFollowLoading(true);
       if (isFollowing) {
-        const res = await fetch(`/api/profile/follow/${profile.user.id}`, {
+        const res = await clientApiFetch(`/api/profile/follow/${profile.user.id}`, {
           method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
         });
         const json = (await res.json()) as ApiResponse;
         if (!json.success) {
@@ -283,10 +268,9 @@ export default function PublicUserProfile({ lang, userId }: PublicUserProfilePro
         setIsFollowing(false);
         message.success(t.unfollowSuccess);
       } else {
-        const res = await fetch("/api/profile/follow", {
+        const res = await clientApiFetch("/api/profile/follow", {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ followingId: profile.user.id }),

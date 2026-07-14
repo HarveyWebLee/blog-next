@@ -9,6 +9,45 @@ on:
       - main
 
 jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check formatting
+        run: pnpm format:check
+
+      - name: Check types
+        run: pnpm typecheck
+
+      - name: Check API handler wrapping
+        run: pnpm api:handlers:check
+
+      - name: Run R0 regression checks
+        run: pnpm test:r0
+
+      - name: Run R1 session cookie checks
+        run: pnpm test:r1
+
+      - name: Run R2 comment tree checks
+        run: pnpm test:r2
+
+      - name: Run lint
+        run: pnpm lint
+
   api-docs-contract:
     runs-on: ubuntu-latest
     steps:

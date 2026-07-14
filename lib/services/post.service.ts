@@ -7,6 +7,7 @@ import { and, asc, count, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db/config";
 import { categories, comments, posts, postTags, tags, userFavorites, users } from "@/lib/db/schema";
+import { listApprovedCommentsForPost } from "@/lib/services/comment.service";
 import { calculatePagination, generateSlug, truncateText } from "@/lib/utils";
 import { escapeLikeWildcards } from "@/lib/utils/escape-like-wildcards";
 import { logDbError } from "@/lib/utils/mysql-error";
@@ -650,52 +651,12 @@ export class PostService {
   }
 
   /**
-   * 获取文章评论
-   * @param postId 文章ID
-   * @returns 评论列表
+   * 获取文章已通过评论（树形最多两层；不含邮箱等隐私字段）。
    */
   private async getPostComments(postId: number) {
     try {
-      const results = await db
-        .select({
-          id: comments.id,
-          postId: comments.postId,
-          authorId: comments.authorId,
-          content: comments.content,
-          status: comments.status,
-          createdAt: comments.createdAt,
-          updatedAt: comments.updatedAt,
-          authorName: comments.authorName,
-          authorEmail: comments.authorEmail,
-          authorDisplayName: users.displayName,
-          authorUsername: users.username,
-          authorAvatar: users.avatar,
-        })
-        .from(comments)
-        .leftJoin(users, eq(comments.authorId, users.id))
-        .where(and(eq(comments.postId, postId), eq(comments.status, "approved")))
-        .orderBy(desc(comments.createdAt));
-
-      return results.map((row) => ({
-        id: row.id,
-        postId: row.postId,
-        authorId: row.authorId ?? undefined,
-        content: row.content,
-        status: row.status,
-        createdAt: row.createdAt,
-        updatedAt: row.updatedAt,
-        authorName: row.authorName,
-        authorEmail: row.authorEmail,
-        // 优先展示用户当前资料（支持改昵称/头像后历史评论同步更新），不存在再回退快照字段。
-        author: row.authorId
-          ? {
-              id: row.authorId,
-              username: row.authorUsername || "",
-              displayName: row.authorDisplayName || row.authorUsername || row.authorName || "",
-              avatar: row.authorAvatar || undefined,
-            }
-          : undefined,
-      }));
+      const payload = await listApprovedCommentsForPost(postId);
+      return payload.comments;
     } catch (error) {
       console.error("获取文章评论失败:", error);
       return [];
