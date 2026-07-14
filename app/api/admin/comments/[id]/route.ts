@@ -42,8 +42,8 @@ async function handleAdminCommentByIdPATCH(request: NextRequest, context: RouteC
   }
 
   const body = (await request.json().catch(() => ({}))) as { status?: CommentStatus; reason?: string };
-  const nextStatus = body.status;
-  if (!nextStatus || !["pending", "approved", "spam"].includes(nextStatus)) {
+  const rawStatus = body.status;
+  if (!rawStatus || !["pending", "approved", "spam"].includes(rawStatus)) {
     return NextResponse.json<ApiResponse>(
       {
         success: false,
@@ -53,6 +53,7 @@ async function handleAdminCommentByIdPATCH(request: NextRequest, context: RouteC
       { status: 400 }
     );
   }
+  const nextStatus = rawStatus as "pending" | "approved" | "spam";
 
   try {
     const [exists] = await db

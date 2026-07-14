@@ -42,8 +42,8 @@ export function detectSpamContent(content: string): CommentSpamResult {
     reasons.push("内容长度异常");
   }
 
-  // 同一字符连续刷屏（如 "aaaaaaaaaa"）
-  if (/(.)\1{9,}/u.test(content)) {
+  // 同一字符连续刷屏（如 "aaaaaaaaaa"；不用 /u，以兼容 tsconfig target es5）
+  if (/(.)\1{9,}/.test(content)) {
     reasons.push("疑似刷屏重复字符");
   }
 

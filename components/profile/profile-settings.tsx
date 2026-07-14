@@ -275,9 +275,7 @@ export default function ProfileSettings({ lang }: ProfileSettingsProps) {
       }
       message.success(json.message || t.saveSuccess);
 
-      const refresh = await fetch("/api/profile", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const refresh = await clientApiFetch("/api/profile");
       const refreshed = (await refresh.json()) as ApiResponse<UserProfile>;
       if (refreshed.success && refreshed.data) {
         setProfile(refreshed.data);

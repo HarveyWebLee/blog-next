@@ -153,14 +153,14 @@ async function handleAdminCommentsPATCH(request: NextRequest) {
   const ids = Array.isArray(body.ids)
     ? Array.from(new Set(body.ids.map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0)))
     : [];
-  const nextStatus = body.status;
+  const rawStatus = body.status;
   if (ids.length === 0) {
     return NextResponse.json<ApiResponse>(
       { success: false, message: apiMessage(request, "admin.idsRequired"), timestamp: new Date().toISOString() },
       { status: 400 }
     );
   }
-  if (!nextStatus || !["pending", "approved", "spam"].includes(nextStatus)) {
+  if (!rawStatus || !["pending", "approved", "spam"].includes(rawStatus)) {
     return NextResponse.json<ApiResponse>(
       {
         success: false,
@@ -170,6 +170,7 @@ async function handleAdminCommentsPATCH(request: NextRequest) {
       { status: 400 }
     );
   }
+  const nextStatus = rawStatus as "pending" | "approved" | "spam";
 
   try {
     const exists = await db

@@ -5,6 +5,7 @@ import { userNotifications, userProfiles } from "@/lib/db/schema";
 import { DEFAULT_LOCALE, resolveLocale } from "@/lib/i18n/locale";
 import { tApi, type ApiMessageKey } from "@/lib/i18n/messages";
 import { logger } from "@/lib/server/logger";
+import type { CommentStatus } from "@/types/blog";
 import type { Locale } from "@/types/common";
 
 export type NotificationType = "comment" | "like" | "follow" | "mention" | "system";
@@ -148,7 +149,8 @@ export type CommentModerationNotifyInput = {
   postTitle: string;
   commentAuthorId: number | null | undefined;
   nextStatus: "pending" | "approved" | "spam";
-  previousStatus?: "pending" | "approved" | "spam" | null;
+  /** 可能含 deleted（软删占位），仅用于「状态未变则跳过」判断 */
+  previousStatus?: CommentStatus | null;
   reason?: string;
 };
 

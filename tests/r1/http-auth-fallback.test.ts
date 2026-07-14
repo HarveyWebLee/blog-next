@@ -6,9 +6,7 @@ import { isPasswordTransportRequired } from "../../lib/crypto/password-transport
 
 test("明文 HTTP 请求即使 PASSWORD_TRANSPORT_REQUIRED=true 也不强制封装", () => {
   const originalRequired = process.env.PASSWORD_TRANSPORT_REQUIRED;
-  const originalNodeEnv = process.env.NODE_ENV;
   try {
-    process.env.NODE_ENV = "production";
     process.env.PASSWORD_TRANSPORT_REQUIRED = "true";
 
     const httpReq = new NextRequest("http://192.168.1.10:13001/api/auth/login");
@@ -24,7 +22,5 @@ test("明文 HTTP 请求即使 PASSWORD_TRANSPORT_REQUIRED=true 也不强制封�
   } finally {
     if (originalRequired === undefined) delete process.env.PASSWORD_TRANSPORT_REQUIRED;
     else process.env.PASSWORD_TRANSPORT_REQUIRED = originalRequired;
-    if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
-    else process.env.NODE_ENV = originalNodeEnv;
   }
 });

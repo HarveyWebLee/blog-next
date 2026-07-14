@@ -43,9 +43,7 @@ test("refresh Cookie 写入与清除使用 HttpOnly / SameSite=Lax / 限定 Path
 
 test("HTTP 生产请求不强制 Secure Cookie；HTTPS 或 AUTH_COOKIE_SECURE=true 才启用", () => {
   const originalSecure = process.env.AUTH_COOKIE_SECURE;
-  const originalNodeEnv = process.env.NODE_ENV;
   try {
-    process.env.NODE_ENV = "production";
     delete process.env.AUTH_COOKIE_SECURE;
 
     const httpReq = new NextRequest("http://127.0.0.1:13001/api/auth/login");
@@ -72,8 +70,6 @@ test("HTTP 生产请求不强制 Secure Cookie；HTTPS 或 AUTH_COOKIE_SECURE=tr
   } finally {
     if (originalSecure === undefined) delete process.env.AUTH_COOKIE_SECURE;
     else process.env.AUTH_COOKIE_SECURE = originalSecure;
-    if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
-    else process.env.NODE_ENV = originalNodeEnv;
   }
 });
 
