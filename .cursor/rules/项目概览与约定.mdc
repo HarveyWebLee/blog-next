@@ -14,7 +14,7 @@ alwaysApply: true
 - **数据**：**MySQL** + **Drizzle ORM**；`lib/db/schema.ts`、`lib/db/config.ts`、`drizzle.config.ts`。
 - **认证**：**JWT**（`jsonwebtoken`）、**bcryptjs**；**非 NextAuth**。环境变量以根目录 **`env.example`** 为准（`DB_*`、`JWT_*`、`SMTP_*` 等）。
 - **邮件**：**nodemailer**（注册/验证码/重置密码等）。
-- **质量与提交**：ESLint + Prettier；**Husky + lint-staged**（`pnpm format:check` + 对暂存文件执行检查）；详见 `package.json` 与 `.husky/pre-commit`。
+- **质量与提交**：ESLint + Prettier；**Husky + lint-staged**（`pre-commit`：暂存文件 eslint/prettier + `pnpm typecheck`；`pre-push`：`format:check` + `api:handlers:check`）；详见 `package.json` 与 `.husky/`。
 
 ## 路由与 i18n
 

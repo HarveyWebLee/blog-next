@@ -14,7 +14,7 @@ alwaysApply: true
 
 ## 验证
 
-- 逻辑或类型敏感时：运行 **`pnpm lint`**；提交前环境可运行 **`pnpm precommit`**（等价 `format:check` + `lint-staged`）。
+- 逻辑或类型敏感时：运行 **`pnpm lint`** / **`pnpm typecheck`**；提交前环境可运行 **`pnpm precommit`**（`format:check` + `typecheck` + `api:handlers:check` + `lint-staged`）。Husky `pre-commit` 会跑暂存文件检查与 `typecheck`。
 - 涉及 DB schema 时：提醒执行 `db:generate` / `migrate` 等与团队一致的流程。
 
 ## 国际化与可访问

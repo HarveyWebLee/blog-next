@@ -1,4 +1,4 @@
-# 推送前全量质量门禁（与 pnpm precommit 一致，不含 lint-staged——已在 pre-commit 处理暂存文件）
+# 推送前：全仓格式与 API 包装检查。
+# typecheck 已在 pre-commit 执行；此处不再重复，缩短 push 等待。
 pnpm format:check
-pnpm typecheck
 pnpm api:handlers:check
