@@ -17,6 +17,10 @@ function isPasswordTransportKeyConfigured(): boolean {
 }
 
 function logPasswordTransportStartupStatus(): void {
+  // Docker / CI 的 next build 会反复加载 next.config；缺密钥告警只应出现在真正启动时
+  if (process.env.NEXT_PHASE === "phase-production-build") {
+    return;
+  }
   const required = resolvePasswordTransportRequired();
   const configured = isPasswordTransportKeyConfigured();
   const ready = !required || configured;

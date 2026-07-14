@@ -7,11 +7,19 @@ import { isValidEmailFormat } from "./email-format";
 const DEFAULT_JWT_SECRET = "your-secret-key";
 const DEFAULT_JWT_REFRESH_SECRET = "your-refresh-secret-key";
 
+/**
+ * Next `next build` / 收集页面数据阶段（Dockerfile 的 `pnpm run build`）会把 NODE_ENV 设为 production，
+ * 但不应也不该把真实 JWT 密钥打进镜像层。构建期跳过强校验；真正运行时仍强制。
+ */
+function isNextJsBuildPhase(): boolean {
+  return process.env.NEXT_PHASE === "phase-production-build";
+}
+
 function resolveJwtSecret(name: "JWT_SECRET" | "JWT_REFRESH_SECRET", fallback: string): string {
   const value = process.env[name]?.trim();
   const isProduction = process.env.NODE_ENV === "production";
 
-  if (isProduction && (!value || value === fallback)) {
+  if (isProduction && !isNextJsBuildPhase() && (!value || value === fallback)) {
     throw new Error(`${name} must be configured with a strong non-default value in production`);
   }
 

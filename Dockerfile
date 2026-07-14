@@ -29,6 +29,9 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 # 启用 Next standalone 输出（仅 Linux 构建镜像时需要）
 ENV NEXT_STANDALONE=true
+# 注意：JWT_* / PASSWORD_TRANSPORT_* 等密钥不得作为 ARG/ENV 进入 builder。
+# next build 期间 NODE_ENV=production，auth 仅在 NEXT_PHASE=phase-production-build 时放行缺密钥；
+# 运行时由 compose env_file 注入（见 deploy/.env.docker）。
 
 RUN pnpm run build
 

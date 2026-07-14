@@ -342,13 +342,13 @@ chown -R deployer:deployer /home/deployer/.ssh
 
 ### 7.3 敏感信息管理原则（强制）
 
-| 约束                               | 说明                                                                                                                                                                                                                                                                |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Dockerfile / `Dockerfile.edge`** | **不得**写入真实域名、邮箱、数据库密码、JWT、私钥等；仅通用依赖与**非密钥**模板/脚本。                                                                                                                                                                              |
-| **`docker-compose.yml`**           | **不得**用 `environment:` 明文写上述敏感值；Compose 插值用的非敏感端口等可保留；密钥类用 **`secrets: file:`** 或 **`env_file`** 指向**宿主机路径**，且该路径文件**不入 Git**。                                                                                      |
-| **应用栈**                         | 继续使用 **`deploy/.env.docker`**（由 **`deploy/env.docker.example`** 复制），已在 **`.gitignore`**。                                                                                                                                                               |
-| **入口栈（`blog-edge`）**          | 使用**与 `blog-web` 分离**的一组文件，推荐 **`deploy/secrets/edge/`**（每键一个文件、单行值）；路径由 **`EDGE_SECRETS_DIR`** 指定（默认 **`./deploy/secrets/edge.example`** 便于本地校验）。**真实目录 `deploy/secrets/edge/`** 已在 **`.gitignore`**，**勿提交**。 |
-| **构建上下文**                     | **`.dockerignore`** 排除 `deploy/.env.docker`、`deploy/secrets/edge/`，防止 `docker build` 将密钥打进镜像层。                                                                                                                                                       |
+| 约束                               | 说明                                                                                                                                                                                                                                                                        |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Dockerfile / `Dockerfile.edge`** | **不得**写入真实域名、邮箱、数据库密码、JWT、私钥等；仅通用依赖与**非密钥**模板/脚本。                                                                                                                                                                                      |
+| **`docker-compose.yml`**           | **不得**用 `environment:` 明文写上述敏感值；Compose 插值用的非敏感端口等可保留；密钥类用 **`secrets: file:`** 或 **`env_file`** 指向**宿主机路径**，且该路径文件**不入 Git**。                                                                                              |
+| **应用栈**                         | 继续使用 **`deploy/.env.docker`**（由 **`deploy/env.docker.example`** 复制），已在 **`.gitignore`**。                                                                                                                                                                       |
+| **入口栈（`blog-edge`）**          | 使用**与 `blog-web` 分离**的一组文件，推荐 **`deploy/secrets/edge/`**（每键一个文件、单行值）；路径由 **`EDGE_SECRETS_DIR`** 指定（默认 **`./deploy/secrets/edge.example`** 便于本地校验）。**真实目录 `deploy/secrets/edge/`** 已在 **`.gitignore`**，**勿提交**。         |
+| **构建上下文**                     | **`.dockerignore`** 排除 `deploy/.env.docker`、`deploy/secrets/edge/`，防止 `docker build` 将密钥打进镜像层。`Dockerfile` **builder 阶段不得** `ARG`/`ENV` 注入 `JWT_*`；`auth` 在 `NEXT_PHASE=phase-production-build` 时跳过密钥强校验，运行时由 compose `env_file` 注入。 |
 
 ### 7.4 Profile 职责一览（约定）
 

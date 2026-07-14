@@ -50,6 +50,27 @@ test("生产环境拒绝默认 JWT 密钥", { concurrency: false }, async () => 
   );
 });
 
+test("next build 阶段允许缺省 JWT（Docker 构建不注入密钥）", { concurrency: false }, async () => {
+  await withAuthEnvironment(
+    {
+      NODE_ENV: "production",
+      JWT_SECRET: undefined,
+      JWT_REFRESH_SECRET: undefined,
+    },
+    async () => {
+      const previousPhase = process.env.NEXT_PHASE;
+      try {
+        process.env.NEXT_PHASE = "phase-production-build";
+        const auth = await loadAuthModule("build-phase-no-secret");
+        assert.equal(typeof auth.generateAccessToken, "function");
+      } finally {
+        if (previousPhase === undefined) delete (process.env as Record<string, string | undefined>).NEXT_PHASE;
+        else process.env.NEXT_PHASE = previousPhase;
+      }
+    }
+  );
+});
+
 test("生产环境使用已配置的 JWT 密钥", { concurrency: false }, async () => {
   await withAuthEnvironment(
     {
