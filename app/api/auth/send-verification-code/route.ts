@@ -11,7 +11,7 @@ import {
 } from "@/lib/i18n/api-response";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { logger } from "@/lib/server/logger";
-import { isValidEmail } from "@/lib/utils";
+import { isValidEmail } from "@/lib/utils/auth";
 import {
   generateVerificationCode,
   sendVerificationEmailDetailed,

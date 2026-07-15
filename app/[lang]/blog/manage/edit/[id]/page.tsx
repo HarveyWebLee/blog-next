@@ -39,7 +39,7 @@ import { useCategories } from "@/lib/hooks/useCategories";
 import { useTags } from "@/lib/hooks/useTags";
 import { isTextReady, pickText } from "@/lib/i18n/pick-text";
 import { message } from "@/lib/utils";
-import { isInMemorySuperRootClientUser } from "@/lib/utils/authz";
+import { isInMemorySuperRootClientUser } from "@/lib/utils/authz-client";
 import { clientBearerHeaders } from "@/lib/utils/client-bearer-auth";
 import {
   Category,

@@ -14,7 +14,7 @@ import { getRequestLocale } from "@/lib/i18n/locale";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { logger } from "@/lib/server/logger";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
-import { hashPassword, validatePasswordStrength } from "@/lib/utils";
+import { hashPassword, validatePasswordStrength } from "@/lib/utils/auth";
 import { checkRateLimit, getClientIp } from "@/lib/utils/request-rate-limit";
 import { ApiResponse } from "@/types/blog";
 

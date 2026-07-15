@@ -19,7 +19,7 @@ import { getRequestLocale } from "@/lib/i18n/locale";
 import { attachRefreshTokenCookie } from "@/lib/server/auth-session-cookie";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { notifyRouteUnhandledError } from "@/lib/server/route-alert";
-import { generateAccessToken, generateRefreshToken, verifyPassword } from "@/lib/utils";
+import { generateAccessToken, generateRefreshToken, verifyPassword } from "@/lib/utils/auth";
 import { checkRateLimit, getClientIp } from "@/lib/utils/request-rate-limit";
 import { ApiResponse, LoginResponse } from "@/types/blog";
 

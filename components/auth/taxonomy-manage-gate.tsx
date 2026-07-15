@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Spinner } from "@heroui/react";
 
 import { useAuth } from "@/lib/contexts/auth-context";
-import { canManageTaxonomyClient } from "@/lib/utils/authz";
+import { canManageTaxonomyClient } from "@/lib/utils/authz-client";
 
 type TaxonomyManageGateProps = {
   children: ReactNode;

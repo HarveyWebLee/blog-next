@@ -31,7 +31,7 @@ import { useAuth } from "@/lib/contexts/auth-context";
 import { useClientDictionary } from "@/lib/hooks/use-client-dictionary";
 import { isTextReady, pickText } from "@/lib/i18n/pick-text";
 import { message } from "@/lib/utils";
-import { isInMemorySuperRootClientUser } from "@/lib/utils/authz";
+import { isInMemorySuperRootClientUser } from "@/lib/utils/authz-client";
 import { clientBearerHeaders } from "@/lib/utils/client-bearer-auth";
 import { stripMarkdownForExcerpt } from "@/lib/utils/markdown-plain";
 import { PostData, PostStatus, PostVisibility, User } from "@/types/blog";

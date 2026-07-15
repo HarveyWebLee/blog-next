@@ -13,7 +13,7 @@ import { PageLoading } from "@/components/ui/loading";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { message } from "@/lib/utils";
 import { ApiGroup } from "@/lib/utils/api-scanner";
-import { isInMemorySuperRootClientUser } from "@/lib/utils/authz";
+import { isInMemorySuperRootClientUser } from "@/lib/utils/authz-client";
 import { getClientAccessToken } from "@/lib/utils/client-bearer-auth";
 import { ApiFilterTabs } from "./api-filter-tabs";
 import { ApiGroupCard } from "./api-group-card";

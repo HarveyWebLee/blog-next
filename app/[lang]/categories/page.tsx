@@ -43,7 +43,7 @@ import { CategoryTreeSelect } from "@/components/ui/category-tree-select";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { useCategories } from "@/lib/hooks/useCategories";
 import { generateRandomUrlAlias, message } from "@/lib/utils";
-import { canManageTaxonomyClient } from "@/lib/utils/authz";
+import { canManageTaxonomyClient } from "@/lib/utils/authz-client";
 import { clientBearerHeaders } from "@/lib/utils/client-bearer-auth";
 import { Locale } from "@/types";
 import { ApiResponse, Category } from "@/types/blog";

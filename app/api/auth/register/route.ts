@@ -10,7 +10,7 @@ import { getRequestLocale } from "@/lib/i18n/locale";
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { logger } from "@/lib/server/logger";
 import { consumeEmailVerificationCode } from "@/lib/services/email-verification-consume";
-import { hashPassword, isValidEmail, validatePasswordStrength } from "@/lib/utils";
+import { hashPassword, isValidEmail, validatePasswordStrength } from "@/lib/utils/auth";
 import { checkRateLimit, getClientIp } from "@/lib/utils/request-rate-limit";
 import { ApiResponse } from "@/types/blog";
 

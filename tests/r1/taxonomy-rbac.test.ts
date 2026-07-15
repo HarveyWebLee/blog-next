@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { canManageTaxonomyClient, hasTaxonomyManagePrivileges } from "../../lib/utils/authz";
+import { hasTaxonomyManagePrivileges } from "../../lib/utils/authz";
+import { canManageTaxonomyClient } from "../../lib/utils/authz-client";
 
 test("taxonomy 写权限：author / admin / super_admin 允许，user 拒绝", () => {
   assert.equal(hasTaxonomyManagePrivileges({ userId: 1, username: "a", role: "author" }), true);

@@ -1,5 +1,7 @@
 /**
- * 权限辅助：区分「普通用户 / 管理员 / 超级管理员 root 会话」。
+ * 服务端权限辅助：区分「普通用户 / 管理员 / 超级管理员 root 会话」。
+ * 含 request-auth（进而含 JWT_SECRET），禁止被客户端组件导入。
+ * 浏览器侧请用 {@link ./authz-client}。
  */
 
 import type { NextRequest } from "next/server";
@@ -7,6 +9,8 @@ import type { NextRequest } from "next/server";
 import { apiMessage } from "@/lib/i18n/api-response";
 import type { AuthJwtPayload } from "@/lib/utils/request-auth";
 import { authErrorMessage, requireAuthUser } from "@/lib/utils/request-auth";
+
+export { canManageTaxonomyClient, isInMemorySuperRootClientUser } from "@/lib/utils/authz-client";
 
 /** JWT 是否表示超级管理员 root 会话 */
 export function isJwtInMemorySuperRoot(payload: AuthJwtPayload | null | undefined): boolean {
@@ -31,12 +35,6 @@ export function hasTaxonomyManagePrivileges(payload: AuthJwtPayload | null | und
   return payload.role === "author" || payload.role === "admin";
 }
 
-/** 浏览器端：与 {@link hasTaxonomyManagePrivileges} 对齐（含 super_admin 会话）。 */
-export function canManageTaxonomyClient(user: { role?: string | null } | null | undefined): boolean {
-  if (!user?.role) return false;
-  return user.role === "author" || user.role === "admin" || user.role === "super_admin";
-}
-
 /** 供 Route Handler 使用：仅允许超级管理员 root 会话（JWT role=super_admin + isRoot=true） */
 export type RequireSuperRootResult =
   | { ok: true; user: AuthJwtPayload }
@@ -45,12 +43,6 @@ export type RequireSuperRootResult =
 export type RequireTaxonomyManagerResult =
   | { ok: true; user: AuthJwtPayload }
   | { ok: false; status: 401 | 403; message: string };
-
-/** 浏览器端根据 localStorage 的 user 判断是否超级管理员会话（UI 侧以 role 为准）。 */
-export function isInMemorySuperRootClientUser(user: { id: number; role: string } | null | undefined): boolean {
-  if (!user) return false;
-  return user.role === "super_admin";
-}
 
 export function requireInMemorySuperRoot(request: NextRequest): RequireSuperRootResult {
   const auth = requireAuthUser(request);

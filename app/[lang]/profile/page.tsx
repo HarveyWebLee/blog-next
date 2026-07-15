@@ -1,5 +1,4 @@
 import { Suspense } from "react";
-import { redirect } from "next/navigation";
 
 import ProfileActivities from "@/components/profile/profile-activities";
 import ProfileLayout from "@/components/profile/profile-layout";
@@ -7,7 +6,6 @@ import ProfileLoading from "@/components/profile/profile-loading";
 import ProfileOverview from "@/components/profile/profile-overview";
 import ProfileStats from "@/components/profile/profile-stats";
 import { getDictionaryForLang } from "@/lib/dictionaries";
-import { verifyToken } from "@/lib/utils/auth";
 
 interface ProfilePageProps {
   params: Promise<{ lang: string }>;

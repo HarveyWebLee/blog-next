@@ -42,7 +42,7 @@ import { TagCloud } from "@/components/ui/tag-cloud";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { useTags } from "@/lib/hooks/useTags";
 import { generateRandomUrlAlias, message } from "@/lib/utils";
-import { canManageTaxonomyClient } from "@/lib/utils/authz";
+import { canManageTaxonomyClient } from "@/lib/utils/authz-client";
 import { clientBearerHeaders } from "@/lib/utils/client-bearer-auth";
 import { Locale } from "@/types";
 import { ApiResponse, Tag } from "@/types/blog";

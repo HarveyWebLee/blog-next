@@ -12,7 +12,7 @@ import {
 import { defineApiHandlers } from "@/lib/server/define-api-handlers";
 import { logger } from "@/lib/server/logger";
 import { logUserActivity, UserActivityAction } from "@/lib/services/user-activity-log.service";
-import { generatePasswordResetToken, isValidEmail } from "@/lib/utils";
+import { generatePasswordResetToken, isValidEmail } from "@/lib/utils/auth";
 import { checkDistributedRateLimit } from "@/lib/utils/distributed-rate-limit";
 import { sendPasswordResetLinkEmail } from "@/lib/utils/email";
 import { ApiResponse } from "@/types/blog";
