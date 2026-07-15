@@ -1,3 +1,9 @@
+## [1.8.5](https://github.com/HarveyWebLee/blog-next/compare/v1.8.4...v1.8.5) (2026-07-15)
+
+### Bug Fixes
+
+- **auth:** 重构权限判断模块，避免客户端打进 JWT 校验 ([9cb0cf7](https://github.com/HarveyWebLee/blog-next/commit/9cb0cf794b78085e16d7818b60c5481636f8ed64))
+
 ## [1.8.4](https://github.com/HarveyWebLee/blog-next/compare/v1.8.3...v1.8.4) (2026-07-14)
 
 ### Bug Fixes
