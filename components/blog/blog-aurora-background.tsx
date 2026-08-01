@@ -5,7 +5,10 @@
  *
  * 纯 CSS 方案已移除；六根竖纹光柱快照备份见 `blog-aurora-pillar-field.tsx`（`BlogAuroraPillarField`）。
  *
- * 配色 pastel：冰蓝、淡紫、堇青、玫瑰/珊瑚、雾白；星空粗网格离散星点。
+ * 当前效果为「深空星云」：三团柔和冷色光晕（左上冰蓝 / 右上淡紫 / 顶部雾青）缓慢漂移呼吸，
+ * 边缘经 fbm 域扭曲呈现有机蠕动，避免发光圆盘的塑料感；星点约 13% 粗网格格点落星（整屏 70+ 颗）。
+ * 中央正文区刻意保持低亮度，避免干扰内容可读性。
+ *
  * 性能：滚动隔帧 draw、Resize 合并 rAF、DPR 上限见 blog-webgl-performance。
  */
 import { useEffect, useRef, useState } from "react";
@@ -28,12 +31,12 @@ void main() {
 `;
 
 /**
- * 极光着色：多层高斯帷幕 + 垂直射线 + 气体分层色 + 程序化星空。
+ * 星云着色：域扭曲柔光晕 + 内部织理 + 呼吸 + 程序化星点。
  */
 const fragmentShader = /* glsl */ `
 precision highp float;
-#define STAR_GRID_X 23.0
-#define STAR_GRID_Y 13.0
+#define STAR_GRID_X 32.0
+#define STAR_GRID_Y 18.0
 
 uniform float uTime;
 uniform float uIntensity;
@@ -68,171 +71,83 @@ float fbm(vec2 p) {
   return v;
 }
 
-/*
- * 竖向遮罩：此前用 0.04→0.42 渐亮会把整屏星光乘到 0.3～0.7，肉眼像「没有星」。
- * 改为仅在贴底、贴顶极窄带渐隐，中间天区保持接近 1。
- */
-float starSkyMask(vec2 uv) {
-  float low = smoothstep(0.0, 0.1, uv.y);
-  float high = 1.0 - smoothstep(0.92, 0.996, uv.y);
-  return low * high;
-}
-
-/*
- * 极轻 UV 偏移：打破完全对齐的网格线即可，幅度过大易产生「碎斑」感。
- */
-vec2 starWarpUv(vec2 uv) {
-  vec2 w =
-    vec2(hash21(uv * 4.18 + vec2(0.0, 12.7)), hash21(uv * 4.18 + vec2(37.2, 0.0))) -
-    0.5;
-  return uv + w * 0.018;
-}
-
-/*
- * 离散星点：粗网格 + 每格随机是否落星 + 格内小圆盘（无大光晕）→ 一颗颗闪烁，而非碎屑雾。
- */
+/* 离散星点：粗网格约 13% 格点落星（整屏 70+ 颗），小圆盘微闪，不做大光晕 */
 float starsBrightness(vec2 uv, float t) {
-  vec2 uvs = starWarpUv(uv);
-  vec2 grid = uvs * vec2(STAR_GRID_X, STAR_GRID_Y);
+  vec2 grid = uv * vec2(STAR_GRID_X, STAR_GRID_Y);
   vec2 gid = floor(grid);
   vec2 cell = fract(grid) - 0.5;
 
   float pick = hash21(gid + vec2(31.4, 67.9));
-  /* 约 3% 格点：整屏约十颗上下（随分辨率略变） */
-  float spawn = 1.0 - step(0.03, pick);
+  float spawn = 1.0 - step(0.13, pick);
 
   vec2 ofs = vec2(hash21(gid + vec2(19.2, 7.7)), hash21(gid + vec2(3.3, 41.9))) - 0.5;
-  float dist = length(cell - ofs * 0.48);
+  float dist = length(cell - ofs * 0.44);
 
-  /* 小圆盘星核；略抗锯齿，禁止大块 halo 以免连成雾 */
-  float rad = mix(0.010, 0.021, hash21(gid + vec2(50.0, 9.0)));
-  float disk = 1.0 - smoothstep(rad * 0.65, rad * 1.05, dist);
+  float rad = mix(0.010, 0.022, hash21(gid + vec2(50.0, 9.0)));
+  float disk = 1.0 - smoothstep(rad * 0.7, rad * 1.2, dist);
 
   float rnd = hash21(gid);
-  float blinkFreq = 1.5 + rnd * 2.6;
-  float blink = 0.34 + 0.66 * sin(t * blinkFreq + rnd * 48.7);
+  float blinkFreq = 0.8 + rnd * 1.8;
+  float blink = 0.35 + 0.65 * sin(t * blinkFreq + rnd * 48.7);
 
-  return disk * blink * starSkyMask(uv) * spawn;
+  float mask = smoothstep(0.0, 0.08, uv.y) * (1.0 - smoothstep(0.94, 0.995, uv.y));
+  return disk * blink * mask * spawn;
 }
 
 void main() {
   vec2 uv = vUv;
   float t = uTime * uFlowScale;
 
-  /* 活动范围呼吸略收，避免轮廓一会儿拉得太「实」 */
-  float rangePulse = 0.82 + 0.14 * sin(t * 0.048 + uv.x * 1.9);
-  float shiftY =
-    sin(t * 0.036) * 0.065 + cos(t * 0.027 + uv.x * 3.8) * 0.042;
+  /* 全屏域扭曲：光晕边缘有机蠕动，避免「发光圆盘」塑料感 */
+  vec2 warp = vec2(
+    fbm(uv * 1.6 + vec2(t * 0.026, -t * 0.014)),
+    fbm(uv * 1.6 + vec2(-t * 0.012, t * 0.030))
+  );
+  vec2 wuv = uv + (warp - 0.5) * 0.20;
 
-  vec2 drift = vec2(t * 0.042, -t * 0.028);
-  float warpAmp = 0.09 + 0.045 * sin(t * 0.058 + uv.y * 4.0);
-  float warp = (fbm(vec2(uv.x * 2.4, uv.y * 2.2) + drift) - 0.5) * warpAmp;
+  /* 三团柔和星云光晕：左上冰蓝 / 右上淡紫 / 顶部雾青，缓慢漂移 */
+  vec2 c1 = vec2(0.15 + 0.09 * sin(t * 0.040), 0.24 + 0.08 * cos(t * 0.034));
+  vec2 c2 = vec2(0.87 + 0.06 * cos(t * 0.029 + 2.4), 0.22 + 0.09 * sin(t * 0.044 + 1.1));
+  vec2 c3 = vec2(0.50 + 0.13 * sin(t * 0.025 + 4.0), 0.92 + 0.04 * cos(t * 0.037));
 
-  float arc =
-    uv.y +
-    shiftY +
-    sin(uv.x * 6.28318 + t * 0.055) * (0.055 + 0.028 * sin(t * 0.042)) +
-    warp * 5.2;
+  float d1 = length(wuv - c1);
+  float d2 = length(wuv - c2);
+  float d3 = length(wuv - c3);
 
-  /*
-   * σ 整体加大：高斯带更胖 → 边缘渐变更长，轮廓不那么「勒边」。
-   * pow 指数略抬：压低峰背比，亮带更像薄雾而非硬边条。
-   */
-  float sigmaA = (0.36 + 0.18 * sin(t * 0.044 + uv.x * 2.6)) * rangePulse;
-  float sigmaB = (0.45 + 0.20 * cos(t * 0.038 - uv.x * 2.0)) * rangePulse;
-  float sigmaC = (0.54 + 0.16 * sin(t * 0.051 + uv.x * 1.7)) * rangePulse;
+  float g1 = 1.0 - smoothstep(0.06, 0.46, d1);
+  float g2 = 1.0 - smoothstep(0.06, 0.40, d2);
+  float g3 = 1.0 - smoothstep(0.05, 0.30, d3);
 
-  float centerA = 0.33 + 0.09 * sin(t * 0.056 + uv.x * 2.9);
-  float centerB = 0.56 + 0.085 * cos(t * 0.047 - uv.x * 2.15);
-  float centerC = 0.74 + 0.075 * sin(t * 0.034 + uv.x * 1.55);
+  /* 内部织理：轻微明暗起伏，打破纯色块 */
+  float tex1 = fbm(wuv * 2.4 + t * 0.05);
+  float tex2 = fbm(wuv * 2.8 - t * 0.05 + 7.3);
+  float tex3 = fbm(wuv * 3.0 + t * 0.06 + 3.1);
 
-  float da = (arc - centerA) / max(sigmaA, 0.08);
-  float db = (arc - centerB) / max(sigmaB, 0.08);
-  float dc = (arc - centerC) / max(sigmaC, 0.08);
+  vec3 colIce = vec3(0.42, 0.60, 0.94);
+  vec3 colLilac = vec3(0.60, 0.52, 0.90);
+  vec3 colMist = vec3(0.38, 0.66, 0.80);
 
-  float curtainA = pow(exp(-(da * da)), 0.82);
-  float curtainB = pow(exp(-(db * db)), 0.82) * 0.42;
-  float curtainC = pow(exp(-(dc * dc)), 0.85) * 0.36;
+  vec3 rgb = vec3(0.0);
+  rgb += colIce * g1 * (0.48 + 0.30 * tex1);
+  rgb += colLilac * g2 * (0.44 + 0.26 * tex2);
+  rgb += colMist * g3 * (0.40 + 0.24 * tex3);
 
-  float drapes = curtainA + curtainB + curtainC;
+  /* 整体呼吸：微明微暗 */
+  float breathe = 0.90 + 0.10 * sin(t * 0.070);
+  rgb *= breathe * uIntensity;
 
-  float rayFreq = 28.0 + sin(uv.y * 13.5 + t * 0.042) * 9.0 + sin(t * 0.033) * 5.0;
-  float raysRaw =
-    sin((uv.x + warp * 8.2) * rayFreq + t * 0.078 + arc * 7.5 + sin(t * 0.025) * 2.0);
-  raysRaw = raysRaw * 0.5 + 0.5;
-  /* 抬高阈值 + 更高次幂：射线条纹变淡，与帷幕更融合 */
-  float rays = smoothstep(0.32, 0.94, raysRaw);
-  rays = pow(rays, 2.05);
+  float lum = max(rgb.r, max(rgb.g, rgb.b));
+  float alpha = clamp(lum * 1.15, 0.0, 1.0);
 
-  float breathe = 0.84 + 0.16 * sin(t * 0.074 + uv.x * 3.5 + arc * 6.0);
-
-  float lum = drapes * mix(0.52, 0.88, rays) * breathe * 0.79;
-
-  /* 竖向尽量铺满：仅最底一条做极渐隐，减轻压正文；顶缘宽渐隐 */
-  float skyMask = smoothstep(0.0, 0.18, uv.y) * (1.0 - smoothstep(0.86, 1.0, uv.y));
-  lum *= skyMask;
-
-  /*
-   *  pastel 极光：浅蓝 / 浅紫为主，辅以浅玫瑰、雾白、粉；避免高饱和氧绿主色。
-   */
-  float hueOsc = sin(t * 0.065 + uv.y * 6.0 + uv.x * 3.0) * 0.5 + 0.5;
-  float hueOsc2 = cos(t * 0.052 + uv.x * 5.5) * 0.5 + 0.5;
-
-  vec3 colIceBlue = vec3(0.58, 0.78, 0.96);
-  vec3 colLilac = vec3(0.76, 0.68, 0.94);
-  vec3 colPeri = vec3(0.64, 0.62, 0.93);
-  vec3 colRose = vec3(0.94, 0.68, 0.78);
-  vec3 colCoral = vec3(0.96, 0.74, 0.76);
-  vec3 colPastelPink = vec3(0.96, 0.80, 0.90);
-  vec3 colMistWhite = vec3(0.94, 0.95, 0.99);
-
-  vec3 baseAurora = mix(colIceBlue, colLilac, mix(0.36, 0.74, hueOsc) * (0.42 + rays * 0.26));
-  vec3 rgb = mix(baseAurora, colPeri, hueOsc2 * drapes * 0.16);
-
-  float topRose =
-    smoothstep(0.52, 0.95, uv.y) *
-    drapes *
-    (0.35 + rays * 0.38) *
-    (0.55 + 0.45 * sin(t * 0.071 + uv.x * 2.2));
-  rgb = mix(rgb, mix(colRose, colCoral, hueOsc * 0.35), clamp(topRose * 0.36, 0.0, 1.0));
-
-  float n2Band =
-    drapes *
-    curtainA *
-    smoothstep(0.12, 0.34, arc) *
-    (1.0 - smoothstep(0.46, 0.64, arc)) *
-    (0.42 + (1.0 - rays) * 0.28) *
-    (0.65 + 0.35 * sin(t * 0.061));
-  rgb = mix(rgb, mix(colPeri, colIceBlue, 0.45), clamp(n2Band * 0.34, 0.0, 1.0));
-
-  float edgeX = smoothstep(0.0, 0.18, uv.x) * smoothstep(1.0, 0.82, uv.x);
-  rgb =
-    mix(
-      rgb,
-      colPastelPink,
-      edgeX * drapes * (0.09 + 0.09 * sin(t * 0.048 + uv.y * 8.0))
-    );
-
-  float brightMix = smoothstep(0.78, 1.0, rays * breathe);
-  rgb = mix(rgb, colMistWhite, brightMix * drapes * (0.09 + 0.07 * hueOsc));
-
-  vec3 skyTintCool = vec3(0.10, 0.14, 0.28);
-  rgb = mix(rgb, skyTintCool + colLilac * 0.08, skyMask * 0.08);
-
-  float alpha = lum * uIntensity * 0.93;
-
+  /* 星点：孤立小亮点，冷白/暖白混合 */
   float sb = starsBrightness(uv, t) * uStarStrength;
-  vec2 starGid = floor(starWarpUv(uv) * vec2(STAR_GRID_X, STAR_GRID_Y));
+  vec2 starGid = floor(uv * vec2(STAR_GRID_X, STAR_GRID_Y));
   vec3 starTint =
     mix(vec3(1.0, 0.97, 0.92), vec3(0.82, 0.90, 1.0), hash21(starGid + vec2(99.0, 99.0)));
+  vec3 starRgb = starTint * sb * 2.6;
 
-  /*
-   * 星点为孤立高亮，系数适中即可；过大易与极光糊成一片。
-   */
-  vec3 auroraRgb = rgb * alpha * 0.96;
-  vec3 starRgb = starTint * sb * 2.55;
-  vec3 outRgb = auroraRgb + starRgb;
-  float alphaOut = clamp(alpha * 0.66 + sb * 0.72, 0.0, 0.96);
+  vec3 outRgb = rgb * alpha * 0.95 + starRgb;
+  float alphaOut = clamp(alpha * 0.80 + sb * 0.85, 0.0, 1.0);
   gl_FragColor = vec4(outRgb, alphaOut);
 }
 `;
@@ -255,7 +170,7 @@ function BlogAuroraCanvas() {
         uTime: { value: 0 },
         uIntensity: { value: 0.89 },
         uFlowScale: { value: 1 },
-        /** 星空总增益（与着色器内 3.85 相乘）；reduced-motion 分支另调 */
+        /** 星点总增益（与着色器内 2.4 相乘）；reduced-motion 分支另调 */
         uStarStrength: { value: 1.05 },
       },
       transparent: true,
