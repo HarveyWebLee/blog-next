@@ -1,3 +1,9 @@
+## [1.8.6](https://github.com/HarveyWebLee/blog-next/compare/v1.8.5...v1.8.6) (2026-08-01)
+
+### Bug Fixes
+
+- **taxonomy:** 修复分类/标签编辑页词典竞态崩溃 ([6ab3d2e](https://github.com/HarveyWebLee/blog-next/commit/6ab3d2e4714548f00ae1acd9250c872bd7d0c7b6))
+
 ## [1.8.5](https://github.com/HarveyWebLee/blog-next/compare/v1.8.4...v1.8.5) (2026-07-15)
 
 ### Bug Fixes
