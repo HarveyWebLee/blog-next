@@ -1,3 +1,9 @@
+# [1.9.0](https://github.com/HarveyWebLee/blog-next/compare/v1.8.6...v1.9.0) (2026-08-01)
+
+### Features
+
+- **blog:** 暗色背景改版为深空星云柔光效果 ([98bb760](https://github.com/HarveyWebLee/blog-next/commit/98bb76003cf59c1520e01b823dbe58848f00c3cf))
+
 ## [1.8.6](https://github.com/HarveyWebLee/blog-next/compare/v1.8.5...v1.8.6) (2026-08-01)
 
 ### Bug Fixes
