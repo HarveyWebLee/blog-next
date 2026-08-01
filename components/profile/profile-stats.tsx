@@ -50,6 +50,7 @@ export default function ProfileStats({ lang }: ProfileStatsProps) {
   const [stats, setStats] = useState<ProfileStatsData | null>(null);
   const [loading, setLoading] = useState(true);
   const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const loadFailedText = t.loadFailed;
 
   useEffect(() => {
     if (authLoading) return;
@@ -69,14 +70,14 @@ export default function ProfileStats({ lang }: ProfileStatsProps) {
         const response = await clientApiFetch("/api/profile/stats");
         const json = (await response.json()) as ApiResponse<ProfileStatsData>;
         if (!json.success || !json.data) {
-          message.error(json.message || t.loadFailed);
+          message.error(json.message || loadFailedText);
           setStats(null);
           return;
         }
         setStats(json.data);
       } catch (error) {
         console.error("获取统计信息失败:", error);
-        message.error(t.loadFailed);
+        message.error(loadFailedText);
         setStats(null);
       } finally {
         setLoading(false);
@@ -84,7 +85,7 @@ export default function ProfileStats({ lang }: ProfileStatsProps) {
     };
 
     void fetchStats();
-  }, [authLoading, isAuthenticated, (t as { loadFailed?: string })?.loadFailed]);
+  }, [authLoading, isAuthenticated, loadFailedText]);
 
   if (!authLoading && !isAuthenticated) {
     return (

@@ -67,7 +67,7 @@ export default function EditTagPage() {
         setLoading(false);
       }
     },
-    [router, te?.fetchFailed]
+    [router, te]
   );
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -115,8 +115,9 @@ export default function EditTagPage() {
       return;
     }
     setPageLang(resolveLocale(params.lang));
+    if (!te) return; // 词典未就绪前不拉取，避免 te! 断言抛错
     fetchTag(params.id);
-  }, [isAuthLoading, isAuthenticated, params.lang, params.id, fetchTag, router]);
+  }, [isAuthLoading, isAuthenticated, params.lang, params.id, fetchTag, router, te]);
 
   const presetColors = [
     "#667eea",

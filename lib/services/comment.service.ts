@@ -38,6 +38,15 @@ export type ApprovedCommentsPayload = {
  * 读取某文章前台可见评论：已通过审核，以及「有子回复的已软删父评论」占位。
  * 组装为最多两层的树；不返回隐私字段。
  */
+function countVisibleComments(tree: CommentTreeNode<PublicComment>[]): number {
+  let total = 0;
+  for (const node of tree) {
+    if (!node.isDeleted) total += 1;
+    if (node.replies?.length) total += countVisibleComments(node.replies);
+  }
+  return total;
+}
+
 export async function listApprovedCommentsForPost(postId: number): Promise<ApprovedCommentsPayload> {
   const rows = await db
     .select({
@@ -101,15 +110,6 @@ export async function listApprovedCommentsForPost(postId: number): Promise<Appro
     comments: tree,
     total: countVisibleComments(tree),
   };
-}
-
-function countVisibleComments(tree: CommentTreeNode<PublicComment>[]): number {
-  let total = 0;
-  for (const node of tree) {
-    if (!node.isDeleted) total += 1;
-    if (node.replies?.length) total += countVisibleComments(node.replies);
-  }
-  return total;
 }
 
 /** 按 ID 读取评论（校验回复父级 / 通知联动时使用）。 */

@@ -111,7 +111,7 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
         setLoading(false);
       }
     },
-    [router, te?.fetchFailed]
+    [router, te]
   );
 
   const fetchCategories = useCallback(async () => {
@@ -171,6 +171,7 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
   };
 
   useEffect(() => {
+    if (!te) return; // 词典未就绪前不拉取，避免 te! 断言抛错
     const initPage = async () => {
       const resolvedParams = await params;
       setPageLang(resolveLocale(resolvedParams.lang));
@@ -178,7 +179,7 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
     };
 
     initPage();
-  }, [params, fetchCategory]);
+  }, [params, fetchCategory, te]);
 
   useEffect(() => {
     if (category) {
